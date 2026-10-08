@@ -1,0 +1,3 @@
+VolumePopup 1.0 VolumePopup.qml
+VolumeSlider 1.0 VolumeSlider.qml
+singleton VolumeState 1.0 VolumeState.qml

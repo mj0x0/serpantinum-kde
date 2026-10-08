@@ -1,0 +1,159 @@
+# The installer reads this and registers every command UNBOUND, so they appear in
+# System Settings -> Shortcuts with no key taken. The [Global Shortcuts] sections are
+# the keys the rice was designed around; assign them yourself, or import this whole
+# file from System Settings to take them as-is.
+# @SHELL_NAME@ is the installed config name, @SHELL_DIR@ the directory it lives in.
+
+[Custom Commands][serpantinum-kde.bluetooth.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call bluetooth toggle
+Name=Bluetooth popup
+
+[Custom Commands][serpantinum-kde.calendar.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call calendar toggle
+Name=Calendar Popup
+
+[Custom Commands][serpantinum-kde.cheatsheet.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call cheatsheet toggle
+Name=Keybind Cheatsheet
+
+[Custom Commands][serpantinum-kde.clipboard.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call clipboard toggle
+Name=Quickshell Clipboard Manager
+
+[Custom Commands][serpantinum-kde.ethernet.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call network ethernet
+Name=Ethernet Panel
+
+[Custom Commands][serpantinum-kde.floating.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call floating toggle
+Name=Toggle Floating Sidebar
+
+[Custom Commands][serpantinum-kde.focustime.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call focustime toggle
+Name=Quickshell Focus Time
+
+[Custom Commands][serpantinum-kde.launcher.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call launcher toggle
+Name=Quickshell Launcher
+
+[Custom Commands][serpantinum-kde.media-next.desktop]
+Exec=@SHELL_DIR@/helpers/player_control.sh next
+Name=Next track
+
+[Custom Commands][serpantinum-kde.media-playpause.desktop]
+Exec=@SHELL_DIR@/helpers/player_control.sh play-pause
+Name=Pause and Resume Track
+
+[Custom Commands][serpantinum-kde.media-previous.desktop]
+Exec=@SHELL_DIR@/helpers/player_control.sh previous
+Name=Previous track
+
+[Custom Commands][serpantinum-kde.music.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call music toggle
+Name=Music Popup
+
+[Custom Commands][serpantinum-kde.network.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call network toggle
+Name=Show Network
+
+[Custom Commands][serpantinum-kde.notifcenter.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call notifcenter toggle
+Name=Quickshell Notification Center
+
+[Custom Commands][serpantinum-kde.notifications-clear.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call notifcenter clearAll
+Name=Clear All Notifications
+
+[Custom Commands][serpantinum-kde.power.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call power toggle
+Name=Power Widget
+
+[Custom Commands][serpantinum-kde.servers.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call network servers
+Name=Servers Panel
+
+[Custom Commands][serpantinum-kde.settings.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call settings toggle
+Name=Settings Toggle
+
+[Custom Commands][serpantinum-kde.tray.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call tray toggle
+Name=Quickshell Tray
+
+[Custom Commands][serpantinum-kde.volume.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call volume toggle
+Name=Volume Popup
+
+[Custom Commands][serpantinum-kde.wallpaper.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call wallpaper toggle
+Name=Wallpaper Switcher
+
+[Custom Commands][serpantinum-kde.wifi.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call network wifi
+Name=Wi-Fi Panel
+
+[serpantinum-kde.bluetooth.desktop][Global Shortcuts]
+_launch=Meta+Shift+B
+
+[serpantinum-kde.calendar.desktop][Global Shortcuts]
+_launch=Meta+C
+
+[serpantinum-kde.cheatsheet.desktop][Global Shortcuts]
+_launch=Meta+/
+
+[serpantinum-kde.clipboard.desktop][Global Shortcuts]
+_launch=Meta+V
+
+[serpantinum-kde.ethernet.desktop][Global Shortcuts]
+_launch=Meta+Shift+E
+
+[serpantinum-kde.floating.desktop][Global Shortcuts]
+_launch=Alt+F
+
+[serpantinum-kde.focustime.desktop][Global Shortcuts]
+_launch=Meta+Shift+F
+
+[serpantinum-kde.launcher.desktop][Global Shortcuts]
+_launch=Meta
+
+[serpantinum-kde.media-next.desktop][Global Shortcuts]
+_launch=Meta+Shift+PgUp
+
+[serpantinum-kde.media-playpause.desktop][Global Shortcuts]
+_launch=Meta+Shift+Del
+
+[serpantinum-kde.media-previous.desktop][Global Shortcuts]
+_launch=Meta+Shift+PgDown
+
+[serpantinum-kde.music.desktop][Global Shortcuts]
+_launch=Meta+M
+
+[serpantinum-kde.network.desktop][Global Shortcuts]
+_launch=Meta+Shift+V
+
+[serpantinum-kde.notifcenter.desktop][Global Shortcuts]
+_launch=Meta+N
+
+[serpantinum-kde.notifications-clear.desktop][Global Shortcuts]
+_launch=Meta+Shift+Backspace
+
+[serpantinum-kde.power.desktop][Global Shortcuts]
+_launch=Meta+Shift+P
+
+[serpantinum-kde.servers.desktop][Global Shortcuts]
+_launch=Meta+Shift+H
+
+[serpantinum-kde.settings.desktop][Global Shortcuts]
+_launch=Meta+Shift+I
+
+[serpantinum-kde.tray.desktop][Global Shortcuts]
+_launch=Meta+Shift+T
+
+[serpantinum-kde.volume.desktop][Global Shortcuts]
+_launch=Meta+S
+
+[serpantinum-kde.wallpaper.desktop][Global Shortcuts]
+_launch=Meta+Shift+W
+
+[serpantinum-kde.wifi.desktop][Global Shortcuts]
+_launch=Meta+Shift+N

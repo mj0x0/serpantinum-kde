@@ -1,0 +1,1790 @@
+/*
+  Dashboard-Komorebi.css
+  木漏れ日 — Sunlight filtering through leaves
+  Arch Linux ricing meets anime minimalism
+  Catppuccin Mocha palette · JetBrains Mono
+  Designed by InlitX
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+
+/* ──────────────────────────────────────────────
+   DESIGN TOKENS
+   ────────────────────────────────────────────── */
+.theme-dark, .theme-light {
+  /* -- Surfaces: neutral elevated tones, clearly distinct from the page -- */
+  --komo-base:          var(--background-primary);
+  --komo-surface:       var(--color-base-30);
+  --komo-overlay:       var(--color-base-35);
+  --komo-raised:        var(--color-base-40);
+  --komo-border:        rgba(var(--interactive-accent-rgb), 0.20);
+  --komo-border-hover:  rgba(var(--interactive-accent-rgb), 0.42);
+  --komo-border-sakura: rgba(var(--interactive-accent-rgb), 0.35);
+
+  /* -- Accents: primary teal, complementary salmon, secondary periwinkle, sage -- */
+  --komo-sakura:   var(--interactive-accent);   /* primary — teal (dominant)     */
+  --komo-lavender: var(--color-pink);           /* secondary — periwinkle (greeting) */
+  --komo-teal:     var(--link-color-hover);     /* analogous — bright cyan           */
+  --komo-yellow:   var(--color-yellow);         /* sage                              */
+  --komo-red:      var(--color-pink);           /* periwinkle — alerts / weekends    */
+  --komo-green:    var(--color-yellow);         /* sage — positive                */
+  --komo-peach:    var(--color-orange);         /* periwinkle                     */
+
+  --komo-text:    var(--text-normal);
+  --komo-sub:     var(--text-muted);
+  --komo-muted:   var(--text-faint);
+  --komo-faint:   var(--color-base-40);
+
+  --komo-font:    'JetBrains Mono', 'Noto Sans JP', monospace;
+  --komo-font-jp: 'Noto Sans JP', sans-serif;
+
+  --komo-radius:  3px;
+  --komo-gap:     14px;
+  --komo-pad:     18px;
+  --komo-shadow:  0 2px 20px rgba(0,0,0,0.45);
+}
+
+/* FORCE THE NOTE CONTAINERS TO BE WIDE */
+.dashboard-layout .cm-sizer,
+.dashboard-layout .markdown-preview-sizer {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+/* Hides the properties section. */
+.dashboard-layout .metadata-container {
+  display: none !important;
+}
+
+/* ──────────────────────────────────────────────
+   OBSIDIAN READING VIEW RESET
+   ────────────────────────────────────────────── */
+.komo-header-block,
+.komo-grid-block,
+.komo-bottom-block {
+  font-family: var(--komo-font) !important;
+  color: var(--komo-text);
+  max-width: none;
+  margin: 0 auto;
+  padding: 0 4px;
+}
+
+.komo-header-block { padding-top: 4px; }
+.komo-bottom-block { padding-bottom: 20px; }
+
+/* Kill Obsidian paragraph margins inside our blocks */
+.komo-header-block p,
+.komo-grid-block p,
+.komo-bottom-block p { margin: 0 !important; }
+
+/* ──────────────────────────────────────────────
+   HEADER BLOCK
+   ────────────────────────────────────────────── */
+.komo-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--komo-gap);
+  background: var(--komo-surface);
+  border: 1px solid var(--komo-border);
+  border-radius: var(--komo-radius);
+  padding: 20px 26px;
+  margin-bottom: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Sakura petal background glow */
+.komo-header::before {
+  content: '桜';
+  position: absolute;
+  right: -20px; bottom: -40px;
+  font-size: 180px;
+  color: var(--komo-sakura);
+  opacity: 0.018;
+  font-family: var(--komo-font-jp);
+  pointer-events: none;
+  user-select: none;
+  line-height: 1;
+}
+
+/* Brand (left) */
+.komo-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.komo-title {
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: var(--komo-sakura);
+  letter-spacing: 0.08em;
+  line-height: 1;
+  cursor: text;
+  outline: none;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.2s;
+  caret-color: var(--komo-sakura);
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  -webkit-text-fill-color: unset;
+}
+
+.komo-title:focus { border-color: var(--komo-border-sakura); }
+.komo-title::before { content: '> '; color: var(--komo-muted); }
+
+.komo-mantra {
+  font-size: 0.72rem;
+  color: var(--komo-muted);
+  letter-spacing: 0.04em;
+  cursor: text;
+  outline: none;
+  caret-color: var(--komo-sub);
+  line-height: 1.4;
+  transition: color 0.2s;
+}
+
+.komo-mantra:focus { color: var(--komo-sub); }
+.komo-mantra::before { content: '// '; }
+
+/* Clock (center) */
+.komo-clock-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.komo-time {
+  font-size: 2.4rem;
+  font-weight: 600;
+  color: var(--komo-text);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.komo-date {
+  font-size: 0.68rem;
+  color: var(--komo-muted);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.komo-sep { opacity: 0.4; margin: 0 4px; }
+
+.komo-date-en { color: var(--komo-faint); opacity: 0.7; }
+
+/* Header right */
+.komo-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.komo-greeting {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.komo-greet-jp {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--komo-lavender);
+  font-family: var(--komo-font);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.komo-greet-en {
+  font-size: 0.68rem;
+  color: var(--komo-muted);
+  letter-spacing: 0.04em;
+}
+
+/* Stats pills */
+.komo-stats-row {
+  display: flex;
+  gap: 6px;
+}
+
+.komo-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--komo-overlay);
+  border: 1px solid var(--komo-border);
+  border-radius: var(--komo-radius);
+  padding: 6px 12px;
+  min-width: 48px;
+  transition: border-color 0.2s;
+}
+
+.komo-pill:hover { border-color: var(--komo-border-hover); }
+
+.komo-pill-num {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--komo-text);
+  line-height: 1;
+}
+
+.komo-pill-lbl {
+  font-size: 0.58rem;
+  color: var(--komo-muted);
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+/* Divider */
+.komo-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--komo-sakura), transparent);
+  opacity: 0.12;
+  margin: 2px 0 10px;
+}
+
+/* ──────────────────────────────────────────────
+   SHARED CARD STYLES
+   ────────────────────────────────────────────── */
+.komo-card {
+  background: var(--komo-surface);
+  border: 1px solid var(--komo-border);
+  border-radius: var(--komo-radius);
+  padding: var(--komo-pad);
+  transition: border-color 0.2s;
+}
+
+.komo-card:hover { border-color: var(--komo-border-hover); }
+
+.komo-music-card { 
+  padding: 0 !important; 
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 260px !important;
+  max-height: 260px !important;
+  min-height: 260px !important;
+}
+
+.komo-music-card .komo-label {
+  flex-shrink: 0 !important;
+  padding: 14px 14px 8px 14px !important;
+}
+
+.komo-music-player {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  padding: 0 12px 12px 12px !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+}
+
+/* gif/image mode — no padding so it fills the card edge to edge */
+.komo-music-player.komo-music-img-mode {
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+.komo-music-player .komo-spotify-container {
+  flex: 0 0 auto !important;
+  height: 152px !important;
+  overflow: hidden !important;
+  border-radius: 4px !important;
+  background: var(--komo-overlay) !important;
+}
+
+.komo-music-player .komo-spotify-container iframe {
+  width: 100% !important;
+  height: 152px !important;
+  border: none !important;
+  display: block !important;
+}
+
+.komo-music-player .komo-music-error {
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--komo-muted) !important;
+  font-size: 0.75rem !important;
+}
+
+.komo-playlist-wrap {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  padding: 8px !important;
+  flex-shrink: 0 !important;
+  background: var(--komo-overlay) !important;
+  border-radius: 4px !important;
+}
+
+.komo-playlist-btn {
+  padding: 3px 8px !important;
+  background: var(--komo-surface) !important;
+  border: 1px solid var(--komo-border) !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-size: 10px !important;
+  color: var(--komo-sub) !important;
+  font-family: var(--komo-font) !important;
+  white-space: nowrap !important;
+  line-height: 1.4 !important;
+  transition: all 0.15s !important;
+}
+
+.komo-playlist-btn:hover {
+  background: rgba(245, 194, 231, 0.1) !important;
+  border-color: var(--komo-sakura) !important;
+  color: var(--komo-sakura) !important;
+}
+
+/* Section label */
+.komo-label {
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--komo-sakura);
+  opacity: 0.75;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  font-family: var(--komo-font);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.komo-label::before {
+  content: '//';
+  color: var(--komo-muted);
+  opacity: 0.6;
+  font-family: var(--komo-font);
+}
+
+/* ──────────────────────────────────────────────
+   MAIN GRID BLOCK
+   ────────────────────────────────────────────── */
+.komo-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr 200px;
+  gap: var(--komo-gap);
+  margin-bottom: var(--komo-gap);
+}
+
+/* LEFT COLUMN */
+.komo-col-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--komo-gap);
+}
+
+/* Focus card */
+.komo-focus {
+  font-size: 1.1rem !important;
+  font-weight: 400 !important;
+  color: var(--komo-text) !important;
+  outline: none;
+  line-height: 1.5 !important;
+  cursor: text;
+  min-height: 60px;
+  caret-color: var(--komo-sakura);
+  font-family: 'Noto Sans JP', sans-serif !important;
+}
+
+/* force font inside contenteditable on every child element */
+.markdown-preview-view .komo-focus *,
+.markdown-reading-view .komo-focus *,
+.view-content .komo-focus *,
+.komo-focus div, .komo-focus p,
+.komo-focus span, .komo-focus font {
+  font-family: 'Noto Sans JP', sans-serif !important;
+  font-size: 1.1rem !important;
+  font-weight: 400 !important;
+  color: var(--komo-text) !important;
+  line-height: 1.5 !important;
+  background: transparent !important;
+  -webkit-text-fill-color: var(--komo-text) !important;
+}
+
+.komo-focus:empty::before {
+  content: attr(placeholder);
+  color: var(--komo-muted);
+  font-size: 0.85rem;
+  font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 300;
+}
+
+/* System quick actions */
+.komo-sys-card .komo-label { margin-bottom: 10px; }
+
+.komo-act-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.komo-act-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border: 1px solid var(--komo-border);
+  border-radius: var(--komo-radius);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: var(--komo-overlay);
+}
+
+.komo-act-btn:hover {
+  border-color: var(--komo-sakura);
+  background: rgba(245, 194, 231, 0.05);
+  transform: translateY(-1px);
+}
+
+.komo-act-icon {
+  color: var(--komo-lavender);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.komo-act-icon svg { width: 15px; height: 15px; }
+
+.komo-act-lbl {
+  font-size: 0.57rem;
+  color: var(--komo-muted);
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+.komo-act-btn:hover .komo-act-lbl { color: var(--komo-sub); }
+
+/* ──────────────────────────────────────────────
+   BIG WIDGETS (WEATHER + MUSIC)
+   ────────────────────────────────────────────── */
+.komo-big-widget {
+  min-height: 160px;
+  position: relative;
+}
+
+/* Weather Big */
+.komo-weather-card { flex: 1; }
+.komo-weather-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.komo-weather-settings {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  cursor: pointer;
+  color: var(--komo-muted);
+  font-size: 0.7rem;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.komo-weather-settings:hover { opacity: 1; color: var(--komo-sakura); }
+.komo-weather-settings svg { width: 12px; height: 12px; }
+
+.komo-weather-setup {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--komo-muted);
+  cursor: pointer;
+  padding: 30px 20px;
+  transition: color 0.15s;
+}
+
+.komo-weather-setup:hover { color: var(--komo-sakura); }
+
+.komo-weather-main-big {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.komo-weather-big-icon {
+  font-size: 3.5rem;
+  line-height: 1;
+}
+
+.komo-weather-temp-wrap {
+  text-align: left;
+}
+
+.komo-weather-temp-big {
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: var(--komo-text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.komo-weather-city-big {
+  font-size: 0.75rem;
+  color: var(--komo-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+
+.komo-weather-desc-big {
+  font-size: 0.8rem;
+  color: var(--komo-muted);
+  text-transform: capitalize;
+  text-align: center;
+}
+
+.komo-weather-error {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--komo-red);
+  padding: 40px 20px;
+}
+
+/* ──────────────────────────────────────────────
+   CENTER — RELATED CARDS (BIG)
+   ────────────────────────────────────────────── */
+.komo-col-center {
+  display: flex;
+  flex-direction: column;
+  gap: var(--komo-gap);
+}
+
+.komo-cards-card { flex: 1; }
+
+.komo-cards-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.komo-cards-hdr .komo-label { margin-bottom: 0; }
+
+.komo-add-card-btn {
+  font-size: 0.6rem;
+  color: var(--komo-muted);
+  cursor: pointer;
+  padding: 4px 10px;
+  border: 1px solid var(--komo-border);
+  border-radius: var(--komo-radius);
+  transition: all 0.15s;
+  background: var(--komo-overlay);
+}
+
+.komo-add-card-btn:hover {
+  color: var(--komo-sakura);
+  border-color: var(--komo-border-sakura);
+  background: rgba(245, 194, 231, 0.08);
+}
+
+.komo-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  max-height: 500px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--komo-faint) transparent;
+}
+
+.komo-cards-container::-webkit-scrollbar { width: 4px; }
+.komo-cards-container::-webkit-scrollbar-thumb { background: var(--komo-faint); border-radius: 2px; }
+
+.komo-cards-big {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.komo-cards-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 80px 20px;
+  color: var(--komo-muted);
+  font-size: 0.85rem;
+  grid-column: 1 / -1;
+}
+
+.komo-related-card {
+  background: var(--komo-overlay);
+  border: 1px solid var(--komo-border);
+  border-radius: var(--komo-radius);
+  padding: 16px;
+  transition: all 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.komo-card-big {
+  min-height: 160px;
+}
+
+.komo-related-card:hover {
+  border-color: var(--komo-border-hover);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Collection cards — borders ALTERNATE secondary (periwinkle) / tertiary (sage).
+   !important overrides the per-card Catppuccin color set inline by the JS. */
+.komo-related-card {
+  border-style: solid !important;
+  border-width: 2px !important;
+}
+.komo-related-card:nth-child(odd)  { border-color: var(--color-pink)   !important; box-shadow: 0 0 11px -3px color-mix(in srgb, var(--color-pink)   70%, transparent); }
+.komo-related-card:nth-child(even) { border-color: var(--color-yellow) !important; box-shadow: 0 0 11px -3px color-mix(in srgb, var(--color-yellow) 70%, transparent); }
+.komo-related-card:nth-child(odd):hover  { box-shadow: 0 0 18px -2px color-mix(in srgb, var(--color-pink)   90%, transparent) !important; }
+.komo-related-card:nth-child(even):hover { box-shadow: 0 0 18px -2px color-mix(in srgb, var(--color-yellow) 90%, transparent) !important; }
+
+/* Pinned Films / TV Shows cards — larger emoji glyph */
+.komo-pinned-card .komo-card-img-wrap-big { font-size: 2.4rem; }
+
+.komo-card-img-wrap {
+  width: 100%;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  margin-bottom: 12px;
+  border-radius: var(--komo-radius);
+  background: var(--komo-raised);
+  overflow: hidden;
+}
+
+.komo-card-img-wrap-big {
+  height: 100px;
+  font-size: 2.8rem;
+}
+
+.komo-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.komo-card-img-big {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.komo-card-content {
+  text-align: center;
+}
+
+.komo-card-content-big {
+  text-align: center;
+}
+
+.komo-card-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--komo-text);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.komo-card-title-big {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--komo-text);
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.komo-card-subtitle {
+  font-size: 0.65rem;
+  color: var(--komo-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.komo-card-subtitle-big {
+  font-size: 0.75rem;
+  color: var(--komo-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.komo-card-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.komo-related-card:hover .komo-card-actions { opacity: 1; }
+
+.komo-card-action {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: var(--komo-muted);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.1s;
+  background: var(--komo-surface);
+  border: 1px solid var(--komo-border);
+}
+
+.komo-card-action:hover {
+  color: var(--komo-text);
+  background: var(--komo-raised);
+}
+
+.komo-card-del:hover { color: var(--komo-red); border-color: var(--komo-red); }
+
+/* Card modal styles */
+.komo-card-modal { min-width: 380px; }
+
+.komo-card-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.komo-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.komo-form-row label {
+  font-size: 0.6rem;
+  color: var(--komo-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.komo-form-row select {
+  cursor: pointer;
+}
+
+.komo-form-row select option {
+  background: var(--komo-surface);
+  color: var(--komo-text);
+}
+
+.komo-color-grid {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.komo-color-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.komo-color-dot:hover { transform: scale(1.1); }
+.komo-color-dot.active { border-color: var(--komo-text); box-shadow: 0 0 8px rgba(255,255,255,0.2); }
+
+/* ──────────────────────────────────────────────
+   RIGHT COLUMN — CALENDAR ONLY
+   ────────────────────────────────────────────── */
+.komo-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--komo-gap);
+}
+
+/* Mini Calendar */
+.komo-cal-card .komo-label { margin-bottom: 8px; }
+
+.komo-cal-container { user-select: none; }
+
+.komo-cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.komo-cal-nav-btn {
+  cursor: pointer;
+  color: var(--komo-muted);
+  font-size: 1rem;
+  padding: 0 6px;
+  transition: color 0.15s;
+  line-height: 1;
+}
+
+.komo-cal-nav-btn:hover { color: var(--komo-sakura); }
+
+.komo-cal-month-label {
+  font-size: 0.66rem;
+  color: var(--komo-sub);
+  letter-spacing: 0.04em;
+  font-family: var(--komo-font-jp);
+}
+
+.komo-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.komo-cal-dh {
+  text-align: center;
+  font-size: 0.57rem;
+  color: var(--komo-muted);
+  padding: 2px 0;
+  font-family: var(--komo-font-jp);
+}
+
+/* Sunday color */
+.komo-cal-grid .komo-cal-dh:first-child,
+.komo-cal-grid .komo-cal-cell:nth-child(7n+1) { color: var(--komo-red); }
+
+/* Saturday */
+.komo-cal-grid .komo-cal-dh:last-child,
+.komo-cal-grid .komo-cal-cell:nth-child(7n) { color: var(--komo-lavender); }
+
+.komo-cal-cell {
+  text-align: center;
+  font-size: 0.63rem;
+  color: var(--komo-sub);
+  padding: 4px 2px;
+  border-radius: 2px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.12s;
+  line-height: 1;
+  position: relative;
+  min-height: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.komo-cal-cell:hover {
+  border-color: var(--komo-border-hover);
+  color: var(--komo-text);
+}
+
+.komo-cal-cell.empty {
+  cursor: default;
+  pointer-events: none;
+}
+
+.komo-cal-cell.today {
+  background: rgba(245, 194, 231, 0.12);
+  border-color: rgba(245, 194, 231, 0.35);
+  color: var(--komo-sakura);
+  font-weight: 600;
+}
+
+.komo-cal-day-num {
+  margin-bottom: 2px;
+}
+
+/* Calendar dots for notes */
+.komo-cal-dots {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: 24px;
+}
+
+.komo-cal-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--komo-sakura);
+  flex-shrink: 0;
+}
+
+/* Calendar popup */
+.komo-cal-popup {
+  position: fixed;
+  z-index: 9999;
+  background: var(--komo-surface);
+  border: 1px solid var(--komo-border-hover);
+  border-radius: var(--komo-radius);
+  box-shadow: var(--komo-shadow);
+  min-width: 180px;
+  max-width: 240px;
+  animation: komo-fade-in 0.15s ease;
+}
+
+.komo-cal-popup-header {
+  padding: 10px 12px;
+  font-size: 0.7rem;
+  color: var(--komo-sakura);
+  border-bottom: 1px solid var(--komo-border);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.komo-cal-popup-list {
+  max-height: 150px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--komo-faint) transparent;
+}
+
+.komo-cal-popup-list::-webkit-scrollbar { width: 3px; }
+.komo-cal-popup-list::-webkit-scrollbar-thumb { background: var(--komo-faint); border-radius: 2px; }
+
+.komo-cal-popup-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 0.72rem;
+  color: var(--komo-sub);
+  cursor: pointer;
+  border-bottom: 1px solid var(--komo-border);
+  transition: all 0.1s;
+}
+
+.komo-cal-popup-item:last-child { border-bottom: none; }
+.komo-cal-popup-item:hover {
+  background: var(--komo-overlay);
+  color: var(--komo-text);
+}
+
+.komo-cal-popup-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--komo-sakura);
+  flex-shrink: 0;
+}
+
+.komo-cal-popup-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ──────────────────────────────────────────────
+   POMODORO TIMER
+   ────────────────────────────────────────────── */
+.komo-pomodoro-card { flex: 1; min-height: 200px; }
+
+.komo-pomodoro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.komo-pomo-timer {
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: var(--komo-text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+.komo-pomo-progress {
+  width: 100%;
+  height: 4px;
+  background: var(--komo-faint);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.komo-pomo-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 1s linear;
+}
+
+.komo-pomo-status {
+  font-size: 0.7rem;
+  color: var(--komo-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.komo-pomo-controls {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.komo-pomo-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--komo-border);
+  border-radius: var(--komo-radius);
+  background: var(--komo-overlay);
+  color: var(--komo-sub);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.15s;
+}
+
+.komo-pomo-btn:hover {
+  border-color: var(--komo-border-hover);
+  color: var(--komo-text);
+  background: var(--komo-raised);
+}
+
+.komo-pomo-btn-primary {
+  background: rgba(245, 194, 231, 0.1);
+  border-color: var(--komo-border-sakura);
+  color: var(--komo-sakura);
+}
+
+.komo-pomo-btn-primary:hover {
+  background: rgba(245, 194, 231, 0.2);
+  border-color: var(--komo-sakura);
+}
+
+.komo-pomo-count {
+  font-size: 0.65rem;
+  color: var(--komo-muted);
+  margin-top: 4px;
+}
+
+/* ──────────────────────────────────────────────
+   BOTTOM BLOCK — HABITS + MUSIC
+   ────────────────────────────────────────────── */
+
+.komo-bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: var(--komo-gap);
+}
+
+/* Habit tracker */
+.komo-habit-card {}
+
+.komo-habit-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.komo-habit-hdr .komo-label { margin-bottom: 0; }
+
+.komo-add-habit-btn {
+  font-size: 0.6rem;
+  color: var(--komo-muted);
+  cursor: pointer;
+  padding: 3px 8px;
+  border: 1px solid var(--komo-border);
+  border-radius: var(--komo-radius);
+  transition: all 0.15s;
+}
+
+.komo-add-habit-btn:hover {
+  color: var(--komo-sakura);
+  border-color: var(--komo-border-sakura);
+}
+
+.komo-habit-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.komo-habit-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow: hidden; }
+
+/* Compact rows inside two-column mode */
+.komo-habit-grid-two .komo-week-hdr,
+.komo-habit-grid-two .komo-habit-row {
+  grid-template-columns: 70px repeat(7, 20px) 30px !important;
+  gap: 2px !important;
+}
+
+.komo-habit-grid-two .komo-habit-name { font-size: 0.65rem; }
+.komo-habit-grid-two .komo-dot { width: 16px !important; height: 16px !important; }
+.komo-habit-grid-two .komo-habit-pct { font-size: 0.58rem; }
+.komo-habit-grid-two .komo-week-hdr-day { font-size: 0.52rem; }
+
+.komo-week-hdr {
+  display: grid;
+  grid-template-columns: 130px repeat(7, 28px) 40px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px 6px;
+  border-bottom: 1px solid var(--komo-border);
+  margin-bottom: 4px;
+}
+
+.komo-week-hdr-day, .komo-week-hdr-pct {
+  font-size: 0.58rem;
+  color: var(--komo-muted);
+  text-align: center;
+  font-family: var(--komo-font-jp);
+}
+
+.komo-habit-row {
+  display: grid;
+  grid-template-columns: 130px repeat(7, 28px) 40px;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px;
+  border-radius: var(--komo-radius);
+  transition: background 0.12s;
+}
+
+.komo-habit-row:hover { background: var(--komo-overlay); }
+
+.komo-habit-name {
+  font-size: 0.73rem;
+  color: var(--komo-sub);
+  cursor: default;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--komo-font-jp);
+}
+
+/* Habit dots */
+.komo-dot {
+  width: 20px; height: 20px;
+  border: 1px solid var(--komo-border);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.komo-dot:hover {
+  border-color: var(--komo-sakura);
+  background: rgba(245, 194, 231, 0.06);
+}
+
+.komo-dot.on {
+  background: var(--komo-sakura);
+  border-color: var(--komo-sakura);
+  box-shadow: 0 0 8px rgba(245, 194, 231, 0.3);
+}
+
+.komo-dot.on::after {
+  content: '·';
+  color: rgba(13, 14, 20, 0.8);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.komo-habit-pct {
+  font-size: 0.63rem;
+  color: var(--komo-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bio bar (overall consistency) */
+.komo-bio-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--komo-border);
+}
+
+.komo-bio-lbl {
+  font-size: 0.62rem;
+  color: var(--komo-muted);
+  min-width: 100px;
+  letter-spacing: 0.06em;
+}
+
+.komo-bio-bar-wrap {
+  flex: 1;
+  height: 3px;
+  background: var(--komo-faint);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.komo-bio-bar {
+  height: 100%;
+  background: linear-gradient(to right, var(--komo-sakura), var(--komo-lavender));
+  border-radius: 2px;
+  transition: width 0.5s ease;
+  box-shadow: 0 0 8px rgba(245, 194, 231, 0.4);
+}
+
+.komo-bio-pct {
+  font-size: 0.65rem;
+  color: var(--komo-sakura);
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* ──────────────────────────────────────────────
+   MODAL
+   ────────────────────────────────────────────── */
+.komo-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.komo-modal {
+  background: var(--komo-surface);
+  border: 1px solid var(--komo-border-hover);
+  border-radius: 4px;
+  padding: 20px;
+  min-width: 320px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: var(--komo-shadow);
+}
+
+.komo-modal-title {
+  font-size: 0.7rem;
+  color: var(--komo-sakura);
+  letter-spacing: 0.1em;
+  margin-bottom: 14px;
+  opacity: 0.85;
+}
+
+.komo-modal-title::before { content: '// '; color: var(--komo-muted); }
+
+.komo-modal-search {
+  width: 100%;
+  background: var(--komo-overlay);
+  border: 1px solid var(--komo-border);
+  border-radius: var(--komo-radius);
+  color: var(--komo-text);
+  font-family: var(--komo-font);
+  font-size: 0.8rem;
+  padding: 8px 12px;
+  outline: none;
+  margin-bottom: 0;
+  box-sizing: border-box;
+  caret-color: var(--komo-sakura);
+  transition: border-color 0.15s;
+}
+
+.komo-modal-search:focus { border-color: var(--komo-border-sakura); }
+
+.komo-modal-list {
+  max-height: 260px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--komo-faint) transparent;
+  border: 1px solid var(--komo-border);
+  border-radius: var(--komo-radius);
+}
+
+.komo-modal-item {
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  color: var(--komo-sub);
+  cursor: pointer;
+  border-bottom: 1px solid var(--komo-border);
+  transition: all 0.1s;
+  font-family: var(--komo-font);
+}
+
+.komo-modal-item:last-child { border-bottom: none; }
+.komo-modal-item:hover { background: var(--komo-overlay); color: var(--komo-text); }
+.komo-modal-item.active {
+  color: var(--komo-teal);
+  background: rgba(137, 220, 235, 0.05);
+}
+
+/* Modal buttons */
+.komo-modal-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.komo-modal-btn {
+  flex: 1;
+  padding: 5px 12px;
+  font-size: 0.7rem;
+  font-family: var(--komo-font);
+  border: 1px solid var(--komo-border);
+  border-radius: var(--komo-radius);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.komo-btn-cancel {
+  background: transparent;
+  color: var(--komo-muted);
+}
+
+.komo-btn-cancel:hover {
+  border-color: var(--komo-border-hover);
+  color: var(--komo-text);
+}
+
+.komo-btn-save {
+  background: rgba(245, 194, 231, 0.1);
+  border-color: var(--komo-border-sakura);
+  color: var(--komo-sakura);
+}
+
+.komo-btn-save:hover {
+  background: rgba(245, 194, 231, 0.2);
+  border-color: var(--komo-sakura);
+}
+
+.komo-btn-delete {
+  background: rgba(243, 139, 168, 0.1);
+  border-color: rgba(243, 139, 168, 0.3);
+  color: var(--komo-red);
+}
+
+.komo-btn-delete:hover {
+  background: rgba(243, 139, 168, 0.2);
+  border-color: var(--komo-red);
+}
+
+/* Confirm modal styles */
+.komo-confirm-modal {
+  text-align: center;
+  padding: 28px 24px;
+}
+
+.komo-confirm-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.komo-confirm-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.komo-confirm-title {
+  font-size: 0.75rem;
+  color: var(--komo-sakura);
+  letter-spacing: 0.1em;
+  text-transform: lowercase;
+}
+
+.komo-confirm-title::before {
+  content: '// ';
+  color: var(--komo-muted);
+}
+
+.komo-confirm-message {
+  font-size: 0.85rem;
+  color: var(--komo-text);
+  line-height: 1.5;
+}
+
+/* ──────────────────────────────────────────────
+   CONTEXT MENU
+   ────────────────────────────────────────────── */
+.komo-ctx-menu {
+  position: fixed;
+  z-index: 9999;
+  background: var(--komo-surface);
+  border: 1px solid var(--komo-border-hover);
+  border-radius: var(--komo-radius);
+  box-shadow: var(--komo-shadow);
+  min-width: 120px;
+  overflow: hidden;
+}
+
+.komo-ctx-item {
+  padding: 8px 14px;
+  font-size: 0.72rem;
+  color: var(--komo-sub);
+  cursor: pointer;
+  font-family: var(--komo-font);
+  letter-spacing: 0.04em;
+  transition: background 0.1s;
+}
+
+.komo-ctx-item:hover { background: var(--komo-overlay); color: var(--komo-text); }
+.komo-ctx-del:hover { color: var(--komo-red) !important; }
+
+/* ──────────────────────────────────────────────
+   MUSIC PLACEHOLDER (mode: none, sin imagen)
+   ────────────────────────────────────────────── */
+.komo-music-ph {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+}
+
+.komo-music-ph-icon {
+  font-size: 2.8rem;
+  line-height: 1;
+  opacity: 0.55;
+  filter: grayscale(0.3);
+}
+
+.komo-music-ph-hint {
+  font-size: 0.7rem;
+  color: var(--komo-muted);
+  letter-spacing: 0.06em;
+  filter: blur(3px);
+  user-select: none;
+  transition: filter 0.3s;
+}
+
+.komo-music-ph:hover .komo-music-ph-hint { filter: blur(0); }
+
+/* ──────────────────────────────────────────────
+   LOCAL MUSIC PLAYER
+   ────────────────────────────────────────────── */
+.komo-local-player {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  padding: 4px 10px;
+  justify-content: center;
+}
+
+.komo-local-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.komo-local-icon {
+  font-size: 1.6rem;
+  color: var(--komo-sakura);
+  opacity: 0.7;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.komo-local-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.komo-local-name {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--komo-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.komo-local-time {
+  font-size: 0.6rem;
+  color: var(--komo-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.komo-local-progress {
+  width: 100%;
+  height: 3px;
+  background: var(--komo-faint);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.komo-local-progress:hover { height: 5px; margin: -1px 0; }
+
+.komo-local-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(to right, var(--komo-sakura), var(--komo-lavender));
+  border-radius: 2px;
+  transition: width 0.25s linear;
+}
+
+.komo-local-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  position: relative;
+}
+
+.komo-local-counter {
+  position: absolute;
+  right: 0;
+  bottom: -16px;
+  font-size: 0.6rem;
+  color: var(--komo-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.komo-local-ctrl {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--komo-border);
+  border-radius: var(--komo-radius);
+  background: var(--komo-overlay);
+  color: var(--komo-sub);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.komo-local-ctrl:hover {
+  border-color: var(--komo-border-hover);
+  color: var(--komo-text);
+  background: var(--komo-raised);
+}
+
+.komo-local-ctrl-main {
+  width: 40px;
+  height: 40px;
+  font-size: 1rem;
+  background: rgba(245, 194, 231, 0.1);
+  border-color: var(--komo-border-sakura);
+  color: var(--komo-sakura);
+}
+
+.komo-local-ctrl-main:hover {
+  background: rgba(245, 194, 231, 0.2);
+  border-color: var(--komo-sakura);
+  color: var(--komo-sakura);
+}
+
+.komo-local-spacer { flex: 1; }
+
+.komo-local-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+}
+
+.komo-local-empty-icon {
+  font-size: 2rem;
+  opacity: 0.4;
+  line-height: 1;
+}
+
+.komo-local-empty-text {
+  font-size: 0.7rem;
+  color: var(--komo-muted);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+/* ──────────────────────────────────────────────
+   ANIMATIONS
+   ────────────────────────────────────────────── */
+@keyframes komo-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.komo-header-block { animation: komo-fade-in 0.35s ease; }
+.komo-grid-block   { animation: komo-fade-in 0.4s ease 0.05s both; }
+.komo-bottom-block { animation: komo-fade-in 0.45s ease 0.1s both; }
+
+@keyframes komo-pulse-dot {
+  0%, 100% { box-shadow: 0 0 4px rgba(245,194,231,0.3); }
+  50%       { box-shadow: 0 0 10px rgba(245,194,231,0.6); }
+}
+
+.komo-dot.on { animation: komo-pulse-dot 2s ease infinite; }
+
+/* ──────────────────────────────────────────────
+   RESPONSIVE ADJUSTMENTS
+   ────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .komo-header {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+  .komo-clock-block {
+    grid-column: 1 / -1;
+    order: -1;
+    align-items: center;
+  }
+  .komo-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .komo-col-right {
+    display: none;
+  }
+  .komo-week-hdr,
+  .komo-habit-row {
+    grid-template-columns: 100px repeat(7, 24px) 36px;
+  }
+  .komo-bottom-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Portrait phones: stack the header + fit the habit boxes ── */
+@media (max-width: 550px) {
+  /* Header: single column so the clock + all three stats fit on screen */
+  .komo-header {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto !important;
+    padding: 16px 18px;
+  }
+  .komo-clock-block {
+    order: -1 !important;
+    grid-column: auto !important;
+    align-items: flex-start !important;
+  }
+  .komo-brand,
+  .komo-header-right,
+  .komo-greeting { align-items: flex-start !important; }
+  .komo-time { font-size: 1.8rem !important; letter-spacing: 0.02em !important; }
+  .komo-date { text-align: left !important; }
+  .komo-header::before { display: none; }         /* hide the big 桜 glyph */
+
+  /* Body: single column */
+  .komo-grid { grid-template-columns: 1fr !important; }
+
+  /* Habits: force ONE column (override the inline two-column grid) so the
+     day boxes are no longer clipped off-screen. */
+  .komo-habit-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+  .komo-habit-grid > div { overflow: visible !important; min-width: 0 !important; }
+  .komo-habit-grid > div:nth-child(2) .komo-week-hdr { display: none !important; }
+  .komo-week-hdr,
+  .komo-habit-row {
+    grid-template-columns: minmax(72px, 1fr) repeat(7, 24px) 34px !important;
+  }
+}
+
+/* ── Collection: size control + spacing (added) ── */
+/* keep label left, group size control + add button on the right */
+.komo-cards-hdr { gap: 8px; }
+.komo-cards-hdr .komo-label { margin-right: auto; }
+
+.komo-size-ctl { display: inline-flex; align-items: center; gap: 6px; }
+.komo-size-lbl {
+  font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--komo-muted);
+}
+.komo-size-btn {
+  cursor: pointer; user-select: none;
+  width: 20px; height: 20px; line-height: 18px; text-align: center;
+  border: 1px solid var(--komo-border); border-radius: 4px;
+  color: var(--komo-sub); font-size: 0.85rem;
+}
+.komo-size-btn:hover { border-color: var(--komo-border-hover); color: var(--komo-text); }
+
+/* space between the pinned Films/TV row and the user collection cards */
+.komo-pinned-grid { margin-bottom: 14px; }
+
+/* collection card size is driven by the +/- control (fallback 180px) */
+.komo-cards-container,
+.komo-cards-big {
+  grid-template-columns: repeat(auto-fill, minmax(var(--komo-card-min, 180px), 1fr)) !important;
+}
+
+/* ── Recently edited widget (replaced the music player) ── */
+.komo-recent-card {
+  height: 260px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.komo-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.komo-recent-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.komo-recent-item:hover { background: var(--komo-overlay); }
+.komo-recent-name {
+  font-size: 0.75rem;
+  color: var(--komo-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.komo-recent-time { font-size: 0.62rem; color: var(--komo-muted); flex-shrink: 0; }
+.komo-recent-empty { color: var(--komo-muted); font-size: 0.75rem; padding: 8px; }

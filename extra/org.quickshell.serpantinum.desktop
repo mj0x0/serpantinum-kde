@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Quickshell (serpantinum)
+Comment=Grants Quickshell KWin's restricted screencast protocol, for live window thumbnails in the dock
+Exec=/usr/bin/quickshell
+NoDisplay=true
+X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1

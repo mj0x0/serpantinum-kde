@@ -1,0 +1,91 @@
+quickshell-rice-mj0x0
+Copyright (C) 2026 mj0x0
+
+Free software under the GNU Affero General Public License, version 3 or later.
+See LICENSE.
+
+Third-party code
+----------------
+
+serpantinum (ilyamiro) — AGPL-3.0 — https://github.com/ilyamiro/serpantinum
+
+    This shell is a port of serpantinum, and later of its v2 rewrite, to KDE
+    Plasma 6 / Wayland. Most panels, the reusable controls, the Settings look,
+    the theme presets and the UI sound effects derive from its QML and assets.
+    Originally taken at commit 5d4451f ("Serpantinum announcement", 2026-08-08).
+
+caelestia-shell — GPL-3.0 — https://github.com/caelestia-dots/shell
+
+    The workspace switcher's "shapes" style copies its design; no files were
+    vendored. GPLv3 combines with this project's AGPL-3.0 (AGPLv3 §13).
+
+rounded-polygon-qmljs (end-4) — Apache-2.0
+https://github.com/end-4/rounded-polygon-qmljs
+
+    Vendored at services/reusables/rpoly and
+    plasma/serpantinum-kde.shell/contents/lockscreen/rpoly, each with its own LICENSE,
+    together with Google's Material 3 shape definitions (Apache-2.0).
+    Apache-2.0 is one-way compatible with AGPL-3.0.
+
+spicetify-themes — MIT — https://github.com/spicetify/spicetify-themes
+
+    extra/spicetify/Themes/Text is their "text" theme, recoloured by matugen.
+
+Obsidian-Dashboard-Gallery (InlitX) — MIT
+https://github.com/InlitX/Obsidian-Dashboard-Gallery
+
+    extra/obsidian is their Komorebi dashboard, modified and matugen-themed.
+
+KDE plasma-desktop — GPL-2.0-or-later
+https://invent.kde.org/plasma/plasma-desktop
+
+    plasma/serpantinum-kde.shell is a modified copy of Plasma's lock screen package.
+
+gl-transitions — MIT — https://github.com/gl-transitions/gl-transitions
+
+    The transitions under plasma/org.serpantinum.wallpaper/contents/shaders/transitions/
+    are vendored verbatim from that collection, each file keeping its own author and
+    licence header; their parameter uniforms are turned into constants at build time.
+
+    wipeLeft — Jake Nelson
+    wipeRight — Jake Nelson
+    wipeUp — Jake Nelson
+    wipeDown — Jake Nelson
+    directionalwipe — gre
+    circleopen — gre
+    Radial — Xaychru
+    ripple — gre
+    wind — gre
+    crosswarp — Eke Péter <peterekepeter@gmail.com>
+    morph — paniq
+    Dreamy — mikolalysenko
+    pixelize — gre
+    GlitchMemories — Gunnar Roth
+    CircleCrop — fkuteken
+    ColourDistance — P-Seebauer
+    Directional — Gaëtan Renaudeau
+    DirectionalScaled — Thibaut Foussard
+    GlitchDisplace — Matt DesLauriers
+    PolkaDotsCurtain — bobylito
+    PuzzleRight — JustKirillS
+    crosshatch — pthrasher
+    fadecolor — gre
+    parametric_glitch — Yoni Maltsman @friendlyspinach
+    perlin — Rich Harris
+    randomsquares — gre
+
+    MIT is one-way compatible with AGPL-3.0.
+
+Niri shaders (liixini) — MIT — https://github.com/liixini/shaders
+
+    The bodies under plasma/org.serpantinum.wallpaper/contents/shaders/niri/ are each
+    effect's close.glsl, vendored verbatim; our prelude supplies Niri's shader interface
+    and the postlude composites the closing wallpaper over the incoming one. glass-warp
+    has its missing closing brace added, an upstream typo, and dissolve's sweep is widened
+    from 1.6 to 1.7 so its last corner clears before the end.
+
+    circle, crazy-parametric, dissolve, flyeye, glass-warp, glitch, heat-melt,
+    ink-splash, inkwell-drop, overexposure, pixelfade-wave, plasma-flow, polar-function,
+    smoke, snap, soft-warp-fade, static-fade, voronoi-shatter, wave-warp
+
+    MIT is one-way compatible with AGPL-3.0.

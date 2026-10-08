@@ -1,0 +1,5 @@
+/* Removes max-width restriction for notes with cssclasses: full-width */
+.markdown-source-view.mod-cm6.full-width .cm-sizer,
+.markdown-rendered.full-width .markdown-preview-section {
+  max-width: 100% !important;
+}

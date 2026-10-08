@@ -1,0 +1,16 @@
+# Secrets — helpers/.env holds the OpenWeather API key
+.env
+*.env
+!*.env.example
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Compiled helper (build with helpers/kholidays/build.sh)
+helpers/kholidays/khdump
+
+# Editor / OS noise
+*.swp
+*~
+.DS_Store

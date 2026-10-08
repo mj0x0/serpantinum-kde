@@ -1,0 +1,30 @@
+{
+    "KPackageStructure": "Plasma/Wallpaper",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "mj0x0"
+            }
+        ],
+        "Category": "",
+        "Description": "Image wallpaper with real transitions",
+        "Icon": "preferences-desktop-wallpaper",
+        "Id": "org.serpantinum.wallpaper",
+        "License": "AGPL-3.0-or-later",
+        "Name": "Serpantinum"
+    },
+    "MimeType": "image/avif;image/gif;image/heif;image/jpeg;image/png;image/svg+xml;image/svg+xml-compressed;image/bmp;image/webp;image/tiff;",
+    "X-KDE-ParentApp": "org.kde.plasmashell",
+    "X-Plasma-DropMimeTypes": [
+        "image/avif",
+        "image/gif",
+        "image/heif",
+        "image/jpeg",
+        "image/png",
+        "image/svg+xml",
+        "image/svg+xml-compressed",
+        "image/bmp",
+        "image/webp",
+        "image/tiff"
+    ]
+}

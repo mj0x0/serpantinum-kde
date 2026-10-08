@@ -1,0 +1,4 @@
+SettingsPopup 1.0 SettingsPopup.qml
+BarArranger 1.0 BarArranger.qml
+ThemeGrid 1.0 ThemeGrid.qml
+singleton SettingsState 1.0 SettingsState.qml

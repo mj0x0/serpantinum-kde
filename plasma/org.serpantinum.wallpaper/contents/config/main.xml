@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd" >
+  <kcfgfile name=""/>
+
+  <group name="General">
+    <entry name="Image" type="String">
+      <label>Wallpaper image URL</label>
+      <default></default>
+    </entry>
+    <entry name="FillMode" type="Int">
+      <label>Sizing, cropping and positioning of the wallpaper image</label>
+      <default>2</default>
+    </entry>
+    <entry name="Transition" type="String">
+      <label>Transition name, or random</label>
+      <default>fade</default>
+    </entry>
+    <entry name="Duration" type="Int">
+      <label>Transition duration in milliseconds</label>
+      <default>700</default>
+    </entry>
+  </group>
+
+</kcfg>

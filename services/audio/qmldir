@@ -1,0 +1,2 @@
+singleton Audio 1.0 Audio.qml
+singleton Sounds 1.0 Sounds.qml

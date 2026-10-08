@@ -1,0 +1,89 @@
+# Don't print a new line at the start of the prompt
+add_newline = false
+
+# Layout: [Duration] [Directory][Git]
+#         [Status Icon]
+format = """
+$cmd_duration $directory$git_branch${env_var.VIRTUAL_ENV_PROMPT}
+  $character"""
+right_format = """$git_status"""
+
+[fill]
+symbol = '-'
+style = 'fg:{{colors.outline_variant.dark.hex}}'
+
+[character]
+success_symbol = "[ ](bold {{colors.primary.dark.hex}})"
+error_symbol = "[ ](bold {{colors.error.dark.hex}})"
+
+[package]
+disabled = true
+
+[git_branch]
+# Using Tertiary for vibrancy
+style = "bg:{{colors.tertiary_container.dark.hex}} fg:{{colors.on_tertiary_container.dark.hex}}"
+symbol = "󰘬"
+truncation_length = 12
+truncation_symbol = ""
+format = " 󰜥 [](bold {{colors.tertiary_container.dark.hex}})[$symbol $branch(:$remote_branch)](fg:{{colors.on_tertiary_container.dark.hex}} bg:{{colors.tertiary_container.dark.hex}})[ ](bold {{colors.tertiary_container.dark.hex}})"
+
+[env_var.VIRTUAL_ENV_PROMPT]
+variable = "VIRTUAL_ENV_PROMPT"
+symbol = "󰌠"
+style = "bg:{{colors.secondary_container.dark.hex}} fg:{{colors.on_secondary_container.dark.hex}}"
+format = ' 󰜥 [](bold {{colors.secondary_container.dark.hex}})[$symbol $env_value]($style)[ ](bold {{colors.secondary_container.dark.hex}})'
+
+[git_commit]
+commit_hash_length = 4
+tag_symbol = " "
+
+[git_state]
+format = '[\($state( $progress_current of $progress_total)\)]($style) '
+cherry_pick = "[🍒 PICKING](bold {{colors.error.dark.hex}})"
+[git_status]
+format = '$all_status$ahead_behind'
+conflicted = ' 󰞇 '
+ahead = ' 󰜷 '
+behind = ' 󰜮 '
+diverged = ' 󰓡 '
+untracked = ' 󰋗 '
+stashed = ' 󰏗 '
+modified = ' 󰏫 \($count\) '
+staged = '[  \($count\) ](fg:{{colors.primary.default.hex}})'
+renamed = ' 󰑕 '
+deleted = ' 󰩺 '
+
+[directory]
+home_symbol = " "
+read_only = "  "
+# Swap hardcoded 255/240 for your dynamic colors
+style = "bg:{{colors.primary.dark.hex}} fg:{{colors.on_primary.dark.hex}}"
+truncation_length = 2
+truncation_symbol = ".../"
+# Update the 'pills' (caps) to match the primary color
+format = '[](bold {{colors.primary.dark.hex}})[󰉋 → $path]($style)[](bold {{colors.primary.dark.hex}})'
+
+[directory.substitutions]
+"Desktop" = "  "
+"Documents" = "  "
+"Downloads" = "  "
+"Music" = " 󰎈 "
+"Pictures" = "  "
+"Videos" = "  "
+"GitHub" = " 󰊤 "
+
+
+[cmd_duration]
+min_time = 0
+# Using Tertiary for a vibrant, distinct accent
+style = "bg:{{colors.tertiary.dark.hex}} fg:{{colors.on_tertiary.dark.hex}}"
+format = '[](bold {{colors.tertiary.dark.hex}})[󰪢 $duration]($style)[](bold {{colors.tertiary.dark.hex}})'
+
+[hostname]
+disabled = true
+
+[username]
+disabled = true
+
+[line_break]
+disabled = false

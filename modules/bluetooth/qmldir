@@ -1,0 +1,4 @@
+BluetoothActionButton 1.0 BluetoothActionButton.qml
+BluetoothDeviceCard 1.0 BluetoothDeviceCard.qml
+BluetoothPopup 1.0 BluetoothPopup.qml
+singleton BluetoothState 1.0 BluetoothState.qml

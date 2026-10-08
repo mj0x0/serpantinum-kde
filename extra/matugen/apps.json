@@ -1,0 +1,261 @@
+{
+  "core": [
+    {
+      "name": "quickshell",
+      "input_path": "~/.config/matugen/templates/quickshell.json",
+      "output_path": "~/.local/state/quickshell/generated/colors.json"
+    },
+    {
+      "name": "kcolorscheme",
+      "input_path": "~/.config/matugen/templates/kcolorscheme.colors",
+      "output_path": "~/.local/share/color-schemes/serpantinum-KDE.colors"
+    },
+    {
+      "name": "ksyntax",
+      "input_path": "~/.config/matugen/templates/ksyntax.theme",
+      "output_path": "~/.local/share/org.kde.syntax-highlighting/themes/serpantinum-KDE.theme"
+    },
+    {
+      "name": "gtk4",
+      "input_path": "~/.config/matugen/templates/gtk-colors.css",
+      "output_path": "~/.config/gtk-4.0/matugen.css",
+      "post_hook": "~/.config/matugen/post-hook-scripts/gtk-themes-reload.sh"
+    }
+  ],
+  "apps": [
+    {
+      "key": "kitty",
+      "label": "Kitty",
+      "glyph": "󰄛",
+      "packages": [
+        "kitty"
+      ],
+      "note": "Add \"include themes/matugen.conf\" to kitty.conf.",
+      "path": null,
+      "templates": [
+        {
+          "name": "kitty",
+          "input_path": "~/.config/matugen/templates/kitty-matugen.conf",
+          "output_path": "~/.config/kitty/themes/matugen.conf"
+        }
+      ]
+    },
+    {
+      "key": "starship",
+      "label": "Starship",
+      "glyph": "󱓞",
+      "packages": [
+        "starship"
+      ],
+      "note": "Replaces ~/.config/starship.toml outright.",
+      "path": null,
+      "templates": [
+        {
+          "name": "starship",
+          "input_path": "~/.config/matugen/templates/starship.toml",
+          "output_path": "~/.config/starship.toml"
+        }
+      ]
+    },
+    {
+      "key": "btop",
+      "label": "btop",
+      "glyph": "󰊚",
+      "packages": [
+        "btop"
+      ],
+      "note": "Set color_theme = \"matugen\" in btop.conf.",
+      "path": null,
+      "templates": [
+        {
+          "name": "btop",
+          "input_path": "~/.config/matugen/templates/btop.theme",
+          "output_path": "~/.config/btop/themes/matugen.theme",
+          "post_hook": "pkill -USR2 btop || true"
+        }
+      ]
+    },
+    {
+      "key": "cava",
+      "label": "Cava",
+      "glyph": "󱑽",
+      "packages": [
+        "cava"
+      ],
+      "note": "Set theme = 'mj0x0' in cava's config.",
+      "path": null,
+      "templates": [
+        {
+          "name": "cava",
+          "input_path": "~/.config/matugen/templates/cava-colors.ini",
+          "output_path": "~/.config/cava/themes/mj0x0",
+          "post_hook": "pkill -USR1 cava"
+        }
+      ]
+    },
+    {
+      "key": "vscode",
+      "label": "VS Code",
+      "glyph": "󰨞",
+      "packages": [
+        "visual-studio-code-bin"
+      ],
+      "note": "Install the \"Matugen Theme\" extension (haikalllp) and pick \"Matugen\".",
+      "path": null,
+      "templates": [
+        {
+          "name": "vscode-raw",
+          "input_path": "~/.config/matugen/templates/vscode-colors",
+          "output_path": "~/.cache/matugen/vscode-colors"
+        },
+        {
+          "name": "vscode-json",
+          "input_path": "~/.config/matugen/templates/vscode-colors.json",
+          "output_path": "~/.cache/matugen/vscode-colors.json"
+        }
+      ]
+    },
+    {
+      "key": "telegram",
+      "label": "Telegram",
+      "glyph": "",
+      "packages": [
+        "telegram-desktop",
+        "imagemagick",
+        "zip"
+      ],
+      "note": "Load ~/.config/telegram/matugen.tdesktop-theme once: Settings -> Chat Settings -> Choose theme from file.",
+      "path": null,
+      "templates": [
+        {
+          "name": "telegram_background",
+          "pre_hook": "mkdir -p ~/.config/telegram/matugen",
+          "input_path": "~/.config/matugen/templates/telegram-background-solid.svg",
+          "output_path": "~/.config/telegram/matugen/background.svg",
+          "post_hook": "magick ~/.config/telegram/matugen/background.svg ~/.config/telegram/matugen/background.jpg",
+          "index": 0
+        },
+        {
+          "name": "telegram",
+          "input_path": "~/.config/matugen/templates/telegram.tdesktop-theme",
+          "output_path": "~/.config/telegram/matugen/colors.tdesktop-theme",
+          "post_hook": "zip -qj - ~/.config/telegram/matugen/colors.tdesktop-theme ~/.config/telegram/matugen/background.jpg >~/.config/telegram/matugen.tdesktop-theme",
+          "index": 1
+        }
+      ]
+    },
+    {
+      "key": "spotify",
+      "label": "Spotify",
+      "glyph": "󰓇",
+      "packages": [
+        "spotify-launcher",
+        "spicetify-cli"
+      ],
+      "note": "Run ./install.sh spicetify once.",
+      "path": null,
+      "templates": [
+        {
+          "name": "spicetify_colorini",
+          "input_path": "~/.config/matugen/templates/spicetify_text.ini",
+          "output_path": "~/.config/spicetify/Themes/Text/color.ini",
+          "post_hook": "spicetify apply"
+        }
+      ]
+    },
+    {
+      "key": "firefox",
+      "label": "Firefox",
+      "glyph": "󰈹",
+      "packages": [
+        "firefox",
+        "python-pywalfox"
+      ],
+      "note": "Install the Pywalfox add-on in Firefox.",
+      "path": null,
+      "templates": [
+        {
+          "name": "pywalfox",
+          "input_path": "~/.config/matugen/templates/pywal-colors.json",
+          "output_path": "~/.cache/wal/colors.json",
+          "post_hook": "pywalfox update"
+        }
+      ]
+    },
+    {
+      "key": "firefox-chrome",
+      "label": "Firefox CSS",
+      "glyph": "󰢵",
+      "packages": [
+        "firefox"
+      ],
+      "note": "Writes chrome/colors.css for your own userContent.css or userChrome.css to @import. pywalfox themes the browser UI itself.",
+      "path": {
+        "label": "Firefox profile",
+        "placeholder": "~/.config/mozilla/firefox/xxxx.default-release"
+      },
+      "templates": [
+        {
+          "name": "firefox",
+          "input_path": "~/.config/matugen/templates/firefox-colors.css",
+          "output_path": "{path}/chrome/colors.css"
+        }
+      ]
+    },
+    {
+      "key": "steam",
+      "label": "Steam",
+      "glyph": "󰓓",
+      "packages": [
+        "steam",
+        "millennium"
+      ],
+      "note": "Select Millennium's Material-Theme skin.",
+      "path": null,
+      "templates": [
+        {
+          "name": "millennium",
+          "input_path": "~/.config/matugen/templates/millennium-material.css",
+          "output_path": "~/.steam/steam/steamui/skins/Material-Theme/css/main/colors/matugen.css"
+        }
+      ]
+    },
+    {
+      "key": "heroic",
+      "label": "Heroic",
+      "glyph": "󰊗",
+      "packages": [
+        "heroic-games-launcher"
+      ],
+      "note": "Point Heroic at the themes folder with its folder picker — it does not expand \"~\" and lists nothing for a path typed with one. No live reload.",
+      "path": null,
+      "templates": [
+        {
+          "name": "heroic",
+          "input_path": "~/.config/matugen/templates/heroic-matugen.css",
+          "output_path": "~/.config/heroic/themes/matugen.css"
+        }
+      ]
+    },
+    {
+      "key": "obsidian",
+      "label": "Obsidian",
+      "glyph": "󰇈",
+      "packages": [
+        "obsidian"
+      ],
+      "note": "Enable matugen.css under Appearance -> CSS snippets.",
+      "path": {
+        "label": "Vault",
+        "placeholder": "~/Documents/MyVault"
+      },
+      "templates": [
+        {
+          "name": "obsidian",
+          "input_path": "~/.config/matugen/templates/obsidian.json",
+          "output_path": "{path}/.obsidian/snippets/matugen.css"
+        }
+      ]
+    }
+  ]
+}

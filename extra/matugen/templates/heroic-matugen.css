@@ -1,0 +1,311 @@
+/* matugen Total Conversion for Heroic Game Launcher */
+/* Author: doobs */
+/* Style: Material 3 Expressive (inspired by Millennium Material) */
+
+body.matugen {
+    /* --- 1. CORE COLOR VARIABLES --- */
+    --accent: {{colors.primary.default.hex}};
+    --accent-overlay: {{colors.primary_container.default.hex}};
+    --navbar-accent: {{colors.primary.default.hex}};
+
+    /* Backgrounds — M3 elevation tiers
+     *      Heroic gets a flat, layered look: the base body sits lowest,
+     *      chrome (sidebar, navbar) rises one step, modals rise highest. */
+    --background: {{colors.surface_container.default.hex}};
+    --body-background: {{colors.surface.default.hex}};
+    --background-darker: {{colors.surface_container_lowest.default.hex}};
+    --background-lighter: {{colors.surface_container_high.default.hex}};
+    --current-background: {{colors.surface.default.hex}};
+    --navbar-background: {{colors.surface_container.default.hex}};
+    --navbar-active-background: {{colors.secondary_container.default.hex}};
+    --modal-background: {{colors.surface_container_high.default.hex}};
+    --modal-border: {{colors.outline_variant.default.hex}};
+
+    /* Text & State Colors */
+    --text-default: {{colors.on_surface.default.hex}};
+    --text-title: {{colors.on_surface.default.hex}};
+    --text-secondary: {{colors.on_surface_variant.default.hex}};
+    --text-tertiary: {{colors.on_surface_variant.default.hex}};
+    --success: {{colors.primary.default.hex}};
+    --success-hover: {{colors.primary_container.default.hex}};
+    --primary: {{colors.primary.default.hex}};
+    --primary-hover: {{colors.primary_container.default.hex}};
+    --danger: {{colors.error.default.hex}};
+    --danger-hover: {{colors.error_container.default.hex}};
+    --status-success: {{colors.primary.default.hex}};
+    --status-warning: {{colors.tertiary.default.hex}};
+    --status-danger: {{colors.error.default.hex}};
+    --status-info: {{colors.secondary.default.hex}};
+
+    /* Interface Elements */
+    --input-background: {{colors.surface_container_highest.default.hex}};
+    --icons-background: {{colors.surface_container_high.default.hex}};
+    --action-icon: {{colors.on_surface_variant.default.hex}};
+    --action-icon-hover: {{colors.primary.default.hex}};
+    --action-icon-active: {{colors.primary.default.hex}};
+    --icon-disabled: {{colors.outline_variant.default.hex}};
+    --divider: {{colors.outline_variant.default.hex}};
+
+    /* Anti-cheat Status Indicators */
+    --anticheat-denied: {{colors.error.default.hex}};
+    --anticheat-broken: {{colors.error_container.default.hex}};
+    --anticheat-running: {{colors.tertiary.default.hex}};
+    --anticheat-supported: {{colors.primary.default.hex}};
+    --anticheat-planned: {{colors.secondary.default.hex}};
+
+    /* Buttons — M3 filled / tonal / outlined pattern */
+    --primary-button: {{colors.primary.default.hex}};
+    --primary-button-overlay: {{colors.on_primary.default.hex}};
+    --secondary-button: {{colors.secondary_container.default.hex}};
+    --secondary-button-overlay: {{colors.on_secondary_container.default.hex}};
+    --tertiary-button: {{colors.surface_container_highest.default.hex}};
+    --tertiary-button-overlay: {{colors.on_surface.default.hex}};
+
+    /* --- 2. STRUCTURAL UTILITIES --- */
+    /* M3 prefers flat, layered surfaces over gradients.
+     *      Keeping this var defined (Heroic reads it) but as a solid fill. */
+    --gradient-body-background: {{colors.surface.default.hex}};
+
+    /* M3 motion tokens — emphasized easing */
+    --md-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+    --md-easing-emphasized: cubic-bezier(0.3, 0, 0, 1);
+    --md-easing-emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+    /* M3 shape scale */
+    --md-shape-xs: 4px;
+    --md-shape-sm: 8px;
+    --md-shape-md: 12px;
+    --md-shape-lg: 16px;
+    --md-shape-xl: 28px;
+    --md-shape-full: 9999px;
+}
+
+/* --- 3. MATERIAL 3 BEHAVIORAL OVERRIDES --- */
+
+/* Inputs — M3 outlined text fields use rounded but not pill shapes */
+body.matugen select,
+body.matugen input {
+    box-shadow: none !important;
+    border-radius: var(--md-shape-sm);
+    transition: border-color 0.2s var(--md-easing-standard),
+    background-color 0.2s var(--md-easing-standard);
+}
+
+body.matugen input:focus,
+body.matugen select:focus {
+    outline: 2px solid {{colors.primary.default.hex}} !important;
+    outline-offset: -2px;
+}
+
+/* Sidebar — M3 NavigationRail look */
+.Sidebar {
+    transition: width 0.3s var(--md-easing-emphasized);
+    background-color: {{colors.surface_container.default.hex}};
+    border-right: none;
+}
+
+.Sidebar__item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    margin: 3px 12px;
+    text-decoration: none;
+    /* Pill-shaped indicator container — the M3 NavigationRail signature */
+    border-radius: var(--md-shape-full);
+    transition: background-color 0.2s var(--md-easing-standard),
+    color 0.2s var(--md-easing-standard);
+    color: {{colors.on_surface_variant.default.hex}};
+}
+
+/* M3 state layer — hover applies a subtle tint of on-surface at 8% */
+.Sidebar__item:not(.active):hover {
+    background: {{colors.on_surface.default.hex}}14 !important; /* ~8% alpha */
+    color: {{colors.on_surface.default.hex}};
+}
+
+/* Active state — M3 spec uses secondary_container as the indicator pill */
+.Sidebar__item.active {
+    background: {{colors.secondary_container.default.hex}} !important;
+    color: {{colors.on_secondary_container.default.hex}} !important;
+}
+
+.Sidebar__item.active .MuiSvgIcon-root {
+    color: {{colors.on_secondary_container.default.hex}} !important;
+}
+
+/* The vertical accent bar is a Fluent pattern, not Material.
+ *  M3 NavigationRail relies on the pill alone — kill the bar. */
+.Sidebar__item:not(.exclude-bar)::before {
+    display: none;
+}
+
+/* Dialogs & Modals — M3 elevated surface with surface-tint overlay */
+.InstallModal__dialog, .MuiPaper-root {
+    background-color: {{colors.surface_container_high.default.hex}} !important;
+    color: {{colors.on_surface.default.hex}} !important;
+    border-radius: var(--md-shape-xl) !important; /* M3 dialogs use 28px */
+    border: none !important;
+    /* M3 elevation 3 — softer, more spread, less harsh than Fluent */
+    box-shadow:
+    0 1px 3px {{colors.shadow.default.hex}}4d,
+    0 4px 8px {{colors.shadow.default.hex}}26,
+    0 12px 24px {{colors.shadow.default.hex}}1f !important;
+}
+
+.Dialog__header {
+    background-color: transparent !important; /* M3 dialogs are single-surface */
+    padding: 24px 24px 16px 24px;
+    border-radius: var(--md-shape-xl) var(--md-shape-xl) 0 0;
+    border-bottom: none;
+}
+
+.Dialog__headerTitle {
+    font-weight: 500;
+    letter-spacing: 0;
+}
+
+/* Game Cards — M3 Filled Card with state-layer hover */
+.gameCard {
+    border-radius: var(--md-shape-lg) !important; /* 16px — M3 card radius */
+    overflow: hidden;
+    background-color: {{colors.surface_container.default.hex}};
+    transition: transform 0.3s var(--md-easing-emphasized-decel),
+    box-shadow 0.3s var(--md-easing-standard),
+    background-color 0.2s var(--md-easing-standard);
+    /* M3 elevation 1 — resting state */
+    box-shadow: 0 1px 2px {{colors.shadow.default.hex}}26;
+}
+
+.gameCard:hover {
+    transform: translateY(-4px);
+    background-color: {{colors.surface_container_high.default.hex}};
+    /* M3 elevation 3 — hover */
+    box-shadow:
+    0 1px 3px {{colors.shadow.default.hex}}4d,
+    0 4px 8px {{colors.shadow.default.hex}}33,
+    0 8px 16px {{colors.shadow.default.hex}}1f;
+}
+
+/* Play/Download icon badges on cards — M3 Filled Tonal IconButton look */
+.gameCard > .icons > .playIcon {
+    background-color: {{colors.primary_container.default.hex}} !important;
+    color: {{colors.on_primary_container.default.hex}} !important;
+    border-radius: var(--md-shape-full);
+    transition: background-color 0.2s var(--md-easing-standard),
+    transform 0.2s var(--md-easing-standard);
+}
+
+.gameCard > .icons > .playIcon:hover {
+    background-color: {{colors.primary.default.hex}} !important;
+    color: {{colors.on_primary.default.hex}} !important;
+    transform: scale(1.05);
+}
+
+.gameCard > .icons > .downIcon {
+    background-color: {{colors.secondary_container.default.hex}} !important;
+    color: {{colors.on_secondary_container.default.hex}} !important;
+    border-radius: var(--md-shape-full);
+}
+
+/* Back Button — M3 IconButton */
+.backButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: var(--md-shape-full) !important;
+    width: 40px;
+    height: 40px;
+    transition: background-color 0.2s var(--md-easing-standard),
+    transform 0.2s var(--md-easing-standard) !important;
+}
+
+.backButton:hover {
+    transform: none; /* M3 IconButtons don't scale, they state-layer */
+    color: {{colors.primary.default.hex}} !important;
+    /* State layer — on_surface at 8% */
+    background-color: {{colors.on_surface.default.hex}}14 !important;
+}
+
+.backButton:active {
+    /* Pressed state — 12% state layer */
+    background-color: {{colors.on_surface.default.hex}}1f !important;
+}
+
+/* Search Bar — M3 Search Bar is fully pill-shaped */
+.SearchBar {
+    background-color: {{colors.surface_container_high.default.hex}};
+    border-radius: var(--md-shape-full);
+    border: none;
+    transition: background-color 0.2s var(--md-easing-standard),
+    box-shadow 0.2s var(--md-easing-standard);
+}
+
+.SearchBar:focus-within {
+    background-color: {{colors.surface_container_highest.default.hex}};
+    box-shadow: 0 1px 3px {{colors.shadow.default.hex}}33;
+}
+
+/* Select / dropdown buttons — M3 outlined-button-ish */
+button.selectStyle {
+    height: 40px;
+    box-shadow: none !important;
+    border-radius: var(--md-shape-full); /* M3 buttons are full pills */
+    background-color: {{colors.surface_container_high.default.hex}};
+    border: 1px solid {{colors.outline.default.hex}};
+    color: {{colors.on_surface.default.hex}};
+    transition: background-color 0.2s var(--md-easing-standard),
+    border-color 0.2s var(--md-easing-standard);
+}
+
+button.selectStyle:hover {
+    background-color: {{colors.surface_container_highest.default.hex}};
+    border-color: {{colors.primary.default.hex}};
+}
+
+/* Generic buttons — apply the M3 pill shape globally
+ *  (skip back/select buttons already styled above and any icon-only buttons) */
+body.matugen button:not(.backButton):not(.selectStyle):not(.iconButton) {
+    border-radius: var(--md-shape-full);
+    transition: background-color 0.2s var(--md-easing-standard),
+    box-shadow 0.2s var(--md-easing-standard),
+    transform 0.1s var(--md-easing-standard);
+}
+
+/* Store Icons — M3-styled tonal chip rather than glass */
+svg.store-icon {
+    background-color: {{colors.surface_container_high.default.hex}}cc !important; /* 80% alpha */
+    backdrop-filter: blur(12px);
+    border-radius: var(--md-shape-sm);
+    padding: 2px;
+}
+
+/* Scrollbars — Material You styling */
+body.matugen ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+body.matugen ::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+body.matugen ::-webkit-scrollbar-thumb {
+    background: {{colors.outline_variant.default.hex}};
+    border-radius: var(--md-shape-full);
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+body.matugen ::-webkit-scrollbar-thumb:hover {
+    background: {{colors.outline.default.hex}};
+    background-clip: content-box;
+}
+
+/* Dividers — M3 uses outline_variant, subtler than full outline */
+body.matugen hr,
+body.matugen .divider {
+    border-color: {{colors.outline_variant.default.hex}};
+    background-color: {{colors.outline_variant.default.hex}};
+}

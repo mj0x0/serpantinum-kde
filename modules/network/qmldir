@@ -1,0 +1,3 @@
+NetworkActionButton 1.0 NetworkActionButton.qml
+NetworkPopup 1.0 NetworkPopup.qml
+singleton NetworkState 1.0 NetworkState.qml

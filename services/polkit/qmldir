@@ -1,0 +1,2 @@
+singleton PolkitService 1.0 PolkitService.qml
+Polkit 1.0 Polkit.qml
