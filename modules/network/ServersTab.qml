@@ -164,16 +164,15 @@ Item {
         return p.slice(0, 3).join("  ") + " +" + (p.length - 3);
     }
 
-    // The catalog guesses a port from a listener it could not attribute, so say so
-    // rather than presenting it like one Docker or ss reported.
+    // A remembered port is the last one seen, not one anything is listening on now.
     function noteText(svc) {
         if (!svc)
             return "";
         var bits = [];
         if (svc.detail)
             bits.push("" + svc.detail);
-        if (svc.portSource === "catalog" && svc.ports && svc.ports.length > 0)
-            bits.push("port matched by catalog");
+        if (svc.portSource === "seen" && svc.ports && svc.ports.length > 0)
+            bits.push("port last seen");
         return bits.join("   ·   ");
     }
 
