@@ -9,7 +9,7 @@ this is touched.
 |---|---|
 | `matugen/` | app catalog, templates, themes, Plasma hook → `~/.config/matugen` |
 | `bin/kvitals.sh` | bar vitals → `~/.local/bin`, run as `kvitals.sh --qs` |
-| `kde/shortcuts.kksrc` | 22 commands, registered unbound; keys are yours to assign |
+| `kde/shortcuts.kksrc` | 23 commands, registered unbound; keys are yours to assign |
 | `spicetify/` | Text theme → `~/.config/spicetify/Themes/Text` |
 | `obsidian/` | Dashboard.md + snippets → your vault |
 | `default-colors.json` | seed palette, or the shell renders transparent |
