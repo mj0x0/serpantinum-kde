@@ -11,3 +11,13 @@ Toggle 1.0 Toggle.qml
 Dropdown 1.0 Dropdown.qml
 Input 1.0 Input.qml
 NumberSelector 1.0 NumberSelector.qml
+DeleteButton 1.0 DeleteButton.qml
+SystemUsageCard 1.0 SystemUsageCard.qml
+FluidWave 1.0 FluidWave.qml
+Visualizer 1.0 Visualizer.qml
+WavySeekBar 1.0 WavySeekBar.qml
+FilePicker 1.0 FilePicker.qml
+LyricsPicker 1.0 LyricsPicker.qml
+LyricsView 1.0 LyricsView.qml
+LoaderIcon 1.0 LoaderIcon.qml
+ImagePicker 1.0 ImagePicker.qml

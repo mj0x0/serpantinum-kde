@@ -88,6 +88,10 @@ Name=Volume Popup
 Exec=qs -c @SHELL_NAME@ ipc call wallpaper toggle
 Name=Wallpaper Switcher
 
+[Custom Commands][serpantinum-kde.widgets.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call redactor toggle
+Name=Desktop Widgets Editor
+
 [Custom Commands][serpantinum-kde.wifi.desktop]
 Exec=qs -c @SHELL_NAME@ ipc call network wifi
 Name=Wi-Fi Panel
@@ -154,6 +158,9 @@ _launch=Meta+S
 
 [serpantinum-kde.wallpaper.desktop][Global Shortcuts]
 _launch=Meta+Shift+W
+
+[serpantinum-kde.widgets.desktop][Global Shortcuts]
+_launch=Meta+Shift+D
 
 [serpantinum-kde.wifi.desktop][Global Shortcuts]
 _launch=Meta+Shift+N

@@ -1,4 +1,6 @@
 //@ pragma UseQApplication
+//@ pragma Env QSG_RHI_BACKEND=vulkan
+// NVIDIA's OpenGL path leaks per rendered frame under Wayland explicit sync; Vulkan does not.
 // The one shell instance: bar, dock, launcher, popups, Floating, notifications,
 // polkit and every IPC target. UseQApplication is required for the tray's context menus.
 
@@ -23,6 +25,7 @@ import "modules/popups"
 import "modules/power"
 import "modules/volume"
 import "modules/wallpaper"
+import "modules/widgets"
 import "services/dnd"
 import "services/dock"
 import "services/keepawake"
@@ -276,5 +279,17 @@ ShellRoot {
         function toggle(): void { FocusTimeState.toggle() }
         function show(): void { FocusTimeState.show() }
         function hide(): void { FocusTimeState.hide() }
+    }
+
+    // Desktop widgets: one layer-shell window per widget, laid out by the redactor
+    // (`ipc call redactor toggle`, or right-click a widget).
+    WidgetRedactor {}
+    Variants {
+        model: Quickshell.screens
+        delegate: WidgetLoader {
+            required property var modelData
+            screen: modelData
+            monitorName: modelData.name
+        }
     }
 }

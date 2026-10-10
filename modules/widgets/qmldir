@@ -1,0 +1,7 @@
+Widget 1.0 Widget.qml
+WidgetLoader 1.0 WidgetLoader.qml
+WidgetRedactor 1.0 WidgetRedactor.qml
+SelectionOutline 1.0 SelectionOutline.qml
+singleton WidgetRegistry 1.0 WidgetRegistry.qml
+singleton WidgetSync 1.0 WidgetSync.qml
+singleton DateTime 1.0 DateTime.qml
