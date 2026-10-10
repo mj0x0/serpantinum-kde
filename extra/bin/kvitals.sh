@@ -12,7 +12,7 @@
 mode="compact"
 [[ "$1" == "--detail" || "$1" == "-d" ]] && mode="detail"
 # --qs: pipe line for the Quickshell SysData singleton:
-#   cpu%|ram%|ram_gb_used|cpu_temp_c|down_bps|up_bps
+#   cpu%|ram%|ram_gb_used|cpu_temp_c|down_bps|up_bps|disk%|disk_gb_used|disk_gb_total
 # Uses its own state file so its 2 s cadence never collides with the panel's.
 [[ "$1" == "--qs" ]] && mode="qs"
 
@@ -195,11 +195,45 @@ down_h="$(human "$down_bps")"
 up_h="$(human "$up_bps")"
 
 # ================= QS MODE (Quickshell SysData) =================
-# Pipe line consumed by SysData.qml: cpu%|ram%|ram_gb_used|cpu_temp|down|up
+# Pipe line consumed by SysData.qml: cpu%|ram%|ram_gb_used|cpu_temp|down|up|disk%|disk_gb_used|disk_gb_total
 if [[ "$mode" == "qs" ]]; then
     ram_gb_used="$(awk -v used="$((mem_total - mem_avail))" 'BEGIN{ printf "%.1f", used/1048576 }')"
-    printf '%d|%d|%s|%d|%d|%d\n' \
-        "$cpu_pct" "$ram_pct" "$ram_gb_used" "$cpu_temp" "$down_bps" "$up_bps"
+
+    # ---------- Disk: every real filesystem, deduped by device; df is cached 60 s ----------
+    disk_file="$state_dir/kvitals_disk"
+    disk_time_file="$state_dir/kvitals_disk_time"
+    now_s="${now%.*}"
+    last_disk_time=0
+    [[ -f "$disk_time_file" ]] && last_disk_time="$(cat "$disk_time_file" 2>/dev/null || echo 0)"
+
+    if [[ -f "$disk_file" ]] && (( now_s - last_disk_time < 60 )); then
+        read -r disk_pct disk_used_gb disk_total_gb < "$disk_file"
+    else
+        read -r disk_pct disk_used_gb disk_total_gb <<< "$(df -Plk -x tmpfs -x devtmpfs -x squashfs -x overlay -x efivarfs -x iso9660 2>/dev/null | awk '
+        NR > 1 && $1 !~ /^\/dev\/loop/ && $1 != "udev" && $1 != "none" {
+            if (!seen[$1]++) {
+                total += $2
+                used += $3
+            }
+        }
+        END {
+            if (total > 0) {
+                pct = int((used / total) * 100 + 0.5)
+                printf "%d %.1f %.1f\n", pct, used / 1048576, total / 1048576
+            } else {
+                print "0 0.0 0.0"
+            }
+        }')"
+        disk_pct=${disk_pct:-0}
+        disk_used_gb=${disk_used_gb:-0.0}
+        disk_total_gb=${disk_total_gb:-0.0}
+        echo "$disk_pct $disk_used_gb $disk_total_gb" > "$disk_file"
+        echo "$now_s" > "$disk_time_file"
+    fi
+
+    printf '%d|%d|%s|%d|%d|%d|%d|%s|%s\n' \
+        "$cpu_pct" "$ram_pct" "$ram_gb_used" "$cpu_temp" "$down_bps" "$up_bps" \
+        "$disk_pct" "$disk_used_gb" "$disk_total_gb"
     exit 0
 fi
 

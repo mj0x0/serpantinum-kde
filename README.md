@@ -38,6 +38,7 @@ all of it.
 |---|---|
 | `shell.qml` | the single entry point |
 | `modules/` | the UI: bar, dock, launcher, panels, settings |
+| `modules/widgets/` | serpantinum v2 desktop widgets on KDE: one layer-shell window per widget, the redactor (`qs ipc call redactor toggle` or right-click a widget) lays them out; clock faces first |
 | `services/` | singletons and the shared v2 controls |
 | `helpers/` | the script and Python backends the QML shells out to |
 | `kwin/` | KWin scripts for workspace and window events |

@@ -128,6 +128,7 @@ get_data() {
 
     # Parse LIVE current weather conditions to bypass UTC boundary issues
     c_temp=$(echo "$raw_weather" | jq -r '.main.temp')
+    c_city=$(echo "$raw_weather" | jq -r '.name // empty' | sed 's/"/\\"/g')
     c_temp=$(printf "%.1f" "$c_temp")
     c_code=$(echo "$raw_weather" | jq -r '.weather[0].icon')
     c_icon=$(get_icon "$c_code" | cut -d'|' -f1)
@@ -242,7 +243,7 @@ get_data() {
         done
         final_json="${final_json%,}]"
 
-        echo "{ \"current_temp\": \"${c_temp}\", \"current_icon\": \"${c_icon}\", \"current_hex\": \"${c_hex}\", \"forecast\": ${final_json} }" > "${json_file}"
+        echo "{ \"current_temp\": \"${c_temp}\", \"current_icon\": \"${c_icon}\", \"current_hex\": \"${c_hex}\", \"city\": \"${c_city}\", \"forecast\": ${final_json} }" > "${json_file}"
     fi
 }
 

@@ -2,6 +2,7 @@
 // A singleton so one process can feed several widgets, refcounted by consumer.
 pragma Singleton
 
+import "../shims"
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -16,8 +17,8 @@ Singleton {
         return arr;
     }
 
-    // Bound by whoever knows the player state (MusicPopup does it).
-    property bool isPlaying: false
+    // Follows the MPRIS player so desktop widgets get bars; MusicPopup's Binding overrides while open.
+    property bool isPlaying: MprisController.isPlaying
 
     property int activeConsumers: 0
     property bool isRestarting: false
