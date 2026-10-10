@@ -7,14 +7,14 @@
 
 Actions print {"ok": bool} and set the exit code; failures also go to stderr.
 
-Three sources merge, first claim on a port wins: docker ps, the units named in
-settings.json servers.units, then listening ports from ss. A catalog port is only
-ever reported once a unit of that name really exists - never from the port alone -
-and the displayed name comes from the unit's own Description, never invented here.
+Sources merge, first claim on a port wins: docker ps, the units named in
+settings.json servers.units, then every unit that owns a listening socket. `ss
+--cgroup` names that unit even for a root-owned socket, which `ss -p` will not;
+the displayed name is the unit's own Description, never invented here.
 
-Only user-owned sockets carry a pid in ss, so a root service's port cannot be read
-from the kernel; it falls back to servers.ports, then the catalog, then nothing.
-"ports" may legitimately be empty, and portSource says where a port came from.
+A unit seen once is remembered, so a service that is stopped - and therefore
+listening on nothing - stays listed and can be started again. "ports" may
+legitimately be empty, and portSource says where a port came from.
 
 canStop means this row can be stopped or started from here at all: listening
 processes we cannot tie to a unit are reported as kind "proc" and left alone,
@@ -28,6 +28,7 @@ import re
 import shlex
 import subprocess
 import sys
+import tempfile
 import time
 
 # The panel polls `list`, so the whole walk is bounded rather than each call.
@@ -51,48 +52,15 @@ UNIT_PROPS = ("Description", "LoadState", "ActiveState", "SubState",
 UNIT_RE = re.compile(r"^[A-Za-z0-9_.:@][A-Za-z0-9_.:@-]*\.[a-z]+\Z")
 CONTAINER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*\Z")
 SS_PROC_RE = re.compile(r'\(\("([^"]+)",pid=(\d+)')
+CONTAINER_RUNTIMES = re.compile(r"/(docker|containerd|podman)[.-]")
 
-# A listening port is reported as one of these only when the unit also exists.
-# The label is a fallback; a loaded unit's Description wins.
-PORTS = {
-    80:    ("Nginx",               ("nginx", "caddy", "httpd", "apache2")),
-    81:    ("Nginx Proxy Manager", ("nginx-proxy-manager", "npm")),
-    443:   ("Nginx",               ("nginx", "caddy", "httpd", "apache2")),
-    1880:  ("Node-RED",            ("nodered", "node-red")),
-    1883:  ("Mosquitto",           ("mosquitto",)),
-    2283:  ("Immich",              ("immich", "immich-server")),
-    3000:  ("Grafana",             ("grafana", "grafana-server")),
-    3001:  ("Uptime Kuma",         ("uptime-kuma",)),
-    3306:  ("MariaDB",             ("mariadb", "mysqld", "mysql")),
-    5055:  ("Overseerr",           ("overseerr", "jellyseerr", "seerr")),
-    5432:  ("PostgreSQL",          ("postgresql",)),
-    6379:  ("Redis",               ("redis", "valkey")),
-    6767:  ("Bazarr",              ("bazarr",)),
-    7878:  ("Radarr",              ("radarr",)),
-    8080:  ("qBittorrent",         ("qbittorrent-nox",)),
-    8081:  ("LanguageTool",        ("languagetool",)),
-    8083:  ("Calibre-Web",         ("calibre-web", "calibreweb")),
-    8086:  ("InfluxDB",            ("influxdb",)),
-    8096:  ("Jellyfin",            ("jellyfin", "emby-server")),
-    8112:  ("Deluge",              ("deluge-web", "deluged")),
-    8123:  ("Home Assistant",      ("home-assistant", "homeassistant", "hass")),
-    8181:  ("Tautulli",            ("tautulli",)),
-    8191:  ("FlareSolverr",        ("flaresolverr",)),
-    8200:  ("Duplicati",           ("duplicati",)),
-    8384:  ("Syncthing",           ("syncthing",)),
-    8686:  ("Lidarr",              ("lidarr",)),
-    8787:  ("Readarr",             ("readarr",)),
-    8920:  ("Jellyfin",            ("jellyfin",)),
-    8989:  ("Sonarr",              ("sonarr",)),
-    9000:  ("Portainer",           ("portainer",)),
-    9090:  ("Prometheus",          ("prometheus",)),
-    9091:  ("Transmission",        ("transmission", "transmission-daemon")),
-    9117:  ("Jackett",             ("jackett",)),
-    9696:  ("Prowlarr",            ("prowlarr",)),
-    13378: ("Audiobookshelf",      ("audiobookshelf",)),
-    19999: ("Netdata",             ("netdata",)),
-    32400: ("Plex",                ("plexmediaserver",)),
+SKIP_UNIT_PREFIXES = ("app-", "dbus-", "xdg-", "gvfs", "plasma-", "kde-", "at-spi",
+                      "systemd-", "avahi-")
+SKIP_UNITS = {
+    "pipewire.service", "pipewire-pulse.service", "wireplumber.service", "dconf.service",
+    "gnome-keyring-daemon.service", "obex.service", "dmemcg-booster-user.service",
 }
+
 
 # Desktop apps that listen for their own reasons; not servers.
 SKIP_COMMS = {
@@ -156,12 +124,81 @@ def as_ports(val):
     return sorted(set(out))
 
 
+SEEN_PATH = os.path.join(
+    os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"),
+    "quickshell", "servers", "seen.json")
+_seen_cache = None
+
+
+def seen_load():
+    """{(scope, unit): [ports]} from earlier runs. Unreadable state is simply empty."""
+    global _seen_cache
+    if _seen_cache is None:
+        _seen_cache = {}
+        try:
+            with open(SEEN_PATH, encoding="utf-8") as fh:
+                raw = json.load(fh)
+            for key, ports in (raw or {}).items():
+                scope, _, unit = key.partition(":")
+                if scope in ("system", "user") and UNIT_RE.match(unit):
+                    _seen_cache[(scope, unit)] = as_ports(ports)
+        except (OSError, ValueError, AttributeError):
+            _seen_cache = {}
+    return _seen_cache
+
+
+def seen_ports(scope, unit):
+    return seen_load().get((scope, unit)) or []
+
+
+def seen_save(entries):
+    """Remember every unit we listed, with the ports it was last seen on."""
+    keep = dict(seen_load())
+    for entry in entries:
+        # Only units actually observed listening. A settings pin is not evidence, or
+        # unpinning one would never take effect.
+        if entry["kind"] not in ("system", "user"):
+            continue
+        if entry["portSource"] not in ("cgroup", "seen"):
+            continue
+        ports = entry["ports"] or seen_ports(entry["kind"], entry["id"])
+        keep[(entry["kind"], entry["id"])] = ports
+    out = {"%s:%s" % (scope, unit): ports for (scope, unit), ports in keep.items()}
+    try:
+        os.makedirs(os.path.dirname(SEEN_PATH), exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(SEEN_PATH), prefix=".seen.")
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(out, fh)
+        os.replace(tmp, SEEN_PATH)
+    except (OSError, ValueError):
+        pass
+
+
 # -- discovery -----------------------------------------------------------------
 
+def cgroup_unit(path):
+    """(scope, unit) for a socket's cgroup, or None when it is not a managed service.
+
+    A .scope or an app-*.service is a desktop app systemd happens to supervise — the
+    terminal that launched qbittorrent, not a server.
+    """
+    leaf = path.rstrip("/").rsplit("/", 1)[-1]
+    if not leaf.endswith(".service") or leaf.startswith(SKIP_UNIT_PREFIXES):
+        return None
+    leaf = leaf.replace("\\x2d", "-")
+    if leaf in SKIP_UNITS or not UNIT_RE.match(leaf):
+        return None
+    return ("user" if "/user.slice/" in path else "system", leaf)
+
+
 def listeners():
-    """[(port, addr, comm, pid)] from ss; comm and pid are None for other users."""
+    """[(port, addr, cgroup, comm, pid)]. --cgroup names the owning unit even for
+    root-owned sockets, which `ss -p` will not do for another user."""
     out = []
-    text = run(["ss", "-tlnpH"], timeout=3) or run(["ss", "-tlnH"], timeout=3)
+    text = run(["ss", "-tlnpH", "--cgroup"], timeout=3)
+    if text is None:
+        # Older iproute2 without --cgroup: ports still land, attribution does not.
+        text = run(["ss", "-tlnpH"], timeout=3) or run(["ss", "-tlnH"], timeout=3)
     for line in (text or "").splitlines():
         fields = line.split()
         if len(fields) < 4 or ":" not in fields[3]:
@@ -171,11 +208,49 @@ def listeners():
             port = int(port)
         except ValueError:
             continue
+        cgroup = ""
+        for field in fields:
+            if field.startswith("cgroup:"):
+                cgroup = field[7:]
+                break
         match = SS_PROC_RE.search(line)
         comm = match.group(1) if match else None
         pid = int(match.group(2)) if match else None
-        out.append((port, addr, comm, pid))
+        out.append((port, addr, cgroup, comm, pid))
     return out
+
+
+def unit_servers(heard, claimed, seen):
+    """Every unit that owns a listening port, named by its cgroup. No catalog."""
+    found = {}
+    for port, _addr, cgroup, _comm, _pid in heard:
+        if port in claimed or not cgroup:
+            continue
+        # Container ports belong to docker-proxy; `docker ps` names them properly.
+        if CONTAINER_RUNTIMES.search(cgroup):
+            continue
+        key = cgroup_unit(cgroup)
+        if key is None or key in seen:
+            continue
+        found.setdefault(key, set()).add(port)
+    if not found:
+        return []
+
+    scoped = {"system": [], "user": []}
+    for scope, unit in found:
+        scoped[scope].append(unit)
+    props = {scope: unit_props(scope, units) for scope, units in scoped.items()}
+
+    entries = []
+    for (scope, unit), ports in found.items():
+        prop = props[scope].get(unit) or {}
+        if prop.get("LoadState") != "loaded":
+            continue
+        entries.append(unit_entry(scope, unit, prop, sorted(ports), "cgroup"))
+        claimed.update(ports)
+        seen.add((scope, unit))
+    entries.sort(key=lambda e: e["name"].lower())
+    return entries
 
 
 def unit_props(scope, units):
@@ -236,8 +311,13 @@ def unit_state(props):
 
 
 def unit_name(unit, props, label=""):
-    desc = props.get("Description") or ""
+    desc = (props.get("Description") or "").strip()
     if props.get("LoadState") == "loaded" and desc and desc != unit:
+        # "Syncthing - Open Source Continuous File Synchronization" is a sentence, not a name.
+        for sep in (" - ", " \u2014 ", ": "):
+            head = desc.split(sep, 1)[0].strip()
+            if len(head) >= 3:
+                desc = head
         return desc
     return label or unit.rsplit(".", 1)[0]
 
@@ -380,24 +460,20 @@ def settings_servers(heard, claimed):
     fixed = setting("servers.ports")
     fixed = fixed if isinstance(fixed, dict) else {}
 
-    heard_ports = {p for p, _a, _c, _pid in heard}
+    heard_ports = {p for p, _a, _cg, _c, _pid in heard}
     entries = []
     for scope, unit in order:
         prop = props[scope].get(unit) or {}
-        pids = unit_pids(prop)
         base = unit.rsplit(".", 1)[0]
-        known = {p: l for p, (l, units) in PORTS.items() if base in units}
-        ports = sorted({p for p, _a, _c, pid in heard if pid and pid in pids})
-        source = "ss"
+        # The cgroup names the owner outright, so a pinned unit is matched the same way.
+        ports = sorted({p for p, _a, cg, _c, _pid in heard
+                        if cg and cgroup_unit(cg) == (scope, unit)})
+        source = "cgroup"
         if not ports:
             ports, source = as_ports(fixed.get(unit, fixed.get(base))), "settings"
-        if not ports and prop.get("LoadState") == "loaded":
-            # A guess, so only ports nobody has claimed, and never for a unit that does
-            # not exist: the catalog knows names, not what is on this machine.
-            free = set(known) - claimed
-            ports, source = sorted((free & heard_ports) or free), "catalog"
-        label = next((known[p] for p in ports if p in known), "")
-        entries.append(unit_entry(scope, unit, prop, ports, source, label))
+        if not ports:
+            ports, source = sorted(set(seen_ports(scope, unit)) - claimed), "seen"
+        entries.append(unit_entry(scope, unit, prop, ports, source))
         # Only a port something is really listening on can speak for its owner.
         claimed.update(p for p in ports if p in heard_ports)
     return entries
@@ -405,88 +481,10 @@ def settings_servers(heard, claimed):
 
 # Desktop apps systemd happens to supervise. qbittorrent lives under the autostart scope
 # of our own shell, so attributing its port to that unit would offer to stop the shell.
-SKIP_UNIT_PREFIXES = ("app-", "dbus-", "xdg-", "gvfs", "plasma-", "kde-", "at-spi")
-SKIP_UNITS = {
-    "pipewire.service", "pipewire-pulse.service", "wireplumber.service", "dconf.service",
-    "gnome-keyring-daemon.service", "obex.service", "dmemcg-booster-user.service",
-}
-
-
-def user_unit_servers(heard, claimed, seen):
-    """Running user units that own a listening port — ours to see, and ours to stop."""
-    text = run(["systemctl", "--user", "list-units", "--type=service",
-                "--state=running", "--no-legend", "--plain"])
-    if not text:
-        return []
-    units = []
-    for line in text.splitlines():
-        unit = line.split()[0] if line.split() else ""
-        if not unit.endswith(".service") or unit.startswith(SKIP_UNIT_PREFIXES):
-            continue
-        if unit in SKIP_UNITS or ("user", unit) in seen or not UNIT_RE.match(unit):
-            continue
-        units.append(unit)
-    if not units:
-        return []
-
-    props = unit_props("user", units)
-    entries = []
-    for unit in units:
-        prop = props.get(unit) or {}
-        pids = unit_pids(prop)
-        ports = sorted({p for p, _a, _c, pid in heard
-                        if pid and pid in pids and p not in claimed})
-        if not ports:
-            continue
-        entries.append(unit_entry("user", unit, prop, ports, "ss"))
-        claimed.update(ports)
-    return entries
-
-
-def catalog_servers(heard, claimed, seen):
-    """Catalog services installed as a unit. Probed by name, so a stopped one still
-    lists and can be started again — a port alone would make it vanish when stopped."""
-    wanted = {}
-    for port, (label, units) in PORTS.items():
-        for unit in units:
-            entry = wanted.setdefault(norm_unit(unit), [label, set()])
-            entry[1].add(port)
-    units = sorted(u for u in wanted if UNIT_RE.match(u))
-    if not units:
-        return []
-
-    props = {scope: unit_props(scope, units) for scope in ("system", "user")}
-    heard_ports = {p for p, _a, _c, _pid in heard}
-    entries = []
-    for unit in units:
-        label, known = wanted[unit]
-        for scope in ("system", "user"):
-            if (scope, unit) in seen:
-                break
-            prop = props[scope].get(unit) or {}
-            if prop.get("LoadState") != "loaded":
-                continue
-            pids = unit_pids(prop)
-            ports = sorted({p for p, _a, _c, pid in heard if pid and pid in pids})
-            source = "ss"
-            if not ports:
-                free = known - claimed
-                ports, source = sorted((free & heard_ports) or free), "catalog"
-            if not ports:
-                break
-            entries.append(unit_entry(scope, unit, prop, ports, source, label))
-            # Only a port something is really listening on speaks for its owner.
-            claimed.update(p for p in ports if p in heard_ports)
-            seen.add((scope, unit))
-            break
-    entries.sort(key=lambda e: e["name"].lower())
-    return entries
-
-
 def process_servers(heard, claimed):
     """Listeners we can see but cannot manage: one row per process, ports merged."""
     grouped = {}
-    for port, addr, comm, pid in heard:
+    for port, addr, _cg, comm, pid in heard:
         if port in claimed or not comm or not pid:
             continue
         if comm.lower() in SKIP_COMMS or addr.startswith(SKIP_ADDRS):
@@ -519,7 +517,7 @@ def orphan_servers(heard, claimed, docker_answered):
         return []
     lo, hi = ephemeral_range()
     ports = set()
-    for port, addr, comm, pid in heard:
+    for port, addr, _cg, comm, pid in heard:
         if port in claimed or comm or pid or addr.startswith(SKIP_ADDRS):
             continue
         if lo <= port <= hi:
@@ -537,6 +535,29 @@ def orphan_servers(heard, claimed, docker_answered):
     } for port in sorted(ports)]
 
 
+def remembered_servers(claimed, seen):
+    """Units discovered on an earlier run. Nothing listens while they are stopped, so
+    without this a service vanishes the moment you stop it and can never be started."""
+    scoped = {"system": [], "user": []}
+    for scope, unit in seen_load():
+        if (scope, unit) not in seen and scope in scoped:
+            scoped[scope].append(unit)
+    if not any(scoped.values()):
+        return []
+    props = {scope: unit_props(scope, units) for scope, units in scoped.items()}
+    entries = []
+    for scope, units in scoped.items():
+        for unit in units:
+            prop = props[scope].get(unit) or {}
+            if prop.get("LoadState") != "loaded":
+                continue
+            ports = sorted(set(seen_ports(scope, unit)) - claimed)
+            entries.append(unit_entry(scope, unit, prop, ports, "seen"))
+            seen.add((scope, unit))
+    entries.sort(key=lambda e: e["name"].lower())
+    return entries
+
+
 def collect():
     global deadline
     deadline = time.monotonic() + BUDGET
@@ -550,13 +571,12 @@ def collect():
             claimed.update(entry["ports"])
     heard = listeners()
     entries += settings_servers(heard, claimed)
-    seen = {(e["kind"], e["id"]) for e in entries}
-    found = user_unit_servers(heard, claimed, seen)
-    entries += found
-    seen.update((e["kind"], e["id"]) for e in found)
-    entries += catalog_servers(heard, claimed, seen)
+    seen = {(e["kind"], e["id"]) for e in entries if e["kind"] in ("system", "user")}
+    entries += unit_servers(heard, claimed, seen)
+    entries += remembered_servers(claimed, seen)
     entries += process_servers(heard, claimed)
     entries += orphan_servers(heard, claimed, answered)
+    seen_save(entries)
     return entries
 
 
