@@ -243,9 +243,10 @@ ShellRoot {
     }
 
     // qs -p <this file> ipc call screenshot toggle
-    ScreenshotOverlay {}
+    ScreenshotOverlay { id: screenshotOverlay }
     IpcHandler {
         target: "screenshot"
+        function state(): string { return screenshotOverlay.debugState() }
         function toggle(): void { ScreenshotState.toggle() }
         function show(): void { ScreenshotState.show() }
         function hide(): void { ScreenshotState.hide() }

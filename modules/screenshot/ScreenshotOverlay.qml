@@ -135,6 +135,24 @@ PanelWindow {
         freezeImg = "";
     }
 
+    // qs ipc call screenshot state: what the overlay thinks it is doing, for the freeze hunt.
+    function debugState() {
+        return JSON.stringify({
+            wanted: root.wanted, armed: root.armed, visible: root.visible,
+            backingWindowVisible: root.backingWindowVisible,
+            width: root.width, height: root.height, screen: root.screen ? root.screen.name : null,
+            keyboardFocus: root.WlrLayershell.keyboardFocus,
+            activeFocus: root.contentItem ? root.contentItem.activeFocus : null,
+            freezeImg: root.freezeImg, freezePath: root.freezePath, freezeStarted: root.freezeStarted,
+            freezeFromKwinshot: root.freezeFromKwinshot, kwinshotUsable: root.kwinshotUsable,
+            kwinshotPending: root.kwinshotPending, imageStatus: freezeBackground.status,
+            procs: { output: outputProc.running, kwinshot: kwinshotProc.running,
+                     spectacle: freezeProc.running, check: freezeCheckProc.running, qr: qrProc.running },
+            isSelecting: root.isSelecting, hasSelection: root.hasSelection, isVideoMode: root.isVideoMode,
+            sinceToggleMs: Date.now() - ScreenshotState.lastToggle
+        });
+    }
+
     function grabFocus() {
         if (!root.armed || !root.contentItem) return;
         root.contentItem.forceActiveFocus();
@@ -704,24 +722,24 @@ PanelWindow {
 
                 AnimWrap {
                     isShown: !root.isVideoMode; contentWidth: s(36)
-                    V2.IconButton { size: s(36); cornerRadius: root.radius; buttonIcon: "\u{f03eb}"; iconFontSize: s(18); accentColor: root.surface0; textColor: root.text; onClicked: root.capture(true) }
+                    V2.IconButton { size: s(36); cornerRadius: root.radius; centerInk: true; buttonIcon: "\u{f03eb}"; iconFontSize: s(18); accentColor: root.surface0; textColor: root.text; onClicked: root.capture(true) }
                 }
 
                 AnimWrap {
                     isShown: !root.isVideoMode; contentWidth: s(36)
-                    V2.IconButton { size: s(36); cornerRadius: root.radius; buttonIcon: "\u{2ffb}"; iconFontSize: s(18); accentColor: root.surface0; textColor: root.text; onClicked: root.performQrScan() }
+                    V2.IconButton { size: s(36); cornerRadius: root.radius; centerInk: true; buttonIcon: "\u{f0433}"; iconFontSize: s(18); accentColor: root.surface0; textColor: root.text; onClicked: root.performQrScan() }
                 }
 
                 AnimWrap {
                     isShown: !root.isVideoMode; contentWidth: s(36)
-                    V2.IconButton { size: s(36); cornerRadius: root.radius; buttonIcon: root.isMaximized ? "\u{f066}" : "\u{f065}"; iconFontSize: s(18); accentColor: root.surface0; textColor: root.text; onClicked: root.toggleMaximize() }
+                    V2.IconButton { size: s(36); cornerRadius: root.radius; centerInk: true; buttonIcon: root.isMaximized ? "\u{f066}" : "\u{f065}"; iconFontSize: s(18); accentColor: root.surface0; textColor: root.text; onClicked: root.toggleMaximize() }
                 }
 
                 Item {
                     width: s(36); height: parent.height
                     V2.IconButton {
                         anchors.verticalCenter: parent.verticalCenter
-                        size: s(36); cornerRadius: root.radius; buttonIcon: "\u{f0156}"; iconFontSize: s(18); accentColor: root.red; textColor: root.crust; onClicked: ScreenshotState.hide()
+                        size: s(36); cornerRadius: root.radius; centerInk: true; buttonIcon: "\u{f0156}"; iconFontSize: s(18); accentColor: root.red; textColor: root.crust; onClicked: ScreenshotState.hide()
                     }
                 }
             }
@@ -882,6 +900,7 @@ PanelWindow {
                         visible: model.qSuccess
                         size: s(36)
                         cornerRadius: root.radius
+                        centerInk: true
                         buttonIcon: "\u{f018f}"
                         iconFontSize: s(18)
                         accentColor: root.surface0
@@ -897,6 +916,7 @@ PanelWindow {
                         visible: model.qSuccess && (model.qText.startsWith("http://") || model.qText.startsWith("https://"))
                         size: s(36)
                         cornerRadius: root.radius
+                        centerInk: true
                         buttonIcon: "\u{f0339}"
                         iconFontSize: s(18)
                         accentColor: root.surface0
@@ -908,7 +928,7 @@ PanelWindow {
                     }
 
                     Rectangle { width: s(2); Layout.fillHeight: true; Layout.topMargin: s(10); Layout.bottomMargin: s(10); color: root.surface0; radius: s(1) }
-                    V2.IconButton { size: s(36); cornerRadius: root.radius; buttonIcon: "\u{f0156}"; iconFontSize: s(18); accentColor: root.red; textColor: root.crust; onClicked: root.showQrPopup = false }
+                    V2.IconButton { size: s(36); cornerRadius: root.radius; centerInk: true; buttonIcon: "\u{f0156}"; iconFontSize: s(18); accentColor: root.red; textColor: root.crust; onClicked: root.showQrPopup = false }
                 }
             }
         }

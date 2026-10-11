@@ -82,7 +82,8 @@ DEPS=()
 mkdir -p "$RUN_DIR" || fail "Cannot create $RUN_DIR"
 CAPTURE=""
 REGION="$RUN_DIR/region_$$.png"
-trap 'rm -f "$REGION" "$CAPTURE"' EXIT
+QR_RAW="$RUN_DIR/qr_$$.txt"
+trap 'rm -f "$REGION" "$CAPTURE" "$QR_RAW"' EXIT
 
 SRC="$FREEZE"
 if [ -z "$SRC" ]; then
@@ -110,7 +111,9 @@ else
 fi
 
 if [ "$SCAN_QR" = true ]; then
-    zbarimg --xml -q "$REGION" 2>/dev/null | python3 -I "$QR_PARSER"
+    # Two passes: --xml carries the geometry, --raw the undamaged bytes. See the parser.
+    zbarimg --raw -q "$REGION" > "$QR_RAW" 2>/dev/null
+    zbarimg --xml -q "$REGION" 2>/dev/null | python3 -I "$QR_PARSER" "$QR_RAW"
     exit 0
 fi
 
