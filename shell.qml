@@ -21,6 +21,7 @@ import "modules/notifcenter"
 import "modules/notifications"
 import "modules/popups"
 import "modules/power"
+import "modules/screenshot"
 import "modules/volume"
 import "modules/wallpaper"
 import "services/dnd"
@@ -239,6 +240,17 @@ ShellRoot {
         function toggle(): void { ClipboardState.toggle() }
         function show(): void { ClipboardState.show() }
         function hide(): void { ClipboardState.hide() }
+    }
+
+    // qs -p <this file> ipc call screenshot toggle
+    ScreenshotOverlay {}
+    IpcHandler {
+        target: "screenshot"
+        function toggle(): void { ScreenshotState.toggle() }
+        function show(): void { ScreenshotState.show() }
+        function hide(): void { ScreenshotState.hide() }
+        // Same region overlay, but the crop goes through swappy before it is saved.
+        function edit(): void { ScreenshotState.toggleEdit() }
     }
 
     // qs -p <this file> ipc call calendar toggle

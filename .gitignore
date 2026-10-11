@@ -7,8 +7,9 @@
 __pycache__/
 *.py[cod]
 
-# Compiled helper (build with helpers/kholidays/build.sh)
+# Compiled helpers (install.sh builds these)
 helpers/kholidays/khdump
+helpers/kwinshot/kwinshot
 
 # Editor / OS noise
 *.swp
