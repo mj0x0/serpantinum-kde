@@ -283,6 +283,29 @@ QtObject {
     }
 
     property var types: ({
+        "visualizer": {
+            name: I18n.t("widgets.types.visualizer"),
+            icon: String.fromCodePoint(0xF147D),
+            iconOffsetX: -2,
+            defaultWidth: Math.round((Quickshell.screens && Quickshell.screens.length > 0 ? Quickshell.screens[0].width : 1920) / 2),
+            defaultHeight: 180,
+            defaultVariant: "bars",
+            variants: {
+                "bars": { file: "faces/visualizer/VisualizerFace.qml", icon: "1", label: I18n.t("widgets.variants.bars") },
+                "continuous": { file: "faces/visualizer/VisualizerFaceContinuous.qml", icon: "2", label: I18n.t("widgets.variants.continuous") }
+            },
+            additionalSettings: [
+                {
+                    id: "stretchWidth",
+                    icon: String.fromCodePoint(0xF0293),
+                    iconFontSize: 16,
+                    action: "stretchWidth",
+                    row: "top",
+                    accentColor: "surface0",
+                    textColor: "mauve"
+                }
+            ]
+        },
         "time": {
             name: I18n.t("widgets.types.clock"),
             icon: String.fromCodePoint(0xF0954),
