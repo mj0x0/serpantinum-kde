@@ -23,6 +23,7 @@ Singleton {
     readonly property color surface2: c.surface2
     readonly property color overlay0: c.overlay0
     readonly property color overlay1: c.overlay1
+    readonly property color overlay2: c.overlay2
     readonly property color text:     c.text
     readonly property color subtext0: c.subtext0
     readonly property color subtext1: c.subtext1
@@ -41,4 +42,32 @@ Singleton {
     readonly property int borderRadius: Radius.outer(8)
     readonly property int clampedBorderRadius: Radius.eased(8)
     readonly property string fontFamily: Fonts.ui
+    readonly property string iconFont: Fonts.icons
+
+    // The 22 Catppuccin keys upstream's matugen template renders, as hex strings and nothing
+    // more: no M3 keys, so the Material faces' resolveColor falls back exactly as upstream.
+    readonly property var matugenColors: ({
+        base:     String(c.base),
+        mantle:   String(c.mantle),
+        crust:    String(c.crust),
+        text:     String(c.text),
+        subtext0: String(c.subtext0),
+        subtext1: String(c.subtext1),
+        surface0: String(c.surface0),
+        surface1: String(c.surface1),
+        surface2: String(c.surface2),
+        overlay0: String(c.overlay0),
+        overlay1: String(c.overlay1),
+        overlay2: String(c.overlay2),
+        blue:     String(c.blue),
+        sapphire: String(c.sapphire),
+        peach:    String(c.peach),
+        green:    String(c.green),
+        red:      String(c.red),
+        mauve:    String(c.mauve),
+        pink:     String(c.pink),
+        yellow:   String(c.yellow),
+        maroon:   String(c.maroon),
+        teal:     String(c.teal)
+    })
 }
