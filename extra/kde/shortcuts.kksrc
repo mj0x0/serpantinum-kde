@@ -68,6 +68,22 @@ Name=Clear All Notifications
 Exec=qs -c @SHELL_NAME@ ipc call power toggle
 Name=Power Widget
 
+[Custom Commands][serpantinum-kde.screenshot.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call screenshot toggle
+Name=Screenshot region
+
+[Custom Commands][serpantinum-kde.screenshot-edit.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call screenshot edit
+Name=Screenshot region and edit
+
+[Custom Commands][serpantinum-kde.screenshot-full.desktop]
+Exec=@SHELL_DIR@/helpers/screenshot.sh --full
+Name=Screenshot full screen
+
+[Custom Commands][serpantinum-kde.screenshot-full-edit.desktop]
+Exec=@SHELL_DIR@/helpers/screenshot.sh --full --edit
+Name=Screenshot full screen and edit
+
 [Custom Commands][serpantinum-kde.servers.desktop]
 Exec=qs -c @SHELL_NAME@ ipc call network servers
 Name=Servers Panel
@@ -139,6 +155,18 @@ _launch=Meta+Shift+Backspace
 
 [serpantinum-kde.power.desktop][Global Shortcuts]
 _launch=Meta+Shift+P
+
+[serpantinum-kde.screenshot.desktop][Global Shortcuts]
+_launch=Print
+
+[serpantinum-kde.screenshot-edit.desktop][Global Shortcuts]
+_launch=Shift+Print
+
+[serpantinum-kde.screenshot-full.desktop][Global Shortcuts]
+_launch=Meta+Print
+
+[serpantinum-kde.screenshot-full-edit.desktop][Global Shortcuts]
+_launch=Meta+Shift+Print
 
 [serpantinum-kde.servers.desktop][Global Shortcuts]
 _launch=Meta+Shift+H

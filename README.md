@@ -26,6 +26,7 @@ These are ours, with no upstream counterpart:
 | KDE Connect | phone battery and signal in the battery panel, with actions |
 | Power panel | the profile at the core, every app holding the machine awake orbiting it — revoke any of them |
 | Servers | containers and systemd units you self-host, the ports they listen on, stopped from the panel |
+| Screenshot | region overlay on a frozen screen; a small helper takes the frame straight from KWin |
 | Polkit agent | optional; replaces KDE's when enabled |
 
 Plus a Bluetooth panel, a VPN/Wi-Fi network panel, a calendar with KDE's holidays, a
