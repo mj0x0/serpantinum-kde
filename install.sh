@@ -8,7 +8,6 @@ RICE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shell is `qs -c serpantinum-kde` from anywhere. The checkout is only the source.
 SHELL_NAME="serpantinum-kde"
 SHELL_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/$SHELL_NAME"
-BIN="$HOME/.local/bin"
 APPS="$HOME/.local/share/applications"
 AUTOSTART="$HOME/.config/autostart"
 STAMP="$(date +%Y%m%d-%H%M%S)"
@@ -322,9 +321,6 @@ install_core() {
 
     copy_shell
     ok "shell -> $SHELL_DIR  (run it with: qs -c $SHELL_NAME)"
-
-    install -Dm755 "$RICE/extra/bin/kvitals.sh" "$BIN/kvitals.sh"
-    ok "kvitals.sh -> $BIN"
 
     # The grant is per executable: KWin only binds its screencast protocol for a client
     # whose installed desktop file lists the interface, and caches the verdict per connection.
