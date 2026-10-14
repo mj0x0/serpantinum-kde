@@ -40,7 +40,7 @@ Singleton {
     Process {
         id: watcher
         running: true
-        command: ["python3", "-W", "ignore", root.helper]
+        command: ["setpriv", "--pdeathsig", "KILL", "python3", "-W", "ignore", root.helper]
         stdout: SplitParser {
             onRead: line => {
                 var s;
