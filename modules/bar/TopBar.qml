@@ -476,6 +476,16 @@ Variants {
                 readonly property var flatLeft: BarModules.flat(leftArr)
                 readonly property var flatCenter: BarModules.flat(centerArr)
                 readonly property var flatRight: BarModules.flat(rightArr)
+                // bar.groupColors (Settings -> Bar -> Layout): a palette name or hex per group, blended into its pill.
+                readonly property bool colorGroups: ShellSettings.value("bar.colorGroups", true) !== false
+                readonly property var groupColors: ShellSettings.value("bar.groupColors", null)
+                function groupTint(ids) {
+                    if (!colorGroups || !ids.length || !groupColors || typeof groupColors !== "object") return "transparent";
+                    var v = groupColors[BarModules.groupId(ids)];
+                    if (typeof v !== "string") return "transparent";
+                    if (BarModules.GROUP_PALETTE.indexOf(v) !== -1) return mocha[v];
+                    return /^#[0-9a-fA-F]{6}$/.test(v) ? v : "transparent";
+                }
                 readonly property var groupDefs: {
                     var d = [];
                     var all = [leftArr, centerArr, rightArr];
@@ -664,9 +674,14 @@ Variants {
                     height: barContent.vertical ? m.size : barWindow.barHeight
                     z: -1
                     radius: barWindow.pillRadius
-                    color: barWindow.pillBg
+                    readonly property color tint: barContent.groupTint(ids)
+                    readonly property real k: tint.a > 0 ? 0.45 : 0
+                    color: Qt.rgba(barWindow.pillBg.r * (1 - k) + tint.r * k, barWindow.pillBg.g * (1 - k) + tint.g * k,
+                                   barWindow.pillBg.b * (1 - k) + tint.b * k, barWindow.pillBg.a)
                     border.width: 1
-                    border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08 * barWindow.pillBorderAlpha)
+                    border.color: k > 0 ? Qt.rgba(tint.r, tint.g, tint.b, 0.4 * barWindow.pillBorderAlpha)
+                                        : Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08 * barWindow.pillBorderAlpha)
+                    Behavior on color { ColorAnimation { duration: 200 } }
                     Behavior on x { enabled: barWindow.startupCascadeFinished && !barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                     Behavior on y { enabled: barWindow.startupCascadeFinished && barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                     Behavior on width { enabled: barWindow.startupCascadeFinished && !barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
