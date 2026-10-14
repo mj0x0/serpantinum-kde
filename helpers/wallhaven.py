@@ -33,7 +33,7 @@ import urllib.parse
 import urllib.request
 
 API = "https://wallhaven.cc/api/v1/"
-UA = "quickshell-rice-mj0x0 (https://github.com/mj0x0)"
+UA = "serpantinum-kde (https://github.com/mj0x0)"
 TIMEOUT = 12
 SEARCH_TTL = 300
 BUDGET_PER_MINUTE = 40
