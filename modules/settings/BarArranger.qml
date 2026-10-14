@@ -30,6 +30,9 @@ Item {
     property string lastSaved: ""
     property var groupColors: ({})
     property var fileColors: ({})   // bar.groupColors as last read or written
+    property var groups: []         // [{ gid, icon, names }] for the host's swatch rows
+    // Off: every group wears the accent and bar.groupColors is neither read nor written.
+    readonly property bool colorsOn: ShellSettings.value("bar.colorGroups", true) !== false
 
     // --- config <-> models ---------------------------------------------------------
     function widgetOn(k) { return ShellSettings.value("bar.widgets." + k, true) !== false; }
@@ -64,7 +67,7 @@ Item {
         var v = ShellSettings.value("bar.groupColors", null);
         return (v && typeof v === "object" && !Array.isArray(v)) ? v : ({});
     }
-    function load() { var m = currentModules(); fileColors = storedColors(); loadFrom(m); assignColors(m, fileColors); }
+    function load() { var m = currentModules(); fileColors = storedColors(); loadFrom(m); assignColors(m, fileColors); groups = BarModules.groupRows(m); }
     Component.onCompleted: load()
 
     // A hand-edited file reloads the lists or recolours the chips; a write of our own is
@@ -103,6 +106,8 @@ Item {
         var m = BarModules.parse(obj, root.widgetOn);
         lastSaved = JSON.stringify(m);
         assignColors(m, groupColors);
+        groups = BarModules.groupRows(m);
+        if (!colorsOn) { ShellSettings.setValue("bar.modules", obj); return; }
         fileColors = groupColors;
         ShellSettings.setValues({ "bar.modules": obj, "bar.groupColors": groupColors });
     }
@@ -110,6 +115,8 @@ Item {
     function reset() {
         var m = BarModules.defaultModules(root.widgetOn);
         loadFrom(m);
+        groups = BarModules.groupRows(m);
+        if (!colorsOn) { assignColors(m, fileColors); ShellSettings.setValue("bar.modules", m); return; }
         fileColors = ({});
         assignColors(m, fileColors);
         ShellSettings.setValues({ "bar.modules": m, "bar.groupColors": fileColors });
@@ -119,6 +126,15 @@ Item {
     // Every group holds a palette slot, assigned in memory on load and written in the same
     // file write as the layout, so opening Settings never writes (upstream does the same).
     function assignColors(m, prev) { groupColors = BarModules.assignGroupColors(prev, BarModules.groupIds(m)); }
+    // The swatch rows: the stored palette name ("" for a hex or nothing), and a pick.
+    function colorKey(gid) { var v = groupColors[gid]; return BarModules.GROUP_PALETTE.indexOf(v) !== -1 ? v : ""; }
+    function pickColor(gid, key) {
+        var next = Object.assign({}, groupColors);
+        next[gid] = key;
+        groupColors = next;
+        fileColors = next;
+        ShellSettings.setValue("bar.groupColors", next);
+    }
     // The key follows a run's first chip (upstream's scheme): a reordered run is re-keyed
     // and keeps its colour, a run split off an old key starts fresh, a lone chip is no group.
     function syncGroupIds() {
@@ -404,7 +420,7 @@ Item {
                             anchors.fill: parent
                             implicitWidth: chipRow.implicitWidth + host.s(20)
                             radius: root.chipR
-                            color: d.isGrouped ? root.groupColor(d.groupId) : host.surface1
+                            color: d.isGrouped ? (root.colorsOn ? root.groupColor(d.groupId) : host.accent) : host.surface1
                             border.width: 1
                             border.color: d.isGrouped ? "transparent" : host.surface2
                             Behavior on color { ColorAnimation { duration: 150 } }

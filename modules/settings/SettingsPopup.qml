@@ -903,8 +903,42 @@ Item {
                             color: window.text
                         }
                         BarArranger {
+                            id: arranger
                             Layout.fillWidth: true
                             host: window
+                        }
+                        Row {
+                            label: "Colour the groups"
+                            glyph: "\u{f00e9}"
+                            desc: "Each group gets its own palette colour, picked below; off, every group wears the accent"
+                            Toggle {
+                                checked: ShellSettings.value("bar.colorGroups", true) !== false
+                                onToggled: v => ShellSettings.setValue("bar.colorGroups", v)
+                            }
+                        }
+                        Repeater {
+                            model: arranger.colorsOn ? arranger.groups : []
+                            Row {
+                                required property var modelData
+                                required property int index
+                                label: "Group " + (index + 1)
+                                glyph: modelData.icon
+                                desc: modelData.names
+                                Swatches {
+                                    width: window.s(240)
+                                    options: [
+                                        { key: "mauve",    color: window.mauve },
+                                        { key: "sapphire", color: window.sapphire },
+                                        { key: "green",    color: window.green },
+                                        { key: "yellow",   color: window.yellow },
+                                        { key: "peach",    color: window.peach },
+                                        { key: "pink",     color: window.pink },
+                                        { key: "red",      color: window.red }
+                                    ]
+                                    current: arranger.colorKey(modelData.gid)
+                                    onPicked: v => arranger.pickColor(modelData.gid, v)
+                                }
+                            }
                         }
                     }
 

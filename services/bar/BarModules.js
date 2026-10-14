@@ -122,6 +122,20 @@ function assignGroupColors(prev, ids) {
     return out;
 }
 
+// One row per group for the Settings swatches: its key, lead glyph and member names.
+function groupRows(m) {
+    var rows = [], secs = [m.left, m.center, m.right];
+    for (var a = 0; a < secs.length; a++)
+        for (var i = 0; i < secs[a].length; i++) {
+            var g = secs[a][i];
+            if (!Array.isArray(g)) continue;
+            var names = [];
+            for (var j = 0; j < g.length; j++) names.push((INFO[g[j]] || {}).label || g[j]);
+            rows.push({ gid: groupId(g), icon: (INFO[g[0]] || {}).icon || "", names: names.join(" \u00b7 ") });
+        }
+    return rows;
+}
+
 function sameColors(a, b) {
     var ka = Object.keys(a || {}), kb = Object.keys(b || {});
     if (ka.length !== kb.length) return false;
