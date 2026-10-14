@@ -2,6 +2,7 @@ import "../../services/audio"
 import "../../services/cava"
 import "../../services/layout"
 import "../../services/lyrics"
+import "../../services/reusables"
 import "../../services/theme"
 import QtQuick
 import QtQuick.Window
@@ -1226,16 +1227,22 @@ Item {
                             opacity: root.introControls
                             transform: Translate { x: root.s(20) * (1 - root.introControls); y: root.s(10) * (1 - root.introControls) }
 
-                            Slider {
+                            WavySeekBar {
                                 id: progBar
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: root.s(20) 
-                                from: 0; to: 100
+                                Layout.preferredHeight: root.s(50)
+                                Layout.topMargin: -root.s(16)
+                                Layout.bottomMargin: -root.s(2)
+                                Layout.alignment: Qt.AlignVCenter
+                                from: 0
+                                to: 100
+                                playing: root.musicData.status === "Playing"
+                                waveColor: root.mauve
 
                                 Connections {
                                     target: root
                                     function onMusicDataChanged() {
-                                        if (!progBar.pressed && !root.userIsSeeking) {
+                                        if (!progBar.isDragging && !root.userIsSeeking) {
                                             if (root.musicData && root.musicData.percent !== undefined) {
                                                 var p = Number(root.musicData.percent);
                                                 if (!isNaN(p)) progBar.value = p;
@@ -1245,13 +1252,15 @@ Item {
                                 }
 
                                 Behavior on value {
-                                    enabled: !progBar.pressed && !root.userIsSeeking
+                                    enabled: !progBar.isDragging && !root.userIsSeeking
                                     NumberAnimation { duration: 400; easing.type: Easing.OutSine }
                                 }
 
-                                onPressedChanged: {
-                                    if (pressed) {
-                                        root.userIsSeeking = true;
+                                // moved() fires on every drag pixel; one seek, on release.
+                                onMoved: root.userIsSeeking = true
+
+                                onIsDraggingChanged: {
+                                    if (isDragging) {
                                         seekDebounceTimer.stop();
                                     } else {
                                         var temp = Object.assign({}, root.musicData);
@@ -1260,67 +1269,9 @@ Item {
 
                                         var safePlayer = root.musicData.playerName ? root.musicData.playerName : "";
                                         root.execCmd(`${root.scriptsDir}/player_control.sh seek ${value.toFixed(2)} ${root.musicData.length} "${safePlayer}"`);
-                                        
+
                                         seekDebounceTimer.restart();
                                     }
-                                }
-
-                                background: Item {
-                                    x: progBar.leftPadding
-                                    y: progBar.topPadding + (progBar.availableHeight - root.s(12)) / 2
-                                    width: progBar.availableWidth
-                                    height: root.s(12)
-
-                                    // One clipped track with a single fill rectangle that IS the gradient.
-                                    Rectangle {
-                                        id: bgTrack
-                                        anchors.fill: parent
-                                        radius: root.s(6)
-                                        color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.7)
-                                        clip: true
-
-                                        Behavior on color { ColorAnimation { duration: 150 } }
-
-                                        Rectangle {
-                                            id: fillTrack
-                                            x: 0
-                                            y: 0
-                                            width: Math.max(0, Math.min(bgTrack.width, progBar.handle.x + progBar.handle.width))
-                                            height: bgTrack.height
-                                            radius: root.s(6)
-                                            opacity: progBar.visualPosition > 0.001 ? 1.0 : 0.0
-
-                                            gradient: Gradient {
-                                                orientation: Gradient.Horizontal
-                                                // Must be a colour THIS file declares - an undefined property renders black.
-                                                // Two stops, not three: a straight ramp stays a gradient at every width.
-                                                GradientStop { position: 0.0; color: root.blue; Behavior on color { ColorAnimation { duration: 150 } } }
-                                                GradientStop { position: 1.0; color: root.pink; Behavior on color { ColorAnimation { duration: 150 } } }
-                                            }
-
-                                            Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                                        }
-                                    }
-
-                                    // His hairline over the top of the track.
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        radius: root.s(6)
-                                        color: "transparent"
-                                        border.color: Qt.rgba(1, 1, 1, 0.06)
-                                        border.width: 1
-                                    }
-                                }
-
-                                handle: Rectangle {
-                                    x: progBar.leftPadding + progBar.visualPosition * (progBar.availableWidth - width)
-                                    y: progBar.topPadding + (progBar.availableHeight - height) / 2
-                                    implicitWidth: root.s(18) 
-                                    implicitHeight: root.s(18)
-                                    width: root.s(18); height: root.s(18)
-                                    radius: root.s(9); color: root.text
-                                    scale: progBar.pressed ? 1.3 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
                                 }
                             }
 
