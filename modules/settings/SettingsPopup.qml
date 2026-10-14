@@ -670,6 +670,16 @@ Item {
                             }
                         }
                         Row {
+                            label: "Vitals shape"
+                            glyph: "\u{f035b}"
+                            desc: "pill is the liquid-fill default; wave and circle are ring gauges"
+                            Chips {
+                                options: ["pill", "wave", "circle"]
+                                current: "" + ShellSettings.value("bar.sysmonStyle", "pill")
+                                onPicked: v => ShellSettings.setValue("bar.sysmonStyle", v)
+                            }
+                        }
+                        Row {
                             label: "Position"
                             glyph: "\u{f0053}"
                             desc: "Which screen edge holds the bar"

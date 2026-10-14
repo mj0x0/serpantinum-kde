@@ -71,6 +71,7 @@ Variants {
 
             // --- bar.* settings (v2 schema; old topbar.* keys read as fallback) ---
             property string barStyle: "" + ShellSettings.value("bar.style", "modular")
+            property string sysmonStyle: "" + ShellSettings.value("bar.sysmonStyle", "pill")
             readonly property bool isSolid: barStyle === "solid" || barStyle === "fill"
             readonly property bool isFill: barStyle === "fill"
             // Pill corners follow ui.radius; controls inside a pill sit 2px in, as upstream.

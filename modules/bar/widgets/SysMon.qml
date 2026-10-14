@@ -1,5 +1,5 @@
-// CPU, RAM and temperature as liquid-fill pills from SysData, subscribed only while
-// placed; click opens the System Usage quick action. serpantinum v2's SysMonWidget.
+// CPU, RAM and temperature from SysData, subscribed only while placed; click opens the
+// System Usage quick action. Pill is ours; wave and circle are serpantinum v2's ring gauge.
 import "../../../services/audio"
 import "../../../services/sysdata"
 import "../../../services/theme"
@@ -15,6 +15,9 @@ Rectangle {
     property bool grouped: false
     property real targetX: 0
     property real targetY: 0
+
+    readonly property string style: barWindow.sysmonStyle
+    readonly property bool gaugeMode: style === "wave" || style === "circle"
 
     property bool subscribed: false
     readonly property bool wantSubscribe: placed && showLayout
@@ -65,8 +68,8 @@ Rectangle {
         readonly property real waveAmp: (fillRatio < 0.99 && fillRatio > 0.01) ? barWindow.s(3.5) * Math.sin(fillRatio * Math.PI) : 0
         readonly property real waveCenterOffset: 0.375 * waveAmp * (Math.sin(sysmon.wavePhase) - Math.cos(sysmon.wavePhase))
 
-        width: barWindow.s(52)
-        height: barWindow.s(30)
+        implicitWidth: barWindow.s(52)
+        implicitHeight: barWindow.s(30)
         radius: barWindow.innerRadius
         color: Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.6)
         border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.06)
@@ -148,23 +151,111 @@ Rectangle {
         }
     }
 
+    component SysGauge : Item {
+        id: gauge
+        property real value: 0
+        property string textVal: ""
+        property string icon: ""
+        property color accent: mocha.mauve
+
+        property real animValue: value
+        Behavior on animValue { NumberAnimation { duration: 600; easing.type: Easing.OutQuint } }
+        readonly property real fillRatio: Math.max(0.0, Math.min(1.0, isNaN(animValue) ? 0.0 : animValue))
+        readonly property bool showText: textVal !== ""
+
+        implicitWidth: barWindow.s(28)
+        implicitHeight: barWindow.s(28)
+
+        ShaderEffect {
+            anchors.fill: parent
+            property vector2d itemSize: Qt.vector2d(width, height)
+            property real fillRatio: gauge.fillRatio
+            property real strokeWidth: barWindow.s(2.2)
+            property real useSineWave: sysmon.style === "circle" ? 0.0 : 1.0
+            property color accentColor: gauge.accent
+            property vector4d params: Qt.vector4d(barWindow.s(0.9), 0.0, 0.0, 0.0)
+            fragmentShader: Qt.resolvedUrl("../../../services/reusables/assets/shaders/gauges/circular_wave_gauge.frag.qsb")
+        }
+
+        Text {
+            anchors.centerIn: parent
+            text: gauge.showText ? gauge.textVal : gauge.icon
+            font.family: gauge.showText ? Fonts.ui : "Iosevka Nerd Font"
+            font.pixelSize: barWindow.s(gauge.showText ? 9 : 11)
+            font.weight: gauge.showText ? Font.Black : Font.Normal
+            color: mocha.text
+        }
+    }
+
+    // One stat, drawn as whichever shape the style asks for.
+    component SysStat : Item {
+        id: stat
+        property string statKey: "cpu"
+        property bool narrow: false
+
+        readonly property real value: {
+            if (statKey === "ram") return isNaN(SysData.ramPercent) ? 0 : SysData.ramPercent / 100.0;
+            if (statKey === "temp") return Math.max(0, Math.min(1, isNaN(SysData.temp) ? 0 : SysData.temp / 100.0));
+            return isNaN(SysData.cpu) ? 0 : SysData.cpu / 100.0;
+        }
+        readonly property string icon: statKey === "ram" ? "\u{f035b}" : (statKey === "temp" ? "\u{f050f}" : "\u{f035c}")
+        readonly property color accent: statKey === "ram" ? mocha.sapphire : (statKey === "temp" ? mocha.red : mocha.mauve)
+        readonly property string reading: {
+            if (statKey === "ram") return Math.round(SysData.ramPercent) + "";
+            if (statKey === "temp") return Math.round(SysData.temp) + "";
+            return Math.round(SysData.cpu) + "";
+        }
+        // The pill has room for a unit; the gauge labels temperature only, as upstream does.
+        readonly property string pillText: statKey === "temp" ? reading + "°" : (narrow ? reading : reading + "%")
+        readonly property string gaugeText: statKey === "temp" ? reading : ""
+
+        implicitWidth: shape.implicitWidth
+        implicitHeight: shape.implicitHeight
+
+        Loader {
+            id: shape
+            sourceComponent: sysmon.gaugeMode ? gaugeShape : pillShape
+        }
+
+        Component {
+            id: pillShape
+            SysPill {
+                value: stat.value
+                textVal: stat.pillText
+                icon: stat.icon
+                accent: stat.accent
+                implicitWidth: barWindow.s(stat.narrow ? 40 : 52)
+            }
+        }
+
+        Component {
+            id: gaugeShape
+            SysGauge {
+                value: stat.value
+                textVal: stat.gaugeText
+                icon: stat.icon
+                accent: stat.accent
+            }
+        }
+    }
+
     Row {
         id: hRow
         visible: !sysmon.vertical
         anchors.centerIn: parent
         spacing: barWindow.s(6)
-        SysPill { value: SysData.cpu / 100.0; textVal: Math.round(SysData.cpu) + "%"; icon: ""; accent: mocha.mauve }
-        SysPill { value: SysData.ramPercent / 100.0; textVal: Math.round(SysData.ramPercent) + "%"; icon: "󰍛"; accent: mocha.sapphire }
-        SysPill { value: Math.max(0, Math.min(1, SysData.temp / 100.0)); textVal: Math.round(SysData.temp) + "°"; icon: ""; accent: mocha.red }
+        SysStat { statKey: "cpu" }
+        SysStat { statKey: "ram" }
+        SysStat { statKey: "temp" }
     }
     Column {
         id: vCol
         visible: sysmon.vertical
         anchors.centerIn: parent
         spacing: barWindow.s(6)
-        SysPill { width: barWindow.s(40); value: SysData.cpu / 100.0; textVal: Math.round(SysData.cpu) + ""; icon: ""; accent: mocha.mauve }
-        SysPill { width: barWindow.s(40); value: SysData.ramPercent / 100.0; textVal: Math.round(SysData.ramPercent) + ""; icon: "󰍛"; accent: mocha.sapphire }
-        SysPill { width: barWindow.s(40); value: Math.max(0, Math.min(1, SysData.temp / 100.0)); textVal: Math.round(SysData.temp) + "°"; icon: ""; accent: mocha.red }
+        SysStat { statKey: "cpu"; narrow: true }
+        SysStat { statKey: "ram"; narrow: true }
+        SysStat { statKey: "temp"; narrow: true }
     }
 
     MouseArea {
