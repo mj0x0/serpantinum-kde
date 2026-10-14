@@ -2428,7 +2428,7 @@ Item {
                     text: root.section === 0
                           ? "1\u20138 presets   [ ] cycle   0 flat   \u21e5 section"
                           : (Lyrics.hasLyrics
-                             ? ", . offset   R refetch   \u21e5 section   click a line to seek"
+                             ? ", . offset   R refetch   Ctrl \u00b1 size   \u21e5 section   click a line to seek"
                              : "edit the query \u2192 Find   click a result to use it   \u21e5 section")
                     font.family: Fonts.ui
                     font.pixelSize: root.s(9)
