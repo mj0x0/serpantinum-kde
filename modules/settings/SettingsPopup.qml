@@ -1306,6 +1306,16 @@ Item {
                                 onPicked: v => ShellSettings.setValue("lyrics.highlight", v)
                             }
                         }
+                        Row {
+                            label: "Lyrics size"
+                            glyph: "\u{f0b64}"
+                            desc: "Scales the lyric text; Ctrl+= and Ctrl+- do it from the popup, Ctrl+0 resets"
+                            Slider {
+                                from: 0.7; to: 2.0; step: 0.1
+                                value: Number(ShellSettings.value("lyrics.scale", 1.0))
+                                onCommitted: v => ShellSettings.setValue("lyrics.scale", v)
+                            }
+                        }
                     }
 
                     // Calendar

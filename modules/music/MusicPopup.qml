@@ -3,6 +3,7 @@ import "../../services/cava"
 import "../../services/layout"
 import "../../services/lyrics"
 import "../../services/reusables"
+import "../../services/settings"
 import "../../services/theme"
 import QtQuick
 import QtQuick.Window
@@ -446,6 +447,22 @@ Item {
         var next = (cur + step + root.presetOrder.length) % root.presetOrder.length;
         root.applyPresetOptimistically(root.presetOrder[next]);
     }
+
+    // Lyrics text scale: ls() is s() times the user's zoom, so the rows and the
+    // highlight band grow with the glyphs instead of overlapping them.
+    readonly property real lyricScale: {
+        const v = Number(ShellSettings.value("lyrics.scale", 1.0));
+        return isNaN(v) ? 1.0 : Math.max(0.7, Math.min(2.0, v));
+    }
+    function ls(val: real): real { return root.s(val) * root.lyricScale; }
+    function nudgeLyricScale(step: real): void {
+        const next = Math.max(0.7, Math.min(2.0, Math.round((root.lyricScale + step) * 10) / 10));
+        ShellSettings.setValue("lyrics.scale", next);
+    }
+
+    Shortcut { sequences: ["Ctrl+=", "Ctrl++"]; enabled: !root.typing; onActivated: root.nudgeLyricScale(0.1) }
+    Shortcut { sequence: "Ctrl+-"; enabled: !root.typing; onActivated: root.nudgeLyricScale(-0.1) }
+    Shortcut { sequence: "Ctrl+0"; enabled: !root.typing; onActivated: ShellSettings.setValue("lyrics.scale", 1.0) }
 
     // Shortcut, not Keys: this Item never gets active focus, so Keys handlers
     // would silently never fire.
@@ -2072,15 +2089,15 @@ Item {
 
                             // Pins the active line to the middle band and animates the column to it.
                             highlightRangeMode: ListView.StrictlyEnforceRange
-                            preferredHighlightBegin: height / 2 - root.s(26)
-                            preferredHighlightEnd: height / 2 + root.s(26)
+                            preferredHighlightBegin: height / 2 - root.ls(26)
+                            preferredHighlightEnd: height / 2 + root.ls(26)
                             highlightMoveDuration: 420
                             highlightMoveVelocity: -1
 
                             delegate: Item {
                                 id: lyricRow
                                 width: lyricsView.width
-                                height: Math.max(root.s(34), (wordsLive ? wordFlow.height : lyricText.implicitHeight) + root.s(14))
+                                height: Math.max(root.ls(34), (wordsLive ? wordFlow.height : lyricText.implicitHeight) + root.ls(14))
 
                                 readonly property bool isCurrent: index === Lyrics.currentIndex
                                 readonly property int distance: Math.abs(index - Lyrics.currentIndex)
@@ -2099,7 +2116,7 @@ Item {
                                     horizontalAlignment: Text.AlignHCenter
                                     wrapMode: Text.WordWrap
                                     font.family: Fonts.ui
-                                    font.pixelSize: lyricRow.isCurrent ? root.s(16) : root.s(14)
+                                    font.pixelSize: lyricRow.isCurrent ? root.ls(16) : root.ls(14)
                                     font.bold: lyricRow.isCurrent
                                     color: lyricRow.isCurrent ? root.blue : root.subtext0
                                     opacity: lyricRow.wordsLive ? 0.0
@@ -2125,8 +2142,8 @@ Item {
                                     Behavior on opacity { NumberAnimation { duration: 260 } }
 
                                     readonly property real spaceW: spaced.advanceWidth - unspaced.advanceWidth
-                                    TextMetrics { id: spaced; font.family: Fonts.ui; font.pixelSize: root.s(16); font.bold: true; text: "a a" }
-                                    TextMetrics { id: unspaced; font.family: Fonts.ui; font.pixelSize: root.s(16); font.bold: true; text: "aa" }
+                                    TextMetrics { id: spaced; font.family: Fonts.ui; font.pixelSize: root.ls(16); font.bold: true; text: "a a" }
+                                    TextMetrics { id: unspaced; font.family: Fonts.ui; font.pixelSize: root.ls(16); font.bold: true; text: "aa" }
 
                                     onWidthChanged: relayout()
 
@@ -2177,7 +2194,7 @@ Item {
                                             }
                                             text: raw.trim()
                                             font.family: Fonts.ui
-                                            font.pixelSize: root.s(16)
+                                            font.pixelSize: root.ls(16)
                                             font.bold: true
                                             color: root.mixColor(root.subtext0, root.blue, 1 - (1 - prog) * (1 - prog))
 
