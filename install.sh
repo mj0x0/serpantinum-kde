@@ -47,6 +47,8 @@ REQUIRED=(
     "python3:python:every helper backend"
     "kreadconfig6:kconfig:KDE config reads and writes"
     "kpackagetool6:kpackage:installing the Plasma wallpaper plugin"
+    "spectacle:spectacle:every screen capture"
+    "magick:imagemagick:cropping screenshots, wallpaper thumbnails and Wallhaven"
     "timeout:coreutils:helper timeouts"
     "setpriv:util-linux:reaping helper children"
     "inotifywait:inotify-tools:live settings reload"
@@ -67,12 +69,14 @@ OPTIONAL=(
     "songrec:songrec:song recognition"
     "qalc:libqalculate:the launcher calculator"
     "cliphist:cliphist:the clipboard panel"
-    "wl-paste:wl-clipboard:the clipboard panel"
+    "wl-paste:wl-clipboard:the clipboard panel, copying a screenshot"
     "wl-clip-persist:wl-clip-persist:clipboard surviving the app that copied"
     "fd:fd:the launcher's file search"
     "baloosearch6:baloo:indexed file search, fd covers it otherwise"
     "dbus-monitor:dbus:waiting on MPRIS instead of polling"
-    "magick:imagemagick:wallpaper thumbnails and Wallhaven"
+    "swappy:swappy:annotating a screenshot before saving"
+    "zbarimg:zbar:the QR scanner in the screenshot overlay"
+    "xdg-user-dir:xdg-user-dirs:the Screenshots folder, ~/Pictures otherwise"
     "ffmpeg:ffmpeg:video wallpaper frames"
     "curl:curl:weather and album art"
     "bluetoothctl:bluez-utils:the Bluetooth panel"
@@ -203,7 +207,7 @@ install_pkgs() {   # install_pkgs <label> <pkg>...
 
 # ── the two in-tree binaries ─────────────────────────────────────────────────
 build_binaries() {
-    head1 "Building the calendar helper"
+    head1 "Building the helpers"
     local kh="$SHELL_DIR/helpers/kholidays"
     if command -v g++ >/dev/null 2>&1 && pkg-config --exists Qt6Core 2>/dev/null && [ -d /usr/include/KF6/KHolidays ]; then
         ( cd "$kh"
@@ -215,6 +219,68 @@ build_binaries() {
     else
         warn "khdump skipped — needs gcc, qt6-base and kholidays; the Calendar drops holidays"
     fi
+
+    # Never fatal: without it the screenshot overlay keeps freezing via Spectacle.
+    local ks="$SHELL_DIR/helpers/kwinshot"
+    if command -v g++ >/dev/null 2>&1 && pkg-config --exists Qt6DBus Qt6Gui 2>/dev/null; then
+        # set -e does not reach inside an if-condition, so cd failing has to say so itself.
+        if ( cd "$ks" || exit 1
+             # shellcheck disable=SC2046
+             g++ -std=c++17 -O2 -fPIC kwinshot.cpp -o kwinshot \
+                 $(pkg-config --cflags --libs Qt6DBus Qt6Gui) ); then
+            ok "kwinshot"
+            # `qs -p <checkout>` runs the checkout's own copy, and KWin grants per
+            # executable, so that binary has to exist too and gets its own grant.
+            if [ "$RICE" != "$SHELL_DIR" ]; then
+                cp -f "$ks/kwinshot" "$RICE/helpers/kwinshot/kwinshot" \
+                    || warn "no copy in $RICE — a \`qs -p\` shell stays on Spectacle"
+            fi
+            install_kwinshot_grant
+        else
+            warn "kwinshot did not build — the overlay's freeze stays on Spectacle"
+            drop_kwinshot_grants
+        fi
+    else
+        warn "kwinshot skipped — needs gcc and qt6-base; the overlay's freeze stays on Spectacle"
+        drop_kwinshot_grants
+    fi
+}
+
+KWINSHOT_GRANT="org.serpantinum.kwinshot.desktop"
+KWINSHOT_GRANT_DEV="org.serpantinum.kwinshot-dev.desktop"
+
+write_kwinshot_grant() {   # write_kwinshot_grant <basename> <absolute exe>
+    local tmpl="$RICE/extra/$KWINSHOT_GRANT" body
+    [ -r "$tmpl" ] || { warn "$tmpl is missing — no ScreenShot2 grant"; return 1; }
+    body="$(cat "$tmpl")"
+    mkdir -p "$APPS"
+    printf '%s\n' "${body//@KWINSHOT@/$2}" > "$APPS/$1"
+    chmod 644 "$APPS/$1"
+}
+
+# KWin matches the grant by executable and takes the first service naming it, so there is
+# one file per binary: the installed helper, and the checkout's for a `qs -p` shell.
+install_kwinshot_grant() {
+    write_kwinshot_grant "$KWINSHOT_GRANT" "$SHELL_DIR/helpers/kwinshot/kwinshot" || return 0
+    local covers="$SHELL_NAME"
+    # Tracks the checkout's copy instead of being written blind: a grant naming a binary
+    # that is not there is inert and says nothing about why.
+    if [ "$RICE" != "$SHELL_DIR" ] && [ -x "$RICE/helpers/kwinshot/kwinshot" ]; then
+        write_kwinshot_grant "$KWINSHOT_GRANT_DEV" "$RICE/helpers/kwinshot/kwinshot"
+        covers="$covers + this checkout"
+    else
+        rm -f "$APPS/$KWINSHOT_GRANT_DEV"
+    fi
+    command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 >/dev/null 2>&1 || true
+    ok "ScreenShot2 grant -> $APPS ($covers; delete the files and run kbuildsycoca6 to revoke)"
+}
+
+# A grant must not outlive the binary it names, or it is inert and unexplained.
+drop_kwinshot_grants() {
+    [ -e "$APPS/$KWINSHOT_GRANT" ] || [ -e "$APPS/$KWINSHOT_GRANT_DEV" ] || return 0
+    rm -f "$APPS/$KWINSHOT_GRANT" "$APPS/$KWINSHOT_GRANT_DEV"
+    command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 >/dev/null 2>&1 || true
+    skip "revoked the stale ScreenShot2 grant"
 }
 
 # ── core ─────────────────────────────────────────────────────────────────────
@@ -477,6 +543,7 @@ PY
     say "      $DIM""System Settings -> Shortcuts, where they show up by name.""$O"
     say "      $DIM""kglobalaccel reads that file at login, so log out first if they are absent.""$O"
     say "      $DIM""Super alone (the launcher) is KDE's application menu; clear that first.""$O"
+    say "      $DIM""Every Print key is Spectacle's; clear those too, or give the overlay others.""$O"
     say ""
     say "  $DIM""The keys the rice was built around:""$O"
     printf '%s\n' "$suggested"
@@ -560,7 +627,7 @@ run_extras_menu() {
     while :; do
         head1 "Extras"
         say "  1  Plasma lock screen        our greeter, rebuilt on the installed plasma-desktop"
-        say "  2  KDE shortcuts             19 custom commands, keys optional"
+        say "  2  KDE shortcuts             26 custom commands, keys optional"
         say "  3  Spicetify theme           the matugen-coloured Text theme"
         say "  4  Obsidian dashboard        Dashboard.md and its CSS snippets"
         say "  q  done"

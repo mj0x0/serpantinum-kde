@@ -19,6 +19,7 @@ Item {
 
     property int cornerRadius: 8
     property int smallRadius: 2
+    property string fontFamily: ThemeBackend.fontFamily
     property int fontPixelSize: 11
     property int minFontPixelSize: 7
     property bool enabled: true
@@ -123,7 +124,7 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         text: optionItem.modelData
-                        font.family: ThemeBackend.fontFamily
+                        font.family: root.fontFamily
                         font.weight: Font.Normal
                         font.pixelSize: root.fontPixelSize
                         fontSizeMode: Text.Fit

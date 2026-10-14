@@ -1,0 +1,25 @@
+[Desktop Entry]
+Type=Application
+Name=kwinshot (serpantinum)
+Comment=Grants the screenshot helper KWin's restricted ScreenShot2 interface, for the overlay's freeze
+
+# KWin hands out org.kde.KWin.ScreenShot2 per executable: it canonicalises the
+# caller's /proc/<pid>/exe, looks for an installed desktop file whose Exec is that
+# same binary, and reads X-KDE-DBUS-Restricted-Interfaces off it. So this is a file
+# of its own — Exec has to be the helper, not /usr/bin/quickshell — and the path is
+# absolute, written in by ../install.sh at install time.
+#
+# Per executable means per copy of the binary. A shell started as `qs -p <checkout>`
+# runs the checkout's kwinshot, not the installed one, so install.sh writes this file
+# twice when the two differ: org.serpantinum.kwinshot.desktop for the installed tree
+# and org.serpantinum.kwinshot-dev.desktop for the checkout.
+#
+# It buys that binary the whole interface — the helper only calls CaptureArea,
+# CaptureActiveScreen and CaptureWorkspace: pixels straight from the compositor
+# instead of launching Spectacle for the overlay's freeze. Without it the helper is
+# told NoAuthorized and the overlay falls back to Spectacle, slower but intact.
+#
+# Delete this file to revoke that, then run: kbuildsycoca6
+Exec=@KWINSHOT@
+NoDisplay=true
+X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2

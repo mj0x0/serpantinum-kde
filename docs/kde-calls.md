@@ -16,10 +16,32 @@ of scope too: the Servers tab's `StopUnit`/`StartUnit` go straight to
 | `gdbus call … org.kde.KWin /Layouts org.kde.KeyboardLayouts.switchToNextLayout` | cycle keyboard layout; `getLayoutsList` + `getLayout` read it back |
 | `org.kde.KWin /VirtualDesktopManager` | `desktops` to list, `current` to switch (python-dbus, in `helpers/desktops.py`) |
 | `org.kde.KWin /Scripting org.kde.kwin.Scripting` | load and `start` our two scripts in `kwin/` — window and workspace events QML cannot see |
+| `gdbus call … org.kde.KWin /KWin org.kde.KWin.activeOutputName` | which monitor the screenshot overlay opens on; `kscreen-doctor` cannot answer it |
 | `X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1` | not a call: the desktop-file grant that lets us capture live dock thumbnails |
 
 KWin reuses `/Scripting/Script<id>`, so another client loading a script can stop ours by
 id. The bridges watchdog themselves and exit on `NameLost`.
+
+## Screen capture
+
+| | |
+|---|---|
+| `spectacle -b -n -m -o <file>` | the current monitor, no UI and no notification of its own — the overlay's freeze and the `--full` shortcut |
+| `spectacle -R region` | hand recording over to Spectacle, which draws its own selector; `-R` toggles, so the same call stops a recording |
+| `swappy -f <file>` | annotate a region before it is saved (optional, `--edit`) |
+
+| `org.kde.KWin.ScreenShot2.CaptureArea` | `helpers/kwinshot` — the overlay's freeze, pixels straight from the compositor instead of a ~250 ms Spectacle launch |
+
+`CaptureArea` hands the frame back through a pipe the caller passes, so the call and the
+read have to overlap or both ends wedge on a 64 KB pipe buffer. It is restricted: KWin
+canonicalises the caller's `/proc/<pid>/exe` and wants an installed desktop file whose
+`Exec` is that same binary, carrying `X-KDE-DBUS-Restricted-Interfaces`. That is per
+binary, so a `qs -p <checkout>` shell runs a different `kwinshot` than `qs -c
+serpantinum-kde` does and needs its own grant — `install.sh` writes both. Without one the
+answer is `NoAuthorized` and the overlay falls back to Spectacle without a word.
+
+Spectacle is single-instance: a capture started while another is live exits 0 and writes
+nothing, so both callers test the file instead of the exit code.
 
 ## Plasma session
 

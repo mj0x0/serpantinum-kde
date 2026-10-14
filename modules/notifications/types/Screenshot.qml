@@ -8,8 +8,8 @@ import Quickshell
 Notification {
     id: faceRoot
 
-    fullSummary: model ? (model.summary || "Screenshot") : ""
-    fullBody: model && model.body !== "" ? model.body : "Click to open the folder"
+    fullSummary: model ? (model.summary || "Captured screen") : ""
+    fullBody: model && model.body !== "" ? model.body : "Click to open the screenshot folder"
     accentColor: ThemeBackend.mauve
     overrideClick: true
 
