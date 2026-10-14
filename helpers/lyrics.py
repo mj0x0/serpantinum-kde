@@ -36,7 +36,7 @@ import urllib.request
 
 TIMEOUT = 8
 
-UA_POLITE = "quickshell-rice-mj0x0 (https://github.com/mj0x0)"
+UA_POLITE = "serpantinum-kde (https://github.com/mj0x0)"
 UA_BROWSER = "Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0"
 
 LRCLIB_HEADERS = {"User-Agent": UA_POLITE}
