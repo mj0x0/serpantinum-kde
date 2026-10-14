@@ -10,6 +10,7 @@ layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
     vec4 waveColor;
+    vec4 waveColor2;
     vec2 itemSize;
     float pad;
     float cy;
@@ -39,6 +40,13 @@ vec4 over(vec4 dst, vec4 src) {
     return src + dst * (1.0 - src.a);
 }
 
+// The ramp spans the played portion, so a full sweep is visible at any progress.
+vec3 rampAt(float x) {
+    float span = endX - pad;
+    float t = span > 0.0 ? clamp((x - pad) / span, 0.0, 1.0) : 0.0;
+    return mix(waveColor.rgb, waveColor2.rgb, t);
+}
+
 // Coverage of a horizontal line from x0 to x1 at cy with round caps.
 float capsule(vec2 p, float x0, float x1) {
     float d = length(p - vec2(clamp(p.x, x0, x1), cy)) - strokeWidth * 0.5;
@@ -63,7 +71,7 @@ vec4 waveLayer(vec2 p, vec4 shape, vec4 motion) {
     float a1 = shape.y;
     float a0 = a1 >= 1.0 ? 1.0 : a1 * 0.55;
     float alpha = mix(a0, a1, clamp((p.y - (top - a)) / a, 0.0, 1.0));
-    return vec4(waveColor.rgb, 1.0) * alpha * coverage;
+    return vec4(rampAt(p.x), 1.0) * alpha * coverage;
 }
 
 void main() {
@@ -73,7 +81,7 @@ void main() {
     vec4 c = rgb * trackAlpha * capsule(p, endX, itemSize.x - pad);
     c = over(c, waveLayer(p, shape0, motion0));
     c = over(c, waveLayer(p, shape1, motion1));
-    c = over(c, rgb * capsule(p, pad, endX));
+    c = over(c, vec4(rampAt(p.x), 1.0) * capsule(p, pad, endX));
 
     fragColor = c * qt_Opacity;
 }

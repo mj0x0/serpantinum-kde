@@ -18,8 +18,12 @@ Item {
     property color waveColor: ThemeBackend.mauve || "#cba6f7"
     Behavior on waveColor { ColorAnimation { duration: 600 } }
 
+    // Set it to ramp the played portion from waveColor to this; left alone the bar stays flat.
+    property color waveColor2: waveColor
+    Behavior on waveColor2 { ColorAnimation { duration: 600 } }
+
     property real trackAlpha: 0.28
-    property color handleHoverColor: Qt.lighter(waveColor, 1.15)
+    property color handleHoverColor: Qt.lighter(waveColor2, 1.15)
 
     function s(val) {
         return (typeof Scaler !== "undefined") ? Scaler.s(val) : val;
@@ -81,6 +85,7 @@ Item {
         }
 
         property color waveColor: bar.waveColor
+        property color waveColor2: bar.waveColor2
         property vector2d itemSize: Qt.vector2d(width, height)
         property real pad: bar.pad
         property real cy: bar.cy
@@ -105,7 +110,7 @@ Item {
         width: bar.handleSize
         height: bar.handleSize
         radius: width / 2
-        color: bar.isDragging ? bar.handleHoverColor : (mouseArea.containsMouse ? bar.handleHoverColor : bar.waveColor)
+        color: bar.isDragging ? bar.handleHoverColor : (mouseArea.containsMouse ? bar.handleHoverColor : bar.waveColor2)
         opacity: 1.0
         scale: bar.isDragging ? 1.25 : (mouseArea.containsMouse ? 1.15 : 1.0)
         Behavior on scale {

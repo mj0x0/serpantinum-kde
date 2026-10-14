@@ -1237,7 +1237,8 @@ Item {
                                 from: 0
                                 to: 100
                                 playing: root.musicData.status === "Playing"
-                                waveColor: root.mauve
+                                waveColor: root.blue
+                                waveColor2: root.pink
 
                                 Connections {
                                     target: root
