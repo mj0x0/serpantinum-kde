@@ -235,6 +235,96 @@ Rectangle {
         color: Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.7)
     }
 
+
+    // Side bars are narrow: the minute drops under the hour instead of beside it,
+    // and the date is a plain day-over-month column.
+    component SideMaterialClock : Item {
+        implicitWidth: timedate.timeParts.hasSeconds ? (sHour.width + barWindow.s(2) + sStack.width)
+                     : (timedate.timeParts.hasMinutes ? (sMinute.x + sMinute.width + (sAmPm.visible ? sAmPm.width + barWindow.s(1.5) : 0))
+                                                      : (sHour.width + (sAmPm.visible ? sAmPm.width + barWindow.s(1.5) : 0)))
+        implicitHeight: timedate.timeParts.hasSeconds ? Math.max(sHour.height, sStack.height)
+                      : (timedate.timeParts.hasMinutes
+                         ? (sAmPm.visible ? Math.max(sMinute.y + sMinute.height, sAmPm.y + sAmPm.height) : (sMinute.y + sMinute.height))
+                         : sHour.height)
+
+        Text {
+            id: sHour
+            x: 0
+            anchors.verticalCenter: timedate.timeParts.hasSeconds ? parent.verticalCenter : undefined
+            text: timedate.timeParts.hours
+            font.family: Fonts.ui
+            font.pixelSize: barWindow.s(timedate.timeParts.hasSeconds ? 16 : 18)
+            font.weight: Font.Black; font.bold: true; font.letterSpacing: -0.8
+            color: mocha.mauve
+        }
+        Text {
+            id: sMinute
+            visible: !timedate.timeParts.hasSeconds && timedate.timeParts.hasMinutes
+            x: barWindow.s(5)
+            y: sHour.height - barWindow.s(3)
+            text: timedate.timeParts.minutes
+            font.family: Fonts.ui; font.pixelSize: barWindow.s(15)
+            font.weight: Font.Black; font.bold: true; font.letterSpacing: -0.6
+            color: mocha.text
+        }
+        Text {
+            id: sAmPm
+            visible: !timedate.timeParts.hasSeconds && timedate.timeParts.ampm !== ""
+            x: timedate.timeParts.hasMinutes ? (sMinute.x + sMinute.width + barWindow.s(1.5)) : (sHour.width + barWindow.s(1.5))
+            y: (timedate.timeParts.hasMinutes ? (sMinute.y + sMinute.height) : (sHour.y + sHour.height)) - height - barWindow.s(1)
+            text: timedate.timeParts.ampm
+            font.family: Fonts.ui; font.pixelSize: barWindow.s(7.5)
+            font.weight: Font.Black; font.bold: true
+            color: mocha.subtext0
+        }
+        Column {
+            id: sStack
+            visible: timedate.timeParts.hasSeconds
+            x: sHour.width + barWindow.s(2)
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: barWindow.s(0.5)
+            Text {
+                text: timedate.timeParts.minutes
+                font.family: Fonts.ui; font.pixelSize: barWindow.s(10)
+                font.weight: Font.Black; font.bold: true; font.letterSpacing: -0.4
+                color: mocha.text
+            }
+            Text {
+                x: barWindow.s(1.5)
+                text: timedate.timeParts.seconds
+                font.family: Fonts.ui; font.pixelSize: barWindow.s(8.5)
+                font.weight: Font.Black; font.bold: true; font.letterSpacing: -0.3
+                color: mocha.teal
+            }
+            Text {
+                visible: timedate.timeParts.ampm !== ""
+                x: barWindow.s(1.5)
+                text: timedate.timeParts.ampm
+                font.family: Fonts.ui; font.pixelSize: barWindow.s(7)
+                font.weight: Font.Black; font.bold: true
+                color: mocha.subtext0
+            }
+        }
+    }
+
+    component SideMaterialDate : Column {
+        spacing: 0
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: timedate.dayStr
+            font.family: Fonts.ui; font.pixelSize: barWindow.s(11)
+            font.weight: Font.Black; font.bold: true
+            color: mocha.text
+        }
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: timedate.monthStr
+            font.family: Fonts.ui; font.pixelSize: barWindow.s(9.5)
+            font.weight: Font.Black; font.bold: true
+            color: mocha.subtext0
+        }
+    }
+
     Row {
         id: matRow
         visible: !timedate.vertical && timedate.style === "material"
@@ -249,12 +339,12 @@ Rectangle {
         visible: timedate.vertical && timedate.style === "material"
         anchors.centerIn: parent
         spacing: barWindow.s(6)
-        MaterialClock { anchors.horizontalCenter: parent.horizontalCenter }
+        SideMaterialClock { anchors.horizontalCenter: parent.horizontalCenter }
         MatDivider {
             anchors.horizontalCenter: parent.horizontalCenter
             width: barWindow.s(16); height: barWindow.s(2)
         }
-        MaterialDate { anchors.horizontalCenter: parent.horizontalCenter }
+        SideMaterialDate { anchors.horizontalCenter: parent.horizontalCenter }
     }
 
     // --- badge: a 3x5 dot-matrix font, lit dots on a dim grid ---
