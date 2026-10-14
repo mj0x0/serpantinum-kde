@@ -39,7 +39,14 @@ Singleton {
         var out = h > 0 ? String(h).padStart(2, "0") + ":" : "";
         return out + String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
     }
-    readonly property string icon: shownMode === 0 ? "\u{f051b}" : (shownMode === 1 ? "\u{f051f}" : "\u{f0176}")
+    function glyph(m: int): string {
+        return m === 0 ? "\u{f051b}" : (m === 1 ? "\u{f051f}" : "\u{f0176}");
+    }
+    readonly property string icon: glyph(shownMode)
+
+    // The card's own tab, not the running one — the floating rail names what you are looking at.
+    readonly property string modeIcon: glyph(mode)
+    readonly property string modeName: mode === 0 ? "Timer" : (mode === 1 ? "Stopwatch" : "Pomodoro")
     // Palette role name; the widget resolves it.
     readonly property string tone: shownMode === 0 ? "blue" : (shownMode === 1 ? "green" : (pomoState === 0 ? "peach" : "green"))
 }

@@ -1,6 +1,7 @@
 import "../../services/dock"
 import "../../services/layout"
 import "../../services/theme"
+import "../../services/timer"
 import QtQuick
 import QtQml
 import QtQuick.Layouts
@@ -146,7 +147,7 @@ Variants {
                 const mod = (index >= 0 && index < floatingWidget.tabModules.length) ? floatingWidget.tabModules[index] : "";
                 if (mod.indexOf("ColorPicker") !== -1) return { name: "Colour", icon: "󰈊" };
                 if (mod.indexOf("SystemUsage") !== -1) return { name: "System", icon: "󰍛" };
-                if (mod.indexOf("Timer") !== -1) return { name: "Timer", icon: "󰔛" };
+                if (mod.indexOf("Timer") !== -1) return { name: TimerState.modeName, icon: TimerState.modeIcon };
                 return { name: "Tab", icon: "󰍜" };
             }
 
