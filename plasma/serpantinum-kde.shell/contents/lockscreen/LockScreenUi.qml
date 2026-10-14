@@ -645,7 +645,7 @@ Item {
                                                     Behavior on color { ColorAnimation { duration: 180 } }
                                                     Text {
                                                         anchors.centerIn: parent
-                                                        text: passwordPill.revealed ? "󰿆" : "󰌾"
+                                                        text: passwordPill.revealed ? "󰈉" : "󰈈"
                                                         font.family: lockScreenUi.iconFont
                                                         font.pixelSize: lockScreenUi.s(17)
                                                         color: (lockScreenUi.failed || lockScreenUi.busy) ? passwordPill.signalColor : lockScreenUi.subtext0
