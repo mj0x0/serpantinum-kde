@@ -72,6 +72,7 @@ Variants {
             // --- bar.* settings (v2 schema; old topbar.* keys read as fallback) ---
             property string barStyle: "" + ShellSettings.value("bar.style", "modular")
             property string sysmonStyle: "" + ShellSettings.value("bar.sysmonStyle", "pill")
+            property string batStyle: "" + ShellSettings.value("bar.batStyle", "classic")
             readonly property bool isSolid: barStyle === "solid" || barStyle === "fill"
             readonly property bool isFill: barStyle === "fill"
             // Pill corners follow ui.radius; controls inside a pill sit 2px in, as upstream.
@@ -153,6 +154,7 @@ Variants {
                 Region { item: infoW;       radius: barWindow.pillRadius; intersection: Intersection.Combine }
                 Region { item: visW;        radius: barWindow.pillRadius; intersection: Intersection.Combine }
                 Region { item: sysmonW;     radius: barWindow.pillRadius; intersection: Intersection.Combine }
+                Region { item: batW;        radius: barWindow.pillRadius; intersection: Intersection.Combine }
                 Region { item: groupBg0;    radius: barWindow.pillRadius; intersection: Intersection.Combine }
                 Region { item: groupBg1;    radius: barWindow.pillRadius; intersection: Intersection.Combine }
                 Region { item: groupBg2;    radius: barWindow.pillRadius; intersection: Intersection.Combine }
@@ -496,7 +498,7 @@ Variants {
                     case "bt": return btW;               case "vol": return volW;
                     case "notif": return notifW;         case "focus": return focusW;
                     case "info": return infoW;           case "vis": return visW;
-                    case "sysmon": return sysmonW;
+                    case "sysmon": return sysmonW;   case "bat": return batW;
                     }
                     return null;
                 }
@@ -788,6 +790,12 @@ Variants {
                     barWindow: barWindow; mocha: mocha; vertical: barContent.vertical
                     placed: barContent.isPlaced("sysmon"); grouped: barContent.isGrouped("sysmon")
                     targetX: barContent.modulePos("sysmon"); targetY: barContent.modulePos("sysmon")
+                }
+                Bat {
+                    id: batW
+                    barWindow: barWindow; mocha: mocha; vertical: barContent.vertical
+                    placed: barContent.isPlaced("bat"); grouped: barContent.isGrouped("bat")
+                    targetX: barContent.modulePos("bat"); targetY: barContent.modulePos("bat")
                 }
             }
         }

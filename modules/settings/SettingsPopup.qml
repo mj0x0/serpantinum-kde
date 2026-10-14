@@ -680,6 +680,16 @@ Item {
                             }
                         }
                         Row {
+                            label: "Battery shape"
+                            glyph: "\u{f0079}"
+                            desc: "classic is the gradient wave fill; minimal adds a cap; text drops the pill"
+                            Chips {
+                                options: ["classic", "minimal", "text"]
+                                current: "" + ShellSettings.value("bar.batStyle", "classic")
+                                onPicked: v => ShellSettings.setValue("bar.batStyle", v)
+                            }
+                        }
+                        Row {
                             label: "Hide empty workspaces"
                             glyph: "\u{f05b0}"
                             desc: "Only workspaces with windows show; the active one always does"
