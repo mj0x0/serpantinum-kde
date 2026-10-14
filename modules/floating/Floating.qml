@@ -142,6 +142,23 @@ Variants {
 
             property int tabCount: Math.max(1, tabModules.length)
 
+            function tabInfo(index) {
+                const mod = (index >= 0 && index < floatingWidget.tabModules.length) ? floatingWidget.tabModules[index] : "";
+                if (mod.indexOf("ColorPicker") !== -1) return { name: "Colour", icon: "󰈊" };
+                if (mod.indexOf("SystemUsage") !== -1) return { name: "System", icon: "󰍛" };
+                if (mod.indexOf("Timer") !== -1) return { name: "Timer", icon: "󰔛" };
+                return { name: "Tab", icon: "󰍜" };
+            }
+
+            // The active pill grows to its label, so the rail needs the text width up front.
+            TextMetrics {
+                id: activeTabMetrics
+                font.family: Fonts.ui
+                font.pixelSize: floatingWidget.s(10)
+                font.weight: Font.Bold
+                text: floatingWidget.tabInfo(floatingWidget.activeIndex).name
+            }
+
             // --- IPC CONTROLS ---
             IpcHandler {
                 target: "floating"
@@ -326,7 +343,7 @@ Variants {
             }
             
             property real h_in: s(32) 
-            property real h_ac: s(112)
+            property real h_ac: Math.max(Math.round(s(54)), Math.round(activeTabMetrics.width + s(20)))
             property real itemSpacing: s(10)
 
             property real buttonSize: s(19)
@@ -1285,6 +1302,45 @@ Variants {
 
                                     scale: isActive ? 1.0 : (isPressed ? 0.95 : (isHovered ? 1.05 : 1.0))
                                     Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+
+                                    Item {
+                                        anchors.centerIn: parent
+                                        width: parent.width
+                                        height: parent.width
+                                        visible: opacity > 0.001
+                                        opacity: barPill.isActive ? 0.0 : 1.0
+                                        Behavior on opacity { enabled: !floatingWidget.disableAnim; NumberAnimation { duration: 200 } }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: floatingWidget.tabInfo(index).icon
+                                            font.family: Fonts.icons
+                                            font.pixelSize: floatingWidget.s(14)
+                                            font.bold: true
+                                            color: barPill.isHovered ? mocha.text : mocha.subtext0
+                                            rotation: floatingWidget.activeEdge === "right" ? 180 : (floatingWidget.activeEdge === "bottom" ? 90 : (floatingWidget.activeEdge === "top" ? -90 : 0))
+                                        }
+                                    }
+
+                                    Item {
+                                        anchors.centerIn: parent
+                                        width: parent.width
+                                        height: parent.height
+                                        visible: opacity > 0.001
+                                        opacity: barPill.isActive ? 1.0 : 0.0
+                                        clip: true
+                                        Behavior on opacity { enabled: !floatingWidget.disableAnim; NumberAnimation { duration: 200 } }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: floatingWidget.tabInfo(index).name
+                                            font.family: Fonts.ui
+                                            font.pixelSize: floatingWidget.s(10)
+                                            font.weight: Font.Bold
+                                            color: mocha.crust
+                                            rotation: (floatingWidget.activeEdge === "right" || floatingWidget.activeEdge === "bottom") ? 90 : -90
+                                        }
+                                    }
 
                                     MouseArea {
                                         id: barMouse
