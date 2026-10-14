@@ -1,0 +1,6 @@
+ClockFaceDigital 1.0 ClockFaceDigital.qml
+ClockFaceAnalog 1.0 ClockFaceAnalog.qml
+ClockFaceMinimal 1.0 ClockFaceMinimal.qml
+ClockFaceMaterial 1.0 ClockFaceMaterial.qml
+ClockFaceMaterialAnalog 1.0 ClockFaceMaterialAnalog.qml
+ClockFaceMaterialLumen 1.0 ClockFaceMaterialLumen.qml

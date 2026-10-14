@@ -9,6 +9,7 @@ import "../../services/dnd"
 import "../../services/kdeconnect"
 import "../../services/keepawake"
 import "../../services/layout"
+import "../../services/layout" as LayoutSvc
 import "../../services/network"
 import "../../services/power"
 import "../../services/reusables"
@@ -30,7 +31,8 @@ Item {
 
     signal closeRequested()
 
-    Scaler { id: scaler; currentWidth: Screen.width; currentHeight: Screen.height }
+    // Qualified: the shims Scaler singleton shadows this type under the plain import.
+    LayoutSvc.Scaler { id: scaler; currentWidth: Screen.width; currentHeight: Screen.height }
     function s(val) { return scaler.s(val); }
 
     readonly property bool isLeftAnchored: BarState.position === "right"

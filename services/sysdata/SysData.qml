@@ -1,5 +1,5 @@
 // Centralized system stats, refcounted so it only polls while subscribed. KDE port:
-// kvitals.sh --qs replaces serpantinum's sys_fetcher.sh, same cpu|ram%|ramGb|temp|rx|tx.
+// kvitals.sh --qs replaces serpantinum's sys_fetcher.sh, same cpu|ram%|ramGb|temp|rx|tx|disk%|diskGb|diskTotalGb.
 pragma Singleton
 import QtQuick
 import Quickshell
@@ -15,6 +15,9 @@ Item {
     property int temp: 0
     property real netRx: 0
     property real netTx: 0
+    property int diskPercent: 0
+    property real diskGb: 0.0
+    property real diskTotalGb: 0.0
 
     // --- Lifecycle Management ---
     property int subscribers: 0
@@ -32,6 +35,12 @@ Item {
         if (subscribers === 0) {
             fetchTimer.stop();
             fetchProc.running = false;
+        }
+    }
+
+    function prewarm() {
+        if (!fetchProc.running) {
+            fetchProc.running = true;
         }
     }
 
@@ -63,6 +72,11 @@ Item {
                     root.temp = parseInt(p[3]);
                     root.netRx = parseFloat(p[4]);
                     root.netTx = parseFloat(p[5]);
+                }
+                if (p.length >= 9) {
+                    root.diskPercent = parseInt(p[6]);
+                    root.diskGb = parseFloat(p[7]);
+                    root.diskTotalGb = parseFloat(p[8]);
                 }
             }
         }

@@ -1,0 +1,4 @@
+CpuFace 1.0 CpuFace.qml
+RamFace 1.0 RamFace.qml
+DiskFace 1.0 DiskFace.qml
+TempFace 1.0 TempFace.qml
