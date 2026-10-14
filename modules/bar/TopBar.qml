@@ -479,6 +479,7 @@ Variants {
                 // bar.groupColors (Settings -> Bar -> Layout): a palette name or hex per group, drawn as its pill's ring.
                 readonly property bool colorGroups: ShellSettings.value("bar.colorGroups", true) !== false
                 readonly property var groupColors: ShellSettings.value("bar.groupColors", null)
+                readonly property real groupRing: Math.max(1, Math.min(6, Number(ShellSettings.value("bar.groupRingWidth", 2)) || 2))
                 function groupTint(ids) {
                     if (!colorGroups || !ids.length || !groupColors || typeof groupColors !== "object") return "transparent";
                     var v = groupColors[BarModules.groupId(ids)];
@@ -677,7 +678,7 @@ Variants {
                     // The group colour is a ring, not a fill: a blend goes muddy over the dark surface.
                     readonly property color tint: barContent.groupTint(ids)
                     color: barWindow.pillBg
-                    border.width: tint.a > 0 ? barWindow.s(2) : 1
+                    border.width: tint.a > 0 ? barWindow.s(barContent.groupRing) : 1
                     border.color: tint.a > 0 ? Qt.rgba(tint.r, tint.g, tint.b, 0.85)
                                              : Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08 * barWindow.pillBorderAlpha)
                     Behavior on border.color { ColorAnimation { duration: 200 } }

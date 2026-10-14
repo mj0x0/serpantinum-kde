@@ -908,12 +908,24 @@ Item {
                             host: window
                         }
                         Row {
-                            label: "Colour the groups"
+                            label: "Ring the groups"
                             glyph: "\u{f00e9}"
-                            desc: "Each group gets its own palette colour, picked below; off, every group wears the accent"
+                            desc: "Each group's pill in the bar gets a ring in its own colour, picked below, and the chips above match; off, pills are plain and grouped chips wear the accent"
                             Toggle {
                                 checked: ShellSettings.value("bar.colorGroups", true) !== false
                                 onToggled: v => ShellSettings.setValue("bar.colorGroups", v)
+                            }
+                        }
+                        Row {
+                            label: "Ring width"
+                            glyph: "\u{f0b7e}"
+                            desc: "Thickness of the ring around a group's pill, in pixels"
+                            Slider {
+                                from: 1; to: 6; step: 1
+                                value: Number(ShellSettings.value("bar.groupRingWidth", 2))
+                                onCommitted: v => ShellSettings.setValue("bar.groupRingWidth", v)
+                                enabled: arranger.colorsOn
+                                opacity: enabled ? 1 : 0.4
                             }
                         }
                         Repeater {
