@@ -680,6 +680,15 @@ Item {
                             }
                         }
                         Row {
+                            label: "Hide empty workspaces"
+                            glyph: "\u{f05b0}"
+                            desc: "Only workspaces with windows show; the active one always does"
+                            Toggle {
+                                checked: ShellSettings.value("bar.hideEmptyWorkspaces", false) === true
+                                onToggled: v => ShellSettings.setValue("bar.hideEmptyWorkspaces", v)
+                            }
+                        }
+                        Row {
                             label: "Position"
                             glyph: "\u{f0053}"
                             desc: "Which screen edge holds the bar"

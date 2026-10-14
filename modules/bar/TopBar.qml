@@ -254,6 +254,8 @@ Variants {
             ListModel {
                 id: workspacesModel
                 property int activeIndex: 0
+                // Bumped on every occupancy change: a JS loop over rows cannot depend on them.
+                property int revision: 0
             }
 
             property var musicData: { "status": "Stopped", "title": "", "artUrl": "", "timeStr": "" }
@@ -297,11 +299,13 @@ Variants {
                                 while (workspacesModel.count < newData.length) workspacesModel.append({ "wsId": "", "wsState": "" });
                                 while (workspacesModel.count > newData.length) workspacesModel.remove(workspacesModel.count - 1);
                                 let newActive = -1;
+                                let touched = false;
                                 for (let i = 0; i < newData.length; i++) {
                                     if (newData[i].state === "active") newActive = i;
-                                    if (workspacesModel.get(i).wsState !== newData[i].state) workspacesModel.setProperty(i, "wsState", newData[i].state);
-                                    if (workspacesModel.get(i).wsId !== newData[i].id.toString()) workspacesModel.setProperty(i, "wsId", newData[i].id.toString());
+                                    if (workspacesModel.get(i).wsState !== newData[i].state) { workspacesModel.setProperty(i, "wsState", newData[i].state); touched = true; }
+                                    if (workspacesModel.get(i).wsId !== newData[i].id.toString()) { workspacesModel.setProperty(i, "wsId", newData[i].id.toString()); touched = true; }
                                 }
+                                if (touched) workspacesModel.revision++;
                                 if (newActive !== -1 && workspacesModel.activeIndex !== newActive) workspacesModel.activeIndex = newActive;
                             } catch(e) {}
                         }

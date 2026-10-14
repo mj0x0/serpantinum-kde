@@ -26,6 +26,26 @@ Rectangle {
     property string wsStyle: "" + ShellSettings.value("bar.workspaces.style", "pills")
     property bool activeIndicator: ShellSettings.value("bar.workspaces.activeIndicator", true) !== false
     property bool occupiedBg: ShellSettings.value("bar.workspaces.occupiedBg", true) !== false
+    property bool hideEmpty: ShellSettings.value("bar.hideEmptyWorkspaces", false) === true
+
+    // Where the active workspace sits once empties drop out, and how many cells remain.
+    // Both walk the rows, so they key off revision — binding to rows is not possible.
+    readonly property int visibleCount: {
+        let dummy = workspacesModel.revision;
+        if (!hideEmpty) return workspacesModel.count;
+        let n = 0;
+        for (let i = 0; i < workspacesModel.count; i++)
+            if (workspacesModel.get(i).wsState !== "empty") n++;
+        return Math.max(1, n);
+    }
+    readonly property int activeSlot: {
+        let dummy = workspacesModel.revision;
+        if (!hideEmpty) return workspacesModel.activeIndex;
+        let n = 0;
+        for (let i = 0; i < workspacesModel.activeIndex; i++)
+            if (workspacesModel.get(i).wsState !== "empty") n++;
+        return n;
+    }
     // Named palette role, so the tint follows the wallpaper like everything else.
     property string occupiedColorName: "" + ShellSettings.value("bar.workspaces.occupiedColor", "text")
     readonly property color occupiedTint: mocha[workspacesBox.occupiedColorName] !== undefined
@@ -109,7 +129,7 @@ Rectangle {
         z: 0
 
         property int prevIdx: 0
-        property int curIdx: workspacesModel.activeIndex
+        property int curIdx: workspacesBox.activeSlot
         property int dir: 1
 
         onCurIdxChanged: {
@@ -157,7 +177,7 @@ Rectangle {
         radius: workspacesBox.pillShort / 2
 
         property int prevIdx: 0
-        property int curIdx: workspacesModel.activeIndex
+        property int curIdx: workspacesBox.activeSlot
 
         onCurIdxChanged: {
             if (curIdx > prevIdx) { startAnim.duration = 400; endAnim.duration = 300; }
@@ -214,8 +234,8 @@ Rectangle {
         y: workspacesBox.vertical ? (activeHighlight.actualTop + activeHighlight.actualBottom - sz) / 2
                                   : (workspacesBox.height - sz) / 2
         // At either end he turns to face the way he can still travel, like hitting a wall.
-        readonly property int facing: workspacesModel.activeIndex <= 0 ? 1
-                                    : (workspacesModel.activeIndex >= workspacesModel.count - 1 ? -1 : activeHighlight.dir)
+        readonly property int facing: workspacesBox.activeSlot <= 0 ? 1
+                                    : (workspacesBox.activeSlot >= workspacesBox.visibleCount - 1 ? -1 : activeHighlight.dir)
         rotation: workspacesBox.vertical ? (facing > 0 ? 90 : -90) : 0
         transform: Scale { origin.x: pacman.sz / 2; xScale: workspacesBox.vertical ? 1 : pacman.facing }
 
@@ -259,7 +279,7 @@ Rectangle {
 
     Grid {
         id: wsLayout
-        columns: workspacesBox.vertical ? 1 : (workspacesModel.count || 1)
+        columns: workspacesBox.vertical ? 1 : (workspacesBox.visibleCount || 1)
         onColumnsChanged: Qt.callLater(wsLayout.forceLayout)
         anchors.centerIn: parent
         spacing: workspacesBox.cellSpacing
@@ -269,8 +289,9 @@ Rectangle {
             delegate: Rectangle {
                 id: wsPill
 
-                property bool isLimited: false
-                visible: !isLimited
+                // An empty workspace leaves the Grid entirely; the active one always stays.
+                readonly property bool isFiltered: workspacesBox.hideEmpty && !isActive && stateLabel === "empty"
+                visible: !isFiltered
 
                 property bool isHovered: wsPillMouse.containsMouse
 
