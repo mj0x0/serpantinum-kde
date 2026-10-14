@@ -860,7 +860,7 @@ Item {
                         id: qaAwake
                         keyFocused: root.keyZone === "quick" && root.quickIndex === 1
                         iconText: "󰅶"
-                        activeColor: Qt.tint(ThemeBackend.peach, "#5c3016")
+                        activeColor: ThemeBackend.yellow
                         isActive: KeepAwakeState.active
                         onLeftClicked: KeepAwakeState.toggle()
                         onRightClicked: PowerState.show()
