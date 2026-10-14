@@ -73,6 +73,7 @@ Variants {
             property string barStyle: "" + ShellSettings.value("bar.style", "modular")
             property string sysmonStyle: "" + ShellSettings.value("bar.sysmonStyle", "pill")
             property string batStyle: "" + ShellSettings.value("bar.batStyle", "classic")
+            property string timeStyle: "" + ShellSettings.value("bar.timeStyle", "classic")
             readonly property bool isSolid: barStyle === "solid" || barStyle === "fill"
             readonly property bool isFill: barStyle === "fill"
             // Pill corners follow ui.radius; controls inside a pill sit 2px in, as upstream.

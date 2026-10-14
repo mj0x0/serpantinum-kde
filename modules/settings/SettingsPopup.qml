@@ -680,6 +680,16 @@ Item {
                             }
                         }
                         Row {
+                            label: "Clock face"
+                            glyph: "\u{f00f0}"
+                            desc: "classic stacks time over date; material drops the minute on a diagonal; badge is a dot matrix"
+                            Chips {
+                                options: ["classic", "material", "badge"]
+                                current: "" + ShellSettings.value("bar.timeStyle", "classic")
+                                onPicked: v => ShellSettings.setValue("bar.timeStyle", v)
+                            }
+                        }
+                        Row {
                             label: "Battery shape"
                             glyph: "\u{f0079}"
                             desc: "classic is the gradient wave fill; minimal adds a cap; text drops the pill"
