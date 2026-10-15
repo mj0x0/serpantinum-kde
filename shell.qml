@@ -21,6 +21,7 @@ import "modules/traydrawer"
 import "modules/traymenu"
 import "modules/notifcenter"
 import "modules/notifications"
+import "modules/osd"
 import "modules/popups"
 import "modules/power"
 import "modules/screenshot"
@@ -141,6 +142,7 @@ ShellRoot {
     }
 
     Notifications {}
+    Osd {}
 
     // Every popup lives in this one window and morphs between slots (modules/popups).
     // The per-feature IPC targets below still work; `main` is the v2-style front door.

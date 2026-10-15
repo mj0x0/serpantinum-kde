@@ -702,6 +702,16 @@ Item {
                             }
                         }
                         Row {
+                            label: "Volume OSD"
+                            glyph: "\u{f057e}"
+                            desc: "Shows volume and mic changes near the bar. Turn Plasma's own volume OSD "
+                                + "off in System Settings -> Sound, or the two will stack"
+                            Toggle {
+                                checked: ShellSettings.value("osd.enabled", true) !== false
+                                onToggled: v => ShellSettings.setValue("osd.enabled", v)
+                            }
+                        }
+                        Row {
                             label: "Hide empty workspaces"
                             glyph: "\u{f05b0}"
                             desc: "Only workspaces with windows show; the active one always does"
