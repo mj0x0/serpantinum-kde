@@ -167,7 +167,8 @@ Item {
             Rectangle {
                 Layout.preferredWidth: root.s(56); Layout.preferredHeight: root.s(56)
                 radius: Radius.outer(root.s(12)); clip: true
-                border.width: 1; border.color: root.cSurface2
+                // Half strength: still catches a pale pick, near-invisible on a saturated one.
+                border.width: 1; border.color: Qt.rgba(root.cSurface2.r, root.cSurface2.g, root.cSurface2.b, 0.5)
                 // clip is rectangular in Qt, so both layers round themselves off instead.
                 Canvas {
                     id: checker
