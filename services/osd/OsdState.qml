@@ -1,7 +1,7 @@
 pragma Singleton
 
-// Volume and microphone OSD state. Turn Plasma's own volume OSD off or both show:
-// System Settings -> Sound, or plasmaparc [General] VolumeOsd/MuteOsd.
+// Port of serpantinum v2's OsdController, volume and mic kinds only. Plasma's own volume
+// OSD must be off (System Settings -> Sound) or both show.
 import "../audio"
 import "../settings"
 import QtQuick
@@ -9,88 +9,132 @@ import Quickshell
 import Quickshell.Services.Pipewire
 
 Singleton {
-    id: root
+    id: controller
 
     readonly property bool enabled: ShellSettings.value("osd.enabled", true) !== false
     readonly property int timeout: Math.max(400, Number(ShellSettings.value("osd.timeout", 1800)) || 1800)
 
-    property bool visible: false
-    property string kind: "volume"          // "volume" | "mic"
+    property bool isVisible: false
+    property string kind: "volume"
+    property var screen: null
+    property bool isHovered: false
 
-    readonly property PwNode sink: Audio.defaultSink
-    // A filter node as the default source (Easy Effects makes one) exposes no volume to
-    // Quickshell, so fall back to the first real input that does.
-    readonly property PwNode source: {
-        var d = Audio.defaultSource;
-        if (d && d.audio) return d;
-        var ins = Audio.inputs || [];
-        for (var i = 0; i < ins.length; i++)
-            if (ins[i] && ins[i].audio) return ins[i];
-        return d;
-    }
+    readonly property PwNode activeSink: Audio.defaultSink || (Audio.outputs && Audio.outputs.length > 0 ? Audio.outputs[0] : null)
+    readonly property real sysVolume: activeSink && activeSink.audio ? Math.round(activeSink.audio.volume * 100) : 0
+    readonly property bool sysMuted: activeSink && activeSink.audio ? activeSink.audio.muted : false
 
-    readonly property int volume: (sink && sink.audio) ? Math.round(sink.audio.volume * 100) : 0
-    readonly property bool muted: (sink && sink.audio) ? sink.audio.muted : false
-    readonly property int micVolume: (source && source.audio) ? Math.round(source.audio.volume * 100) : 0
-    readonly property bool micMuted: (source && source.audio) ? source.audio.muted : false
+    readonly property PwNode activeSource: Audio.defaultSource || (Audio.inputs && Audio.inputs.length > 0 ? Audio.inputs[0] : null)
+    readonly property real sysMicVolume: activeSource && activeSource.audio ? Math.round(activeSource.audio.volume * 100) : 0
+    readonly property bool sysMicMuted: activeSource && activeSource.audio ? activeSource.audio.muted : false
 
-    readonly property int shownValue: kind === "mic" ? micVolume : volume
-    readonly property bool shownMuted: kind === "mic" ? micMuted : muted
-
-    // Tracking the nodes keeps their audio bound, so volume changes actually arrive.
-    PwObjectTracker { objects: [root.sink, root.source].filter(n => n) }
-
-    function show(k) {
-        if (!enabled) return;
-        kind = k;
-        visible = true;
-        hideTimer.restart();
-    }
-
-    Timer { id: hideTimer; interval: root.timeout; onTriggered: root.visible = false }
-
-    // Nothing shows until a real change arrives: the first reading, and every switch of
-    // default device, only seeds the baseline.
-    property int lastVolume: -1
-    property int lastMicVolume: -1
+    property real lastVolume: -1
     property bool lastMuted: false
+    property real lastMicVolume: -1
     property bool lastMicMuted: false
-    property bool seeded: false
-    property bool micSeeded: false
+    property bool isInitialized: false
 
-    onSinkChanged: { seeded = false; seedTimer.restart() }
-    onSourceChanged: { micSeeded = false; seedTimer.restart() }
-
-    // A device that never moves never emits, so the baseline cannot wait for a signal:
-    // without this the first real change is swallowed as the seed.
     Timer {
-        id: seedTimer
-        interval: 600
-        running: true
+        id: hideTimer
+        interval: controller.timeout
+        repeat: false
         onTriggered: {
-            if (!root.seeded) { root.lastVolume = root.volume; root.lastMuted = root.muted; root.seeded = true; }
-            if (!root.micSeeded) { root.lastMicVolume = root.micVolume; root.lastMicMuted = root.micMuted; root.micSeeded = true; }
+            if (!controller.isHovered) {
+                controller.isVisible = false;
+            }
         }
     }
 
-    onVolumeChanged: step("volume")
-    onMutedChanged: step("volume")
-    onMicVolumeChanged: step("mic")
-    onMicMutedChanged: step("mic")
+    // A device that never changes never emits, so the baseline is taken on a timer, not
+    // from the first change signal. A device switch re-seeds the same way.
+    Timer {
+        id: initTimer
+        interval: 800
+        running: true
+        repeat: false
+        onTriggered: {
+            controller.lastVolume = controller.sysVolume;
+            controller.lastMuted = controller.sysMuted;
+            controller.lastMicVolume = controller.sysMicVolume;
+            controller.lastMicMuted = controller.sysMicMuted;
+            controller.isInitialized = true;
+        }
+    }
 
-    function step(k): void {
-        if (k === "mic") {
-            if (!micSeeded) { micSeeded = true; lastMicVolume = micVolume; lastMicMuted = micMuted; return; }
-            if (micVolume === lastMicVolume && micMuted === lastMicMuted) return;
-            lastMicVolume = micVolume;
-            lastMicMuted = micMuted;
-            show("mic");
+    onActiveSinkChanged: { isInitialized = false; initTimer.restart() }
+    onActiveSourceChanged: { isInitialized = false; initTimer.restart() }
+
+    onSysVolumeChanged: {
+        if (!controller.isInitialized) return;
+        if (controller.lastVolume !== controller.sysVolume) {
+            controller.lastVolume = controller.sysVolume;
+            controller.show("volume");
+        }
+    }
+
+    onSysMutedChanged: {
+        if (!controller.isInitialized) return;
+        if (controller.lastMuted !== controller.sysMuted) {
+            controller.lastMuted = controller.sysMuted;
+            controller.show("volume");
+        }
+    }
+
+    onSysMicVolumeChanged: {
+        if (!controller.isInitialized) return;
+        if (controller.lastMicVolume !== controller.sysMicVolume) {
+            controller.lastMicVolume = controller.sysMicVolume;
+            controller.show("mic");
+        }
+    }
+
+    onSysMicMutedChanged: {
+        if (!controller.isInitialized) return;
+        if (controller.lastMicMuted !== controller.sysMicMuted) {
+            controller.lastMicMuted = controller.sysMicMuted;
+            controller.show("mic");
+        }
+    }
+
+    function show(k, scr) {
+        if (!enabled) return;
+        controller.kind = k || "volume";
+        if (scr !== undefined && scr !== null) {
+            controller.screen = scr;
+        }
+        controller.isVisible = true;
+        hideTimer.restart();
+    }
+
+    function display(k, scr) {
+        show(k, scr);
+    }
+
+    function hide() {
+        hideTimer.stop();
+        controller.isVisible = false;
+    }
+
+    function requestHide() {
+        if (!controller.isHovered) {
+            hideTimer.restart();
+        }
+    }
+
+    function cancelHide() {
+        hideTimer.stop();
+    }
+
+    function restartTimer() {
+        if (controller.isVisible) {
+            hideTimer.restart();
+        }
+    }
+
+    function toggle(k, scr) {
+        if (controller.isVisible && controller.kind === k) {
+            hide();
         } else {
-            if (!seeded) { seeded = true; lastVolume = volume; lastMuted = muted; return; }
-            if (volume === lastVolume && muted === lastMuted) return;
-            lastVolume = volume;
-            lastMuted = muted;
-            show("volume");
+            show(k, scr);
         }
     }
 }

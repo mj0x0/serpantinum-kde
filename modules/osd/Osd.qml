@@ -1,227 +1,647 @@
-// Volume and mic OSD: a pill on the overlay layer. Placement follows serpantinum v2 --
-// it attaches to the bar only when the bar is solid/fill at full opacity and the
-// orientations agree; otherwise it sits at osd.horizontalPosition/verticalPosition.
+// Port of serpantinum v2's popouts/Osd.qml, volume and mic kinds only. Placement follows
+// upstream: attached to a solid/fill bar at full opacity when the orientations agree,
+// otherwise at osd.horizontalPosition/verticalPosition.
 import "../../services/bar"
+import "../../services/audio"
 import "../../services/layout"
 import "../../services/osd"
+import "../../services/reusables" as V2
 import "../../services/settings"
 import "../../services/theme"
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Services.Pipewire
 
 PanelWindow {
-    id: osd
+    id: osdWindow
 
     WlrLayershell.namespace: "osd"
     WlrLayershell.layer: WlrLayer.Overlay
     focusable: false
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
-    visible: OsdState.visible || card.anim > 0.001
 
-    anchors { top: true; bottom: true; left: true; right: true }
-    mask: Region { item: (OsdState.visible || card.anim > 0.001) ? card : null }
+    mask: Region {
+        item: (osdWindow.isVisible || osdContainer.animProgress > 0.001) ? osdContainer : null
+    }
+
+    anchors {
+        top: true
+        bottom: true
+        left: true
+        right: true
+    }
 
     Scaler { id: scaler; currentWidth: Screen.width }
     MatugenColors { id: mocha }
-    function s(v) { return scaler.s(v) }
+    function s(val) { return scaler.s(val) }
 
-    // --- placement, upstream's rules ---
+    readonly property color volColor: Qt.lighter(mocha.sapphire, 1.5)
+    readonly property color micColor: Qt.lighter(mocha.mauve, 1.3)
+
+    property string kind: OsdState.kind
+    property bool isVisible: OsdState.isVisible
+
+    readonly property PwNode activeSink: Audio.defaultSink || (Audio.outputs && Audio.outputs.length > 0 ? Audio.outputs[0] : null)
+    readonly property int volVal: activeSink && activeSink.audio ? Math.round(activeSink.audio.volume * 100) : 0
+    readonly property bool isMuted: activeSink && activeSink.audio ? activeSink.audio.muted : false
+
+    readonly property PwNode activeSource: Audio.defaultSource || (Audio.inputs && Audio.inputs.length > 0 ? Audio.inputs[0] : null)
+    readonly property int micVal: activeSource && activeSource.audio ? Math.round(activeSource.audio.volume * 100) : 0
+    readonly property bool isMicMuted: activeSource && activeSource.audio ? activeSource.audio.muted : false
+
+    readonly property bool isMutedState: kind === "mic" ? isMicMuted : isMuted
+    readonly property int currentVal: kind === "mic" ? micVal : volVal
+
+    // --- osd.* settings ---
+    readonly property string orientation: "" + ShellSettings.value("osd.orientation", "horizontal")
+    readonly property bool isVertical: orientation === "vertical"
     readonly property bool attachToBar: ShellSettings.value("osd.attachToBar", true) !== false
-    readonly property int horizontalPosition: Math.max(0, Math.min(100, Number(ShellSettings.value("osd.horizontalPosition", 50))))
-    readonly property int verticalPosition: Math.max(0, Math.min(100, Number(ShellSettings.value("osd.verticalPosition", 90))))
-    readonly property bool isVertical: ("" + ShellSettings.value("osd.orientation", "horizontal")) === "vertical"
+    readonly property real horizontalPosition: Math.max(0, Math.min(100, Number(ShellSettings.value("osd.horizontalPosition", 50))))
+    readonly property real verticalPosition: Math.max(0, Math.min(100, Number(ShellSettings.value("osd.verticalPosition", 90))))
 
-    readonly property string barStyle: "" + ShellSettings.value("bar.style", "modular")
-    readonly property real barOpacity: {
-        var op = Number(ShellSettings.value("bar.opacity", 85));
-        return op > 1.0 ? op / 100.0 : op;
+    onAttachToBarChanged: OsdState.hide()
+
+    // --- bar.* settings ---
+    property bool barAutohide: ShellSettings.value("bar.autohide", false) === true
+    onBarAutohideChanged: OsdState.hide()
+
+    property string barStyle: "" + ShellSettings.value("bar.style", "modular")
+    onBarStyleChanged: OsdState.hide()
+
+    property string barPosition: BarState.position
+    property real barOpacity: {
+        let op = Number(ShellSettings.value("bar.opacity", 85));
+        return op > 1.0 ? (op / 100.0) : op;
     }
-    readonly property bool barAutohide: ShellSettings.value("bar.autohide", false) === true
-    readonly property bool isSideBar: BarState.isVertical
-    readonly property bool isSolid: (barStyle === "solid" || barStyle === "fill") && Math.round(barOpacity * 100) >= 100
-    readonly property bool isAttached: attachToBar && isSolid && !barAutohide && !BarState.hidden
-                                       && (isSideBar ? isVertical : !isVertical)
-    readonly property bool isVerticalLayout: isAttached ? isSideBar : isVertical
-    readonly property real barThickness: BarState.hidden ? 0 : BarState.thickness
 
-    readonly property real osdWidth: isVerticalLayout ? s(58) : s(296)
-    readonly property real osdHeight: isVerticalLayout ? s(296) : s(58)
+    // BarState.hidden is autohide || fullscreen, fed by the bar window.
+    readonly property bool isBarEffectivelyHidden: barAutohide || BarState.hidden
+    property bool isSideBar: barPosition === "left" || barPosition === "right"
+    property bool isRightBar: barPosition === "right"
+    property bool isBottomBar: barPosition === "bottom"
+    property bool isSolid: (barStyle === "solid" || barStyle === "fill") && Math.round(barOpacity * 100) >= 100
+    readonly property bool isAttached: attachToBar && isSolid && !isBarEffectivelyHidden && (isSideBar ? isVertical : !isVertical)
+    readonly property bool isVerticalLayout: isAttached ? isSideBar : isVertical
+
+    // The bar's own height, no popup padding, so the pill sits flush against it.
+    property real barHeight: BarState.thickness
+
+    property real cornerRadius: Radius.outer(s(12))
+
+    property real osdWidth: isVerticalLayout ? s(58) : s(296)
+    property real osdHeight: isVerticalLayout ? s(296) : s(58)
+    property real collapsedWidth: s(58)
+
+    visible: isVisible || osdContainer.animProgress > 0.001
 
     // Screen, not window: a hidden PanelWindow reports 100x100 and every percentage
     // position would be computed against that.
     readonly property real areaW: Screen.width
     readonly property real areaH: Screen.height
 
-    readonly property real clampedX: {
-        if (!isAttached) return (areaW - osdWidth) * (horizontalPosition / 100.0);
-        if (!isSideBar) return (areaW - osdWidth) / 2;
-        return BarState.position === "right" ? areaW - barThickness - osdWidth : barThickness;
-    }
-    readonly property real clampedY: {
-        if (!isAttached) return (areaH - osdHeight) * (verticalPosition / 100.0);
-        if (isSideBar) return (areaH - osdHeight) / 2;
-        return BarState.position === "bottom" ? areaH - barThickness - osdHeight : barThickness;
+    property real clampedX: {
+        if (isAttached) {
+            if (isSideBar) {
+                if (isRightBar) {
+                    return areaW - barHeight - osdWidth;
+                } else {
+                    return barHeight;
+                }
+            } else {
+                return (areaW - osdWidth) / 2;
+            }
+        } else {
+            return (areaW - osdWidth) * (horizontalPosition / 100.0);
+        }
     }
 
-    readonly property color accent: OsdState.kind === "mic" ? mocha.mauve : mocha.sapphire
-    readonly property string glyph: {
-        if (OsdState.kind === "mic")
-            return OsdState.shownMuted ? "\u{f036d}" : "\u{f036c}";
-        if (OsdState.shownMuted || OsdState.shownValue === 0) return "\u{f075f}";
-        if (OsdState.shownValue < 34) return "\u{f057f}";
-        if (OsdState.shownValue < 67) return "\u{f0580}";
-        return "\u{f057e}";
+    property real clampedY: {
+        if (isAttached) {
+            if (isSideBar) {
+                return (areaH - osdHeight) / 2;
+            } else {
+                if (isBottomBar) {
+                    return areaH - barHeight - osdHeight;
+                } else {
+                    return barHeight;
+                }
+            }
+        } else {
+            return (areaH - osdHeight) * (verticalPosition / 100.0);
+        }
     }
-    readonly property real fill: Math.max(0, Math.min(1, OsdState.shownValue / 100))
 
     // Read-only: qs -p <checkout> ipc call osd state
     IpcHandler {
         target: "osd"
         function state(): string {
             return JSON.stringify({
-                window: osd.width + "x" + osd.height,
-                area: osd.areaW + "x" + osd.areaH,
-                barPosition: BarState.position,
-                barStyle: osd.barStyle,
-                barOpacity: osd.barOpacity,
-                barHidden: BarState.hidden,
-                barThickness: Math.round(osd.barThickness),
-                attachToBar: osd.attachToBar,
-                isSolid: osd.isSolid,
-                isSideBar: osd.isSideBar,
-                orientationVertical: osd.isVertical,
-                isAttached: osd.isAttached,
-                layout: osd.isVerticalLayout ? "vertical" : "horizontal",
-                size: Math.round(osd.osdWidth) + "x" + Math.round(osd.osdHeight),
-                x: Math.round(osd.clampedX),
-                y: Math.round(osd.clampedY),
-                cardX: Math.round(card.x),
-                cardY: Math.round(card.y),
-                visible: OsdState.visible
+                window: osdWindow.width + "x" + osdWindow.height,
+                area: osdWindow.areaW + "x" + osdWindow.areaH,
+                barPosition: osdWindow.barPosition,
+                barStyle: osdWindow.barStyle,
+                barOpacity: osdWindow.barOpacity,
+                barHidden: osdWindow.isBarEffectivelyHidden,
+                barThickness: Math.round(osdWindow.barHeight),
+                attachToBar: osdWindow.attachToBar,
+                isSolid: osdWindow.isSolid,
+                isSideBar: osdWindow.isSideBar,
+                orientationVertical: osdWindow.isVertical,
+                isAttached: osdWindow.isAttached,
+                layout: osdWindow.isVerticalLayout ? "vertical" : "horizontal",
+                size: Math.round(osdWindow.osdWidth) + "x" + Math.round(osdWindow.osdHeight),
+                x: Math.round(osdWindow.clampedX),
+                y: Math.round(osdWindow.clampedY),
+                containerX: Math.round(osdContainer.x),
+                containerY: Math.round(osdContainer.y),
+                containerSize: Math.round(osdContainer.width) + "x" + Math.round(osdContainer.height),
+                kind: osdWindow.kind,
+                value: osdWindow.currentVal,
+                muted: osdWindow.isMutedState,
+                sink: osdWindow.activeSink ? osdWindow.activeSink.name : null,
+                source: osdWindow.activeSource ? osdWindow.activeSource.name : null,
+                sourceBound: !!(osdWindow.activeSource && osdWindow.activeSource.audio),
+                visible: osdWindow.isVisible
             }, null, 1);
         }
         // Not `show`: that name collides with a qs ipc subcommand.
-        function peek(): void { OsdState.show("volume") }
+        function peek(kind: string): void { OsdState.show(kind === "mic" ? "mic" : "volume") }
     }
 
-    Rectangle {
-        id: card
-        x: osd.clampedX
-        y: osd.clampedY
-        width: osd.osdWidth
-        height: osd.osdHeight
-        radius: Radius.outer(osd.s(14))
-        color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.92)
-        border.width: 1
-        border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.07)
+    Timer {
+        id: cmdThrottle
+        interval: 50
+        property int targetPct: -1
+        onTriggered: {
+            if (targetPct >= 0) {
+                if (targetPct > 0 && osdWindow.isMuted) {
+                    if (osdWindow.activeSink && osdWindow.activeSink.audio && osdWindow.activeSink.audio.muted) {
+                        Audio.toggleMute(osdWindow.activeSink);
+                    }
+                }
+                if (osdWindow.activeSink) {
+                    Audio.setVolume(osdWindow.activeSink, targetPct);
+                }
+                targetPct = -1;
+            }
+        }
+    }
 
-        property real anim: OsdState.visible ? 1 : 0
-        Behavior on anim { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-        opacity: anim
-        // Slides in from the edge it is nearest.
-        transform: Translate {
-            x: osd.isVerticalLayout ? (BarState.position === "right" ? osd.s(16) * (1 - card.anim)
-                                                                     : -osd.s(16) * (1 - card.anim)) : 0
-            y: osd.isVerticalLayout ? 0
-             : ((osd.isAttached && BarState.position === "top") || (!osd.isAttached && osd.verticalPosition < 50)
-                ? -osd.s(16) * (1 - card.anim) : osd.s(16) * (1 - card.anim))
+    Timer {
+        id: micThrottle
+        interval: 50
+        property int targetPct: -1
+        onTriggered: {
+            if (targetPct >= 0) {
+                if (targetPct > 0 && osdWindow.isMicMuted) {
+                    if (osdWindow.activeSource && osdWindow.activeSource.audio && osdWindow.activeSource.audio.muted) {
+                        Audio.toggleMute(osdWindow.activeSource);
+                    }
+                }
+                if (osdWindow.activeSource) {
+                    Audio.setVolume(osdWindow.activeSource, targetPct);
+                }
+                targetPct = -1;
+            }
+        }
+    }
+
+    Item {
+        id: osdContainer
+
+        property real animProgress: osdWindow.isVisible ? 1.0 : 0.0
+        Behavior on animProgress {
+            NumberAnimation {
+                duration: osdWindow.isVisible ? 450 : 300
+                easing.type: osdWindow.isVisible ? Easing.OutQuint : Easing.InCubic
+            }
         }
 
-        // --- horizontal: icon, bar, percentage in a row ---
-        Item {
-            anchors.fill: parent
-            visible: !osd.isVerticalLayout
+        property real dynamicCornerRadius: osdWindow.isAttached ? Math.max(0, Math.min(osdWindow.cornerRadius, (osdWindow.isSideBar ? width : height))) : 0
 
-            Text {
-                id: hIcon
-                anchors.left: parent.left
-                anchors.leftMargin: osd.s(18)
-                anchors.verticalCenter: parent.verticalCenter
-                text: osd.glyph
-                font.family: Fonts.icons
-                font.pixelSize: osd.s(22)
-                color: OsdState.shownMuted ? mocha.overlay2 : osd.accent
-                Behavior on color { ColorAnimation { duration: 150 } }
+        x: {
+            if (osdWindow.isAttached) {
+                if (osdWindow.isSideBar && osdWindow.isRightBar) {
+                    return (osdWindow.clampedX + osdWindow.osdWidth) - width;
+                }
+                return osdWindow.clampedX;
             }
-            Text {
-                id: hPct
-                anchors.right: parent.right
-                anchors.rightMargin: osd.s(18)
-                anchors.verticalCenter: parent.verticalCenter
-                text: OsdState.shownMuted ? "muted" : OsdState.shownValue + "%"
-                font.family: Fonts.ui
-                font.pixelSize: osd.s(12)
-                font.weight: Font.Black
-                color: OsdState.shownMuted ? mocha.overlay2 : mocha.text
+            return (osdWindow.areaW - width) * (osdWindow.horizontalPosition / 100.0);
+        }
+        y: {
+            if (osdWindow.isAttached) {
+                if (!osdWindow.isSideBar && osdWindow.isBottomBar) {
+                    return (osdWindow.clampedY + osdWindow.osdHeight) - height;
+                }
+                return osdWindow.clampedY;
             }
+            return (osdWindow.areaH - height) * (osdWindow.verticalPosition / 100.0);
+        }
+        width: {
+            if (osdWindow.isAttached) {
+                if (osdWindow.isSideBar) {
+                    return osdWindow.osdWidth * animProgress;
+                }
+                return osdWindow.osdWidth;
+            }
+            if (osdWindow.isVerticalLayout) {
+                return osdWindow.osdWidth;
+            }
+            return osdWindow.collapsedWidth + (osdWindow.osdWidth - osdWindow.collapsedWidth) * animProgress;
+        }
+        height: {
+            if (osdWindow.isAttached) {
+                if (!osdWindow.isSideBar) {
+                    return osdWindow.osdHeight * animProgress;
+                }
+                return osdWindow.osdHeight;
+            }
+            if (osdWindow.isVerticalLayout) {
+                return osdWindow.collapsedWidth + (osdWindow.osdHeight - osdWindow.collapsedWidth) * animProgress;
+            }
+            return osdWindow.osdHeight;
+        }
+        opacity: osdWindow.isAttached ? ((osdWindow.isVisible || animProgress > 0.001) ? 1.0 : 0.0) : Math.max(0.0, Math.min(1.0, animProgress * 1.5))
+
+        transformOrigin: {
+            if (osdWindow.isAttached) {
+                if (osdWindow.isSideBar) {
+                    return osdWindow.isRightBar ? Item.Right : Item.Left;
+                }
+                return osdWindow.isBottomBar ? Item.Bottom : Item.Top;
+            }
+            return Item.Center;
+        }
+
+        // Concave fillets that blend the pill into the bar's edge.
+        ShaderEffect {
+            visible: osdWindow.isAttached && osdContainer.dynamicCornerRadius > 0.5
+            x: {
+                if (osdWindow.isSideBar) {
+                    return osdWindow.isRightBar ? (parent.width - osdContainer.dynamicCornerRadius) : 0;
+                }
+                return -osdContainer.dynamicCornerRadius;
+            }
+            y: {
+                if (osdWindow.isSideBar) {
+                    return -osdContainer.dynamicCornerRadius;
+                }
+                return osdWindow.isBottomBar ? (parent.height - osdContainer.dynamicCornerRadius) : 0;
+            }
+            width: osdContainer.dynamicCornerRadius
+            height: osdContainer.dynamicCornerRadius
+            property vector2d itemSize: Qt.vector2d(width, height)
+            property real cornerIndex: {
+                if (osdWindow.isSideBar) {
+                    return osdWindow.isRightBar ? 3.0 : 2.0;
+                }
+                return osdWindow.isBottomBar ? 3.0 : 1.0;
+            }
+            property color color: mocha.base
+            fragmentShader: Qt.resolvedUrl("../../services/reusables/assets/shaders/ui/corner_cutout.frag.qsb")
+        }
+
+        ShaderEffect {
+            visible: osdWindow.isAttached && osdContainer.dynamicCornerRadius > 0.5
+            x: {
+                if (osdWindow.isSideBar) {
+                    return osdWindow.isRightBar ? (parent.width - osdContainer.dynamicCornerRadius) : 0;
+                }
+                return parent.width;
+            }
+            y: {
+                if (osdWindow.isSideBar) {
+                    return parent.height;
+                }
+                return osdWindow.isBottomBar ? (parent.height - osdContainer.dynamicCornerRadius) : 0;
+            }
+            width: osdContainer.dynamicCornerRadius
+            height: osdContainer.dynamicCornerRadius
+            property vector2d itemSize: Qt.vector2d(width, height)
+            property real cornerIndex: {
+                if (osdWindow.isSideBar) {
+                    return osdWindow.isRightBar ? 1.0 : 0.0;
+                }
+                return osdWindow.isBottomBar ? 2.0 : 0.0;
+            }
+            property color color: mocha.base
+            fragmentShader: Qt.resolvedUrl("../../services/reusables/assets/shaders/ui/corner_cutout.frag.qsb")
+        }
+
+        Rectangle {
+            id: osdBox
+            anchors.fill: parent
+            color: mocha.base
+            radius: osdWindow.cornerRadius
+            border.width: osdWindow.isAttached ? 0 : 1
+            border.color: osdWindow.isAttached ? "transparent" : mocha.surface0
+            clip: true
+
+            // Square off the two corners that meet the bar.
             Rectangle {
-                anchors.left: hIcon.right
-                anchors.leftMargin: osd.s(14)
-                anchors.right: hPct.left
-                anchors.rightMargin: osd.s(12)
-                anchors.verticalCenter: parent.verticalCenter
-                height: osd.s(6)
-                radius: height / 2
-                color: Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.9)
-                Rectangle {
-                    width: osd.fill * parent.width
-                    height: parent.height
-                    radius: parent.radius
-                    color: OsdState.shownMuted ? mocha.overlay2 : osd.accent
-                    Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-                    Behavior on color { ColorAnimation { duration: 150 } }
+                visible: osdWindow.isAttached && !osdWindow.isSideBar && !osdWindow.isBottomBar && osdContainer.dynamicCornerRadius > 0.5
+                x: 0
+                y: 0
+                width: osdContainer.dynamicCornerRadius
+                height: osdContainer.dynamicCornerRadius
+                color: mocha.base
+            }
+
+            Rectangle {
+                visible: osdWindow.isAttached && !osdWindow.isSideBar && !osdWindow.isBottomBar && osdContainer.dynamicCornerRadius > 0.5
+                x: parent.width - osdContainer.dynamicCornerRadius
+                y: 0
+                width: osdContainer.dynamicCornerRadius
+                height: osdContainer.dynamicCornerRadius
+                color: mocha.base
+            }
+
+            Rectangle {
+                visible: osdWindow.isAttached && !osdWindow.isSideBar && osdWindow.isBottomBar && osdContainer.dynamicCornerRadius > 0.5
+                x: 0
+                y: parent.height - osdContainer.dynamicCornerRadius
+                width: osdContainer.dynamicCornerRadius
+                height: osdContainer.dynamicCornerRadius
+                color: mocha.base
+            }
+
+            Rectangle {
+                visible: osdWindow.isAttached && !osdWindow.isSideBar && osdWindow.isBottomBar && osdContainer.dynamicCornerRadius > 0.5
+                x: parent.width - osdContainer.dynamicCornerRadius
+                y: parent.height - osdContainer.dynamicCornerRadius
+                width: osdContainer.dynamicCornerRadius
+                height: osdContainer.dynamicCornerRadius
+                color: mocha.base
+            }
+
+            Rectangle {
+                visible: osdWindow.isAttached && osdWindow.isSideBar && !osdWindow.isRightBar && osdContainer.dynamicCornerRadius > 0.5
+                x: 0
+                y: 0
+                width: osdContainer.dynamicCornerRadius
+                height: osdContainer.dynamicCornerRadius
+                color: mocha.base
+            }
+
+            Rectangle {
+                visible: osdWindow.isAttached && osdWindow.isSideBar && !osdWindow.isRightBar && osdContainer.dynamicCornerRadius > 0.5
+                x: 0
+                y: parent.height - osdContainer.dynamicCornerRadius
+                width: osdContainer.dynamicCornerRadius
+                height: osdContainer.dynamicCornerRadius
+                color: mocha.base
+            }
+
+            Rectangle {
+                visible: osdWindow.isAttached && osdWindow.isSideBar && osdWindow.isRightBar && osdContainer.dynamicCornerRadius > 0.5
+                x: parent.width - osdContainer.dynamicCornerRadius
+                y: 0
+                width: osdContainer.dynamicCornerRadius
+                height: osdContainer.dynamicCornerRadius
+                color: mocha.base
+            }
+
+            Rectangle {
+                visible: osdWindow.isAttached && osdWindow.isSideBar && osdWindow.isRightBar && osdContainer.dynamicCornerRadius > 0.5
+                x: parent.width - osdContainer.dynamicCornerRadius
+                y: parent.height - osdContainer.dynamicCornerRadius
+                width: osdContainer.dynamicCornerRadius
+                height: osdContainer.dynamicCornerRadius
+                color: mocha.base
+            }
+
+            HoverHandler {
+                id: osdHoverHandler
+                onHoveredChanged: {
+                    OsdState.isHovered = hovered;
+                    if (hovered) {
+                        OsdState.cancelHide();
+                    } else {
+                        OsdState.requestHide();
+                    }
                 }
             }
-        }
 
-        // --- vertical: icon on top, bar filling upward, percentage at the foot ---
-        Item {
-            anchors.fill: parent
-            visible: osd.isVerticalLayout
+            ColumnLayout {
+                visible: osdWindow.isVerticalLayout
+                anchors.fill: parent
+                anchors.topMargin: osdWindow.s(14)
+                anchors.bottomMargin: osdWindow.s(14)
+                anchors.leftMargin: osdWindow.s(10)
+                anchors.rightMargin: osdWindow.s(10)
+                spacing: osdWindow.s(10)
 
-            Text {
-                id: vIcon
-                anchors.top: parent.top
-                anchors.topMargin: osd.s(18)
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: osd.glyph
-                font.family: Fonts.icons
-                font.pixelSize: osd.s(22)
-                color: OsdState.shownMuted ? mocha.overlay2 : osd.accent
-                Behavior on color { ColorAnimation { duration: 150 } }
+                V2.IconButton {
+                    Layout.alignment: Qt.AlignHCenter
+                    size: osdWindow.s(26)
+                    iconOffsetX: osdWindow.kind === "mic" ? 0 : -1
+                    cornerRadius: osdWindow.s(8)
+                    buttonIcon: {
+                        if (osdWindow.kind === "mic") {
+                            return osdWindow.isMicMuted || osdWindow.micVal === 0 ? "󰍭" : "󰍬";
+                        }
+                        return osdWindow.isMuted || osdWindow.volVal === 0 ? "󰖁" : (osdWindow.volVal > 50 ? "󰕾" : "󰖀");
+                    }
+                    iconFontSize: osdWindow.s(15)
+                    accentColor: mocha.surface1
+                    textColor: {
+                        if (isHoveredOrHighlighted) return mocha.text;
+                        if (osdWindow.kind === "mic") {
+                            return osdWindow.isMicMuted ? mocha.overlay0 : osdWindow.micColor;
+                        }
+                        return osdWindow.isMuted ? mocha.overlay0 : osdWindow.volColor;
+                    }
+                    onClicked: {
+                        OsdState.restartTimer();
+                        if (osdWindow.kind === "mic") {
+                            if (osdWindow.activeSource) {
+                                Audio.toggleMute(osdWindow.activeSource);
+                            }
+                        } else if (osdWindow.activeSink) {
+                            Audio.toggleMute(osdWindow.activeSink);
+                        }
+                    }
+                }
+
+                V2.Draggable {
+                    id: verticalSlider
+                    vertical: true
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: osdWindow.s(16)
+                    Layout.alignment: Qt.AlignHCenter
+                    from: 0.0
+                    to: 100.0
+                    value: osdWindow.currentVal
+                    backgroundColor: mocha.surface1
+
+                    readonly property color activeColor: {
+                        if (osdWindow.kind === "mic") {
+                            return osdWindow.isMicMuted ? mocha.surface2 : osdWindow.micColor;
+                        }
+                        return osdWindow.isMuted ? mocha.surface2 : osdWindow.volColor;
+                    }
+
+                    accentColor: activeColor
+                    gradColor1: activeColor
+                    gradColor2: Qt.lighter(activeColor, 1.05)
+                    gradColor3: Qt.lighter(activeColor, 1.10)
+                    cornerRadius: osdWindow.s(5)
+                    handleSize: osdWindow.s(22)
+                    showValueBubble: false
+
+                    handleColor: (osdWindow.isMutedState) ? mocha.overlay0 : Qt.lighter(activeColor, 1.15)
+                    handleHoverColor: (osdWindow.isMutedState) ? mocha.subtext0 : Qt.lighter(activeColor, 1.5)
+                    handleDragColor: (osdWindow.isMutedState) ? mocha.text : Qt.lighter(activeColor, 1.45)
+                    handleBorderColor: Qt.rgba(0, 0, 0, 0.2)
+
+                    onDragStarted: OsdState.cancelHide()
+                    onDragFinished: OsdState.restartTimer()
+                    onMoved: val => {
+                        OsdState.restartTimer();
+                        let pct = Math.max(0, Math.min(100, Math.round(val)));
+                        if (osdWindow.kind === "mic") {
+                            micThrottle.targetPct = pct;
+                            if (!micThrottle.running) micThrottle.start();
+                        } else {
+                            cmdThrottle.targetPct = pct;
+                            if (!cmdThrottle.running) cmdThrottle.start();
+                        }
+                    }
+                }
+
+                Item {
+                    id: verticalValueContainer
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: osdWindow.s(26)
+                    Layout.preferredHeight: osdWindow.s(26)
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: Math.round(verticalSlider.effectiveValue).toString()
+                        font.family: Fonts.ui
+                        font.pixelSize: osdWindow.s(13)
+                        font.bold: true
+                        color: osdWindow.isMutedState ? mocha.overlay0 : mocha.text
+                    }
+                }
             }
-            Text {
-                id: vPct
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: osd.s(16)
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: OsdState.shownMuted ? "\u{f075f}" : OsdState.shownValue + "%"
-                font.family: OsdState.shownMuted ? Fonts.icons : Fonts.ui
-                font.pixelSize: osd.s(OsdState.shownMuted ? 13 : 11)
-                font.weight: Font.Black
-                color: OsdState.shownMuted ? mocha.overlay2 : mocha.text
-            }
-            Rectangle {
-                anchors.top: vIcon.bottom
-                anchors.topMargin: osd.s(14)
-                anchors.bottom: vPct.top
-                anchors.bottomMargin: osd.s(12)
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: osd.s(6)
-                radius: width / 2
-                color: Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.9)
-                clip: true
-                Rectangle {
-                    anchors.bottom: parent.bottom
-                    width: parent.width
-                    height: osd.fill * parent.height
-                    radius: parent.radius
-                    color: OsdState.shownMuted ? mocha.overlay2 : osd.accent
-                    Behavior on height { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-                    Behavior on color { ColorAnimation { duration: 150 } }
+
+            Item {
+                visible: !osdWindow.isVerticalLayout
+                anchors.fill: parent
+
+                Item {
+                    width: osdWindow.s(58)
+                    height: parent.height
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    V2.IconButton {
+                        anchors.centerIn: parent
+                        size: osdWindow.s(30)
+                        cornerRadius: osdWindow.s(8)
+                        iconOffsetX: osdWindow.kind === "mic" ? 0 : -1
+                        buttonIcon: {
+                            if (osdWindow.kind === "mic") {
+                                return osdWindow.isMicMuted || osdWindow.micVal === 0 ? "󰍭" : "󰍬";
+                            }
+                            return osdWindow.isMuted || osdWindow.volVal === 0 ? "󰖁" : (osdWindow.volVal > 50 ? "󰕾" : "󰖀");
+                        }
+                        iconFontSize: osdWindow.s(15)
+                        accentColor: mocha.surface1
+                        textColor: {
+                            if (isHoveredOrHighlighted) return mocha.text;
+                            if (osdWindow.kind === "mic") {
+                                return osdWindow.isMicMuted ? mocha.overlay0 : osdWindow.micColor;
+                            }
+                            return osdWindow.isMuted ? mocha.overlay0 : osdWindow.volColor;
+                        }
+                        onClicked: {
+                            OsdState.restartTimer();
+                            if (osdWindow.kind === "mic") {
+                                if (osdWindow.activeSource) {
+                                    Audio.toggleMute(osdWindow.activeSource);
+                                }
+                            } else if (osdWindow.activeSink) {
+                                Audio.toggleMute(osdWindow.activeSink);
+                            }
+                        }
+                    }
+                }
+
+                V2.Draggable {
+                    id: horizontalSlider
+                    width: Math.max(0, osdContainer.width - osdWindow.s(116))
+                    height: osdWindow.s(18)
+                    anchors.left: parent.left
+                    anchors.leftMargin: osdWindow.s(58)
+                    anchors.right: parent.right
+                    anchors.rightMargin: osdWindow.s(58)
+                    anchors.verticalCenter: parent.verticalCenter
+                    opacity: Math.max(0.0, Math.min(1.0, (osdContainer.animProgress - 0.2) / 0.8))
+                    visible: opacity > 0.01
+                    showValueBubble: false
+
+                    from: 0.0
+                    to: 100.0
+                    value: osdWindow.currentVal
+                    backgroundColor: mocha.surface1
+
+                    readonly property color activeColor: {
+                        if (osdWindow.kind === "mic") {
+                            return osdWindow.isMicMuted ? mocha.surface2 : osdWindow.micColor;
+                        }
+                        return osdWindow.isMuted ? mocha.surface2 : osdWindow.volColor;
+                    }
+
+                    accentColor: activeColor
+                    gradColor1: activeColor
+                    gradColor2: Qt.lighter(activeColor, 1.05)
+                    gradColor3: Qt.lighter(activeColor, 1.10)
+                    cornerRadius: osdWindow.s(5)
+                    handleSize: osdWindow.s(22)
+
+                    handleColor: (osdWindow.isMutedState) ? mocha.overlay0 : Qt.lighter(activeColor, 1.15)
+                    handleHoverColor: (osdWindow.isMutedState) ? mocha.subtext0 : Qt.lighter(activeColor, 1.5)
+                    handleDragColor: (osdWindow.isMutedState) ? mocha.text : Qt.lighter(activeColor, 1.45)
+                    handleBorderColor: Qt.rgba(0, 0, 0, 0.2)
+
+                    onDragStarted: OsdState.cancelHide()
+                    onDragFinished: OsdState.restartTimer()
+                    onMoved: val => {
+                        OsdState.restartTimer();
+                        let pct = Math.max(0, Math.min(100, Math.round(val)));
+                        if (osdWindow.kind === "mic") {
+                            micThrottle.targetPct = pct;
+                            if (!micThrottle.running) micThrottle.start();
+                        } else {
+                            cmdThrottle.targetPct = pct;
+                            if (!cmdThrottle.running) cmdThrottle.start();
+                        }
+                    }
+                }
+
+                Item {
+                    id: horizontalValueContainer
+                    width: osdWindow.s(58)
+                    height: parent.height
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    opacity: Math.max(0.0, Math.min(1.0, (osdContainer.animProgress - 0.2) / 0.8))
+                    visible: opacity > 0.01
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: Math.round(horizontalSlider.effectiveValue).toString()
+                        font.family: Fonts.ui
+                        font.pixelSize: osdWindow.s(13)
+                        font.bold: true
+                        color: osdWindow.isMutedState ? mocha.overlay0 : mocha.text
+                    }
                 }
             }
         }
