@@ -20,8 +20,12 @@ Rectangle {
     readonly property real pillHeight: barWindow.s(34)
     default property alias content: sub.data
     property alias sub: sub
+    // Solid styles swallow this inner pill too, the way pillBg drops the outer one;
+    // hover still answers, or a naked icon would have no affordance at all.
+    readonly property bool nakedIcons: barWindow.isSolid && !barWindow.distinctPills
     property color subColor: hovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6)
-                                     : Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.4)
+                                     : (nakedIcons ? "transparent"
+                                                   : Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.4))
 
     readonly property real pad: grouped ? 0 : barWindow.s(20)
     readonly property real targetWidth: (placed && active && !vertical) ? subWidth + pad : 0
