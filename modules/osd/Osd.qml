@@ -1,6 +1,3 @@
-// Port of serpantinum v2's popouts/Osd.qml, volume and mic kinds only. Placement follows
-// upstream: attached to a solid/fill bar at full opacity when the orientations agree,
-// otherwise at osd.horizontalPosition/verticalPosition.
 import "../../services/bar"
 import "../../services/audio"
 import "../../services/layout"
@@ -17,6 +14,8 @@ import Quickshell.Services.Pipewire
 
 PanelWindow {
     id: osdWindow
+
+    screen: OsdState.screen
 
     WlrLayershell.namespace: "osd"
     WlrLayershell.layer: WlrLayer.Overlay
@@ -35,7 +34,7 @@ PanelWindow {
         right: true
     }
 
-    Scaler { id: scaler; currentWidth: Screen.width }
+    Scaler { id: scaler; currentWidth: osdWindow.areaW }
     MatugenColors { id: mocha }
     function s(val) { return scaler.s(val) }
 
@@ -64,6 +63,12 @@ PanelWindow {
     readonly property real verticalPosition: Math.max(0, Math.min(100, Number(ShellSettings.value("osd.verticalPosition", 90))))
 
     onAttachToBarChanged: OsdState.hide()
+
+    // Upstream hides on every settings reload, not only the three keys below.
+    Connections {
+        target: ShellSettings
+        function onCfgChanged() { OsdState.hide() }
+    }
 
     // --- bar.* settings ---
     property bool barAutohide: ShellSettings.value("bar.autohide", false) === true
@@ -98,10 +103,9 @@ PanelWindow {
 
     visible: isVisible || osdContainer.animProgress > 0.001
 
-    // Screen, not window: a hidden PanelWindow reports 100x100 and every percentage
-    // position would be computed against that.
-    readonly property real areaW: Screen.width
-    readonly property real areaH: Screen.height
+    // The output, not the window: a hidden PanelWindow reports 100x100.
+    readonly property real areaW: osdWindow.screen ? osdWindow.screen.width : Screen.width
+    readonly property real areaH: osdWindow.screen ? osdWindow.screen.height : Screen.height
 
     property real clampedX: {
         if (isAttached) {

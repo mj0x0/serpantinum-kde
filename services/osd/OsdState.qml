@@ -1,7 +1,5 @@
 pragma Singleton
 
-// Port of serpantinum v2's OsdController, volume and mic kinds only. Plasma's own volume
-// OSD must be off (System Settings -> Sound) or both show.
 import "../audio"
 import "../settings"
 import QtQuick
@@ -44,8 +42,7 @@ Singleton {
         }
     }
 
-    // A device that never changes never emits, so the baseline is taken on a timer, not
-    // from the first change signal. A device switch re-seeds the same way.
+    // Seed from a timer, not the first change signal: an unchanged device never emits.
     Timer {
         id: initTimer
         interval: 800
