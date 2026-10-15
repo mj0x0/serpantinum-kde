@@ -712,6 +712,46 @@ Item {
                             }
                         }
                         Row {
+                            label: "OSD attaches to the bar"
+                            glyph: "\u{f0176}"
+                            desc: "Only takes effect on a solid or fill bar at full opacity, with a matching "
+                                + "orientation; otherwise the position below is used"
+                            Toggle {
+                                checked: ShellSettings.value("osd.attachToBar", true) !== false
+                                onToggled: v => ShellSettings.setValue("osd.attachToBar", v)
+                            }
+                        }
+                        Row {
+                            label: "OSD orientation"
+                            glyph: "\u{f0bbf}"
+                            desc: "A side bar only attaches a vertical OSD; a top or bottom bar only a horizontal one"
+                            Chips {
+                                options: ["horizontal", "vertical"]
+                                current: "" + ShellSettings.value("osd.orientation", "horizontal")
+                                onPicked: v => ShellSettings.setValue("osd.orientation", v)
+                            }
+                        }
+                        Row {
+                            label: "OSD across"
+                            glyph: "\u{f04c1}"
+                            desc: "Horizontal position when it is not attached: 0 is the left edge, 100 the right"
+                            Slider {
+                                from: 0; to: 100; step: 5
+                                value: Number(ShellSettings.value("osd.horizontalPosition", 50))
+                                onCommitted: v => ShellSettings.setValue("osd.horizontalPosition", Math.round(v))
+                            }
+                        }
+                        Row {
+                            label: "OSD down"
+                            glyph: "\u{f04c0}"
+                            desc: "Vertical position when it is not attached: 0 is the top, 100 the bottom"
+                            Slider {
+                                from: 0; to: 100; step: 5
+                                value: Number(ShellSettings.value("osd.verticalPosition", 90))
+                                onCommitted: v => ShellSettings.setValue("osd.verticalPosition", Math.round(v))
+                            }
+                        }
+                        Row {
                             label: "Hide empty workspaces"
                             glyph: "\u{f05b0}"
                             desc: "Only workspaces with windows show; the active one always does"
