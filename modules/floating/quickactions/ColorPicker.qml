@@ -168,18 +168,36 @@ Item {
                 Layout.preferredWidth: root.s(56); Layout.preferredHeight: root.s(56)
                 radius: Radius.outer(root.s(12)); clip: true
                 border.width: 1; border.color: root.cSurface2
+                // clip is rectangular in Qt, so both layers round themselves off instead.
                 Canvas {
+                    id: checker
                     anchors.fill: parent
+                    property real r: Math.max(0, Math.min(parent.radius, width / 2, height / 2))
+                    onRChanged: requestPaint()
                     onPaint: {
                         var ctx = getContext("2d"); var sz = root.s(8);
+                        ctx.clearRect(0, 0, width, height);
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(r, 0); ctx.lineTo(width - r, 0); ctx.arcTo(width, 0, width, r, r);
+                        ctx.lineTo(width, height - r); ctx.arcTo(width, height, width - r, height, r);
+                        ctx.lineTo(r, height); ctx.arcTo(0, height, 0, height - r, r);
+                        ctx.lineTo(0, r); ctx.arcTo(0, 0, r, 0, r);
+                        ctx.closePath();
+                        ctx.clip();
                         for (var y = 0; y < height; y += sz)
                             for (var x = 0; x < width; x += sz) {
                                 ctx.fillStyle = ((Math.floor(x / sz) + Math.floor(y / sz)) % 2 === 0) ? "#e0e0e0" : "#a8a8a8";
                                 ctx.fillRect(x, y, sz, sz);
                             }
+                        ctx.restore();
                     }
                 }
-                Rectangle { anchors.fill: parent; color: Qt.rgba(root.pickedColor.r, root.pickedColor.g, root.pickedColor.b, root.alphaVal) }
+                Rectangle {
+                    anchors.fill: parent
+                    radius: parent.radius
+                    color: Qt.rgba(root.pickedColor.r, root.pickedColor.g, root.pickedColor.b, root.alphaVal)
+                }
             }
 
             Rectangle {
