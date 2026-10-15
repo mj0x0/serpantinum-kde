@@ -6,8 +6,7 @@
 var table = {
     calendar:    { w: 1450, h: 510, comp: "../calendar/CalendarPopup.qml",
                    pos: { top: "top-center", bottom: "bottom-center", left: "left-center", right: "right-center" } },
-    music:       { w: 700,  h: 650, comp: "../music/MusicPopup.qml",
-                   pos: { top: "top-start", bottom: "bottom-start", left: "left-start", right: "right-start" } },
+    music:       { w: 700,  h: 650, comp: "../music/MusicPopup.qml",         pos: nearIcon() },
     network:     { w: 860,  h: 620, comp: "../network/NetworkPopup.qml",     pos: nearIcon() },
     bluetooth:   { w: 860,  h: 620, comp: "../bluetooth/BluetoothPopup.qml", pos: nearIcon() },
     power:       { w: 860,  h: 620, comp: "../power/PowerPopup.qml",         pos: nearIcon() },

@@ -5,6 +5,7 @@
 import "../../services/bar"
 import "../../services/layout"
 import "../bluetooth"
+import "../music"
 import "../network"
 import "../notifcenter"
 import "../power"
@@ -72,6 +73,7 @@ PanelWindow {
         case "bluetooth":   return [BluetoothState.iconCenterX, BluetoothState.iconCenterY];
         case "power":       return [PowerState.iconCenterX, PowerState.iconCenterY];
         case "volume":      return [VolumeState.iconCenterX, VolumeState.iconCenterY];
+        case "music":       return [MusicState.iconCenterX, MusicState.iconCenterY];
         case "notifcenter": return [NotifCenterState.iconCenterX, NotifCenterState.iconCenterY];
         }
         return [-1, -1];

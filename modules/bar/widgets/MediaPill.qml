@@ -60,6 +60,21 @@ Rectangle {
     }
     function popoutAnchor() { return mediaBox.mapToItem(null, mediaBox.width / 2, mediaBox.height / 2); }
 
+    function reportPos() {
+        var c = mediaBox.popoutAnchor();
+        MusicState.iconCenterX = c.x;
+        MusicState.iconCenterY = c.y;
+    }
+    onXChanged: reportPos()
+    onYChanged: reportPos()
+    onWidthChanged: reportPos()
+    onHeightChanged: reportPos()
+    Component.onCompleted: reportPos()
+    Connections {
+        target: MusicState
+        function onOpenChanged() { if (MusicState.open) mediaBox.reportPos(); }
+    }
+
     // Declared first so it sits BEHIND the controls; only leftover box area hits it.
     MouseArea {
         anchors.fill: parent
