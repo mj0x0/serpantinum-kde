@@ -78,7 +78,7 @@ Item {
         interval: root.hideDelay
         onTriggered: if (root.autoHide && !winHover.hovered && root.previewGroup === null && root.menuGroup === null) root.revealed = false
     }
-    Component.onCompleted: if (autoHide) hideTimer.restart()
+    Component.onCompleted: { dockModel = buildModel(); if (autoHide) hideTimer.restart() }
     // Turning auto-hide off while hidden would otherwise strand the dock off-screen.
     onAutoHideChanged: {
         if (autoHide) hideTimer.restart();
@@ -140,14 +140,27 @@ Item {
 
     readonly property var windowList: WindowService.windows
 
+    // Rebuilt only when a window opens or closes or the pins change. Captions, focus and
+    // minimize state are read live by the items, so idle title churn never redraws the dock.
+    readonly property string modelKey: {
+        let parts = [pinnedApps.join("\n")]
+        for (let i = 0; i < windowList.length; i++) {
+            let w = windowList[i]
+            if (w && normId(w.appId) !== "") parts.push(normId(w.appId) + "\t" + w.id)
+        }
+        return parts.join("\n")
+    }
+    property var dockModel: []
+    onModelKeyChanged: dockModel = buildModel()
+
     // Unified model: pinned first, then unpinned running apps, grouped by appId.
-    readonly property var dockModel: {
+    function buildModel() {
         let groups = []
         let byKey = ({})
 
         for (let i = 0; i < pinnedApps.length; i++) {
             let id = "" + pinnedApps[i]
-            let g = { key: normId(id), id: id, pinned: true, windows: [] }
+            let g = { key: normId(id), id: id, pinned: true, ids: [] }
             groups.push(g)
             byKey[g.key] = g
         }
@@ -169,11 +182,11 @@ Item {
                 }
             }
             if (!g) {
-                g = { key: k, id: wobj.appId, pinned: false, windows: [] }
+                g = { key: k, id: wobj.appId, pinned: false, ids: [] }
                 groups.push(g)
                 byKey[k] = g
             }
-            g.windows.push(wobj)
+            g.ids.push(wobj.id)
         }
         return groups
     }

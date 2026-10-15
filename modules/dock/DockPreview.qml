@@ -20,7 +20,14 @@ PopupWindow {
     // Built for shownGroup, which trails dock.previewGroup: a mapped popup keeps its
     // top-left corner when it resizes, so new content means unmap, then map again.
     property var shownGroup: null
-    readonly property var wins: shownGroup ? (shownGroup.windows || []) : []
+    readonly property var winIds: shownGroup ? (shownGroup.ids || []) : []
+    // Cards are keyed by id and read their entry live, so a caption change never rebuilds them.
+    function lookup(id) {
+        let all = WindowService.windows
+        for (let i = 0; i < all.length; i++)
+            if (all[i] && all[i].id === id) return all[i]
+        return null
+    }
     Connections {
         target: dock
         function onPreviewGroupChanged() {
@@ -47,7 +54,7 @@ PopupWindow {
     // dock.thumbnails off: a compact caption list, no casts.
     readonly property bool thumbnails: ShellSettings.value("dock.thumbnails", false) === true
 
-    visible: shownGroup !== null && wins.length > 0
+    visible: shownGroup !== null && winIds.length > 0
     color: "transparent"
 
     implicitWidth:  bg.implicitWidth
@@ -93,12 +100,13 @@ PopupWindow {
 
             Repeater {
                 id: cardRepeater
-                model: preview.wins
+                model: preview.winIds
                 // Delegates die with the popup, and a dead delegate is a closed cast.
                 delegate: Rectangle {
                     id: card
                     required property var modelData
                     required property int index
+                    readonly property var win: preview.lookup(modelData)
                     width:  preview.thumbnails ? thumbBox.width + 12 : preview.rowW
                     height: preview.thumbnails ? preview.thumbH + preview.captionH + 16 : preview.rowH
                     radius: Radius.outer(10)
@@ -111,7 +119,7 @@ PopupWindow {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
-                            WindowService.activate(card.modelData.id)
+                            WindowService.activate(card.modelData)
                             dock.queuePreviewHide()
                         }
                     }
@@ -123,8 +131,8 @@ PopupWindow {
                         x: 6; y: 6
                         // From the window's client size, known before the popup maps: a popup
                         // does not grow once shown, so the box must be right from the start.
-                        readonly property real aspect: (card.modelData.w > 0 && card.modelData.h > 0)
-                            ? card.modelData.w / card.modelData.h
+                        readonly property real aspect: (card.win && card.win.w > 0 && card.win.h > 0)
+                            ? card.win.w / card.win.h
                             : (stream.ready && stream.streamSize.height > 0)
                                 ? stream.streamSize.width / stream.streamSize.height : preview.defaultAspect
                         width: Math.round(Math.max(preview.thumbMinW, Math.min(preview.thumbMaxW, preview.thumbH * aspect)))
@@ -135,8 +143,8 @@ PopupWindow {
                         // KWin has no frames for a minimized window, so no cast: the icon shows.
                         TaskManager.ScreencastingRequest {
                             id: cast
-                            uuid: (preview.thumbnails && !card.modelData.minimized && card.index < preview.maxCasts)
-                                  ? card.modelData.id : ""
+                            uuid: (preview.thumbnails && card.win && !card.win.minimized && card.index < preview.maxCasts)
+                                  ? card.modelData : ""
                         }
                         // Stays visible: kpipewire only runs a stream while its item is shown,
                         // so hiding this until ready would never let it become ready.
@@ -175,9 +183,9 @@ PopupWindow {
                         height: preview.captionH
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
-                        text: (card.modelData.caption && card.modelData.caption.length > 0)
-                              ? card.modelData.caption : card.modelData.appId
-                        color: card.modelData.active ? Colors.md3.primary : Colors.md3.on_surface
+                        text: !card.win ? ""
+                              : (card.win.caption && card.win.caption.length > 0) ? card.win.caption : card.win.appId
+                        color: card.win && card.win.active ? Colors.md3.primary : Colors.md3.on_surface
                         font.pixelSize: 12
                     }
 
@@ -203,7 +211,7 @@ PopupWindow {
                             anchors.fill: parent
                             hoverEnabled: true
                             onClicked: {
-                                WindowService.closeWindow(card.modelData.id)
+                                WindowService.closeWindow(card.modelData)
                                 dock.queuePreviewHide()
                             }
                         }

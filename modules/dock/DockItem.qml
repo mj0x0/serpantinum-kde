@@ -11,14 +11,22 @@ import QtQuick.Effects
 Item {
     id: item
 
-    required property var group        // { key, id, pinned, windows: [...] }
+    required property var group        // { key, id, pinned, ids: [...] }
     required property var dock         // Dock root (geometry + colors)
     required property var panelWindow
 
     implicitWidth:  dock.buttonSize
     implicitHeight: dock.buttonSize
 
-    readonly property var  windows: group ? (group.windows || []) : []
+    // Looked up live by id, so focus and minimize follow KWin without a dock rebuild.
+    readonly property var windows: {
+        let ids = group ? (group.ids || []) : []
+        let all = WindowService.windows
+        let out = []
+        for (let i = 0; i < all.length; i++)
+            if (all[i] && ids.indexOf(all[i].id) !== -1) out.push(all[i])
+        return out
+    }
     readonly property bool running: windows.length > 0
     readonly property bool active: {
         for (let i = 0; i < windows.length; i++) {
