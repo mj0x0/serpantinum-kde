@@ -278,6 +278,9 @@ Item {
             Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.s(20)
+                // The handle overhangs the track, so keep the whole slider off the panel edge.
+                Layout.leftMargin: root.s(6)
+                Layout.rightMargin: root.s(6)
                 Rectangle {
                     id: opTrack
                     anchors.fill: parent
