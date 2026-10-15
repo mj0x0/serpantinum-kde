@@ -45,20 +45,25 @@ PanelWindow {
     readonly property bool isAttached: attachToBar && isSolid && !barAutohide && !BarState.hidden
                                        && (isSideBar ? isVertical : !isVertical)
     readonly property bool isVerticalLayout: isAttached ? isSideBar : isVertical
-    readonly property real barThickness: BarState.hidden ? 0 : BarState.bandThickness
+    readonly property real barThickness: BarState.hidden ? 0 : BarState.thickness
 
     readonly property real osdWidth: isVerticalLayout ? s(58) : s(296)
     readonly property real osdHeight: isVerticalLayout ? s(296) : s(58)
 
+    // Screen, not window: a hidden PanelWindow reports 100x100 and every percentage
+    // position would be computed against that.
+    readonly property real areaW: Screen.width
+    readonly property real areaH: Screen.height
+
     readonly property real clampedX: {
-        if (!isAttached) return (osd.width - osdWidth) * (horizontalPosition / 100.0);
-        if (!isSideBar) return (osd.width - osdWidth) / 2;
-        return BarState.position === "right" ? osd.width - barThickness - osdWidth : barThickness;
+        if (!isAttached) return (areaW - osdWidth) * (horizontalPosition / 100.0);
+        if (!isSideBar) return (areaW - osdWidth) / 2;
+        return BarState.position === "right" ? areaW - barThickness - osdWidth : barThickness;
     }
     readonly property real clampedY: {
-        if (!isAttached) return (osd.height - osdHeight) * (verticalPosition / 100.0);
-        if (isSideBar) return (osd.height - osdHeight) / 2;
-        return BarState.position === "bottom" ? osd.height - barThickness - osdHeight : barThickness;
+        if (!isAttached) return (areaH - osdHeight) * (verticalPosition / 100.0);
+        if (isSideBar) return (areaH - osdHeight) / 2;
+        return BarState.position === "bottom" ? areaH - barThickness - osdHeight : barThickness;
     }
 
     readonly property color accent: OsdState.kind === "mic" ? mocha.mauve : mocha.sapphire
@@ -77,7 +82,8 @@ PanelWindow {
         target: "osd"
         function state(): string {
             return JSON.stringify({
-                screen: osd.width + "x" + osd.height,
+                window: osd.width + "x" + osd.height,
+                area: osd.areaW + "x" + osd.areaH,
                 barPosition: BarState.position,
                 barStyle: osd.barStyle,
                 barOpacity: osd.barOpacity,
@@ -97,7 +103,8 @@ PanelWindow {
                 visible: OsdState.visible
             }, null, 1);
         }
-        function show(): void { OsdState.show("volume") }
+        // Not `show`: that name collides with a qs ipc subcommand.
+        function peek(): void { OsdState.show("volume") }
     }
 
     Rectangle {

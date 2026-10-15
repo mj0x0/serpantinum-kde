@@ -18,6 +18,8 @@ Singleton {
     property bool solid: false
     property bool hidden: false
     // Screen edge -> the slab's inner edge (what a flush launcher butts against).
+    // The bar's own height, with no popup padding: what docks flush against it.
+    property real thickness: 48
     property real slabThickness: 56
     // Screen edge -> the bar window's far edge: its whole input strip.
     property real bandThickness: 56

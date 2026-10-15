@@ -66,6 +66,7 @@ Variants {
             Binding { target: BarState; property: "edgeGap"; value: barWindow.barHeight + barWindow.s(20) }
             Binding { target: BarState; property: "solid"; value: barWindow.isSolid }
             Binding { target: BarState; property: "hidden"; value: barWindow.autohide || barWindow.fullscreenActive }
+            Binding { target: BarState; property: "thickness"; value: barWindow.barHeight }
             Binding { target: BarState; property: "slabThickness"; value: barWindow.barHeight + (barWindow.isFill ? 0 : barWindow.s(8)) }
             Binding { target: BarState; property: "bandThickness"; value: barWindow.barHeight + (barWindow.isFill ? barWindow.s(14) : barWindow.s(8)) }
 
