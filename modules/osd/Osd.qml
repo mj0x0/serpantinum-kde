@@ -8,6 +8,7 @@ import "../../services/settings"
 import "../../services/theme"
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 
 PanelWindow {
@@ -70,6 +71,34 @@ PanelWindow {
         return "\u{f057e}";
     }
     readonly property real fill: Math.max(0, Math.min(1, OsdState.shownValue / 100))
+
+    // Read-only: qs -p <checkout> ipc call osd state
+    IpcHandler {
+        target: "osd"
+        function state(): string {
+            return JSON.stringify({
+                screen: osd.width + "x" + osd.height,
+                barPosition: BarState.position,
+                barStyle: osd.barStyle,
+                barOpacity: osd.barOpacity,
+                barHidden: BarState.hidden,
+                barThickness: Math.round(osd.barThickness),
+                attachToBar: osd.attachToBar,
+                isSolid: osd.isSolid,
+                isSideBar: osd.isSideBar,
+                orientationVertical: osd.isVertical,
+                isAttached: osd.isAttached,
+                layout: osd.isVerticalLayout ? "vertical" : "horizontal",
+                size: Math.round(osd.osdWidth) + "x" + Math.round(osd.osdHeight),
+                x: Math.round(osd.clampedX),
+                y: Math.round(osd.clampedY),
+                cardX: Math.round(card.x),
+                cardY: Math.round(card.y),
+                visible: OsdState.visible
+            }, null, 1);
+        }
+        function show(): void { OsdState.show("volume") }
+    }
 
     Rectangle {
         id: card
