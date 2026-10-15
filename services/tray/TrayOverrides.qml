@@ -32,8 +32,15 @@ Singleton {
             }
         }
         if (v === undefined || v === null) return null;
-        if (typeof v === "string") return { glyph: v, font: "", color: "" };
-        return { glyph: v.glyph || v.icon || "", font: v.font || "", color: v.color || "" };
+        if (typeof v === "string") return { glyph: v, font: "", color: "", pinned: false };
+        return { glyph: v.glyph || v.icon || "", font: v.font || "", color: v.color || "",
+                 pinned: v.pinned === true };
+    }
+
+    // Pinned items sit in the bar instead of the drawer.
+    function isPinned(id, title) {
+        var ov = lookup(id, title);
+        return !!(ov && ov.pinned);
     }
 
     readonly property string writer:
@@ -47,20 +54,38 @@ Singleton {
 
     function setEntry(key, glyph, color) {
         if (!key) return;
+        var old = (pendingMap || map)[key];
+        var font = (old && typeof old === "object" && old.font) ? old.font : "";
+        var pin = (old && typeof old === "object" && old.pinned === true);
+        write(key, { glyph: ("" + (glyph || "")).trim(), color: ("" + (color || "")).trim(),
+                     font: font, pinned: pin });
+    }
+
+    function setPinned(key, pinned) {
+        if (!key) return;
+        var old = (pendingMap || map)[key];
+        var isStr = (typeof old === "string");
+        write(key, {
+            glyph: isStr ? old : ((old && old.glyph) ? old.glyph : ""),
+            color: (old && !isStr && old.color) ? old.color : "",
+            font: (old && !isStr && old.font) ? old.font : "",
+            pinned: pinned === true
+        });
+    }
+
+    // One writer for both setters: an entry survives on a pin alone, so it cannot be
+    // dropped just because its glyph is empty.
+    function write(key, e) {
         var base = pendingMap || map;
         var next = {};
         for (var k in base) next[k] = base[k];
 
-        var g = ("" + (glyph || "")).trim();
-        if (g === "") {
+        if (e.glyph === "" && !e.pinned && e.color === "" && e.font === "") {
             delete next[key];
+        } else if (!e.pinned && e.color === "" && e.font === "") {
+            next[key] = e.glyph;
         } else {
-            var old = base[key];
-            var font = (old && typeof old === "object" && old.font) ? old.font : "";
-            var c = ("" + (color || "")).trim();
-            next[key] = (c === "" && font === "")
-                      ? g
-                      : { glyph: g, color: c, font: font };
+            next[key] = { glyph: e.glyph, color: e.color, font: e.font, pinned: e.pinned };
         }
         pendingMap = next;
         var json = JSON.stringify(next);

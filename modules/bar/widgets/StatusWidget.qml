@@ -15,6 +15,8 @@ Rectangle {
     property int revealDelay: 0
     property bool hovered: false
     property real subWidth: 0
+    // Along-the-bar size when vertical; only the tray needs more than one cell.
+    property real subHeight: barWindow.s(34)
     property real targetX: 0
     property real targetY: 0
     readonly property real pillHeight: barWindow.s(34)
@@ -37,7 +39,7 @@ Rectangle {
 
     readonly property real pad: grouped ? 0 : barWindow.s(20)
     readonly property real targetWidth: (placed && active && !vertical) ? subWidth + pad : 0
-    readonly property real targetHeight: (placed && active && vertical) ? pillHeight + pad : 0
+    readonly property real targetHeight: (placed && active && vertical) ? subHeight + pad : 0
 
     x: vertical ? 0 : targetX
     y: vertical ? targetY : (parent.height - barWindow.barHeight) / 2
@@ -70,7 +72,7 @@ Rectangle {
         id: sub
         anchors.centerIn: parent
         width: root.vertical ? root.pillHeight : root.subWidth
-        height: root.pillHeight
+        height: root.vertical ? root.subHeight : root.pillHeight
         radius: barWindow.innerRadius
         color: root.subColor
         clip: true
@@ -78,5 +80,6 @@ Rectangle {
         Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
         Behavior on color { ColorAnimation { duration: 200 } }
         Behavior on width { enabled: !root.vertical; NumberAnimation { duration: 500; easing.type: Easing.OutQuint } }
+        Behavior on height { enabled: root.vertical; NumberAnimation { duration: 500; easing.type: Easing.OutQuint } }
     }
 }

@@ -221,7 +221,8 @@ Item {
             seen[key] = true;
             var ov = TrayOverrides.lookup(it.id, it.title);
             rows.push({ key: key, title: it.title || it.id, running: true,
-                        glyph: ov ? ov.glyph : "", color: ov ? ov.color : "" });
+                        glyph: ov ? ov.glyph : "", color: ov ? ov.color : "",
+                        pinned: ov ? ov.pinned === true : false });
         }
         for (var k in TrayOverrides.map) {
             if (seen[k]) continue;
@@ -229,7 +230,8 @@ Item {
             var isStr = (typeof v === "string");
             rows.push({ key: k, title: k, running: false,
                         glyph: isStr ? v : (v && v.glyph ? v.glyph : ""),
-                        color: isStr ? "" : (v && v.color ? v.color : "") });
+                        color: isStr ? "" : (v && v.color ? v.color : ""),
+                        pinned: !isStr && v && v.pinned === true });
         }
         return rows;
     }
@@ -923,8 +925,9 @@ Item {
                         title: "Tray"
                         Row {
                             label: "Icon overrides"
-                            desc: "Type a Nerd Font glyph to replace an app's tray icon; empty keeps its own. "
-                                + "The colour is a palette role, so it follows the theme. Saved to tray-icons.json"
+                            desc: "The switch lifts an app out of the drawer and into the bar. Type a Nerd Font "
+                                + "glyph to replace its icon; empty keeps its own. The colour is a palette role, "
+                                + "so it follows the theme. Saved to tray-icons.json"
                             glyph: "\u{f129e}"
                         }
 
@@ -952,6 +955,10 @@ Item {
                                             font.pixelSize: window.s(15)
                                             color: modelData.glyph ? window.tintOf(modelData.color) : window.overlay0
                                         }
+                                    }
+                                    Toggle {
+                                        checked: modelData.pinned
+                                        onToggled: v => TrayOverrides.setPinned(modelData.key, v)
                                     }
                                     PathField {
                                         implicitWidth: window.s(96)

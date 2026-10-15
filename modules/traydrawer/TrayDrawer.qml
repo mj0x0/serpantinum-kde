@@ -100,7 +100,14 @@ PanelWindow {
 
         MouseArea { anchors.fill: parent }
 
-        Repeater { id: counter; model: SystemTray.items; delegate: Item { visible: false } }
+        // Pinned items live in the bar, so the drawer neither counts nor draws them.
+        readonly property var drawerItems: {
+            var out = [], items = SystemTray.items ? SystemTray.items.values : [];
+            for (var i = 0; i < items.length; i++)
+                if (!TrayOverrides.isPinned(items[i].id, items[i].title)) out.push(items[i]);
+            return out;
+        }
+        Repeater { id: counter; model: card.drawerItems; delegate: Item { visible: false } }
 
         Grid {
             id: grid
@@ -110,7 +117,7 @@ PanelWindow {
             spacing: drawer.s(4)
 
             Repeater {
-                model: SystemTray.items
+                model: card.drawerItems
                 delegate: Rectangle {
                     id: cell
                     required property var modelData
