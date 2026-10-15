@@ -171,7 +171,10 @@ Item {
                 Canvas {
                     id: checker
                     anchors.fill: parent
-                    property real r: Math.max(0, Math.min(parent.radius, width / 2, height / 2))
+                    // Held off the edge: the fill's antialiased rim must blend with the
+                    // background, not with the pale checkerboard under it.
+                    anchors.margins: 2
+                    property real r: Math.max(0, Math.min(parent.radius - 2, width / 2, height / 2))
                     onRChanged: requestPaint()
                     onPaint: {
                         var ctx = getContext("2d"); var sz = root.s(8);
@@ -195,6 +198,7 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: parent.radius
+                    antialiasing: true
                     color: Qt.rgba(root.pickedColor.r, root.pickedColor.g, root.pickedColor.b, root.alphaVal)
                 }
             }
