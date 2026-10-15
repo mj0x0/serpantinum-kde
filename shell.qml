@@ -1,5 +1,7 @@
 //@ pragma UseQApplication
 //@ pragma Env QSG_RHI_BACKEND=vulkan
+//@ pragma Env QSG_NO_VSYNC=1
+// KWin 6.8 + NVIDIA: a FIFO swapchain sends commit-timing stamps that stall the whole output.
 // NVIDIA's OpenGL path leaks per rendered frame under Wayland explicit sync; Vulkan does not.
 // The one shell instance: bar, dock, launcher, popups, Floating, notifications,
 // polkit and every IPC target. UseQApplication is required for the tray's context menus.
