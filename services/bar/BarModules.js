@@ -5,7 +5,7 @@
 
 var KNOWN = ["actions", "workspaces", "media", "timedate", "weather", "tray",
              "kb", "network", "awake", "power", "bt", "vol", "notif",
-             "focus", "info", "vis", "sysmon", "bat"];
+             "focus", "info", "vis", "sysmon", "bat", "traypinned"];
 var STATUS_GROUP = ["kb", "network", "awake", "power", "bt", "vol", "notif"];
 
 var INFO = {
@@ -26,7 +26,8 @@ var INFO = {
     info:       { label: "Recording",  icon: "\u{f0c4c}" },
     vis:        { label: "Visualiser", icon: "\u{f075a}" },
     sysmon:     { label: "System",     icon: "\u{f035b}" },
-    bat:        { label: "Battery",    icon: "\u{f0079}" }
+    bat:        { label: "Battery",    icon: "\u{f0079}" },
+    traypinned: { label: "Pinned tray", icon: "\u{f0403}" }
 };
 
 function aliasOf(id) {
@@ -37,6 +38,7 @@ function aliasOf(id) {
     case "wifi": return "network";
     case "volume": return "vol";
     case "battery": return "bat";
+    case "pinned": case "traypins": return "traypinned";
     case "notifications": case "bell": return "notif";
     }
     return "" + id;

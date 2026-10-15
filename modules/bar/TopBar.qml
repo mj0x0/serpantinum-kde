@@ -156,6 +156,7 @@ Variants {
                 Region { item: visW;        radius: barWindow.pillRadius; intersection: Intersection.Combine }
                 Region { item: sysmonW;     radius: barWindow.pillRadius; intersection: Intersection.Combine }
                 Region { item: batW;        radius: barWindow.pillRadius; intersection: Intersection.Combine }
+                Region { item: trayPinW;    radius: barWindow.pillRadius; intersection: Intersection.Combine }
                 Region { item: groupBg0;    radius: barWindow.pillRadius; intersection: Intersection.Combine }
                 Region { item: groupBg1;    radius: barWindow.pillRadius; intersection: Intersection.Combine }
                 Region { item: groupBg2;    radius: barWindow.pillRadius; intersection: Intersection.Combine }
@@ -500,6 +501,7 @@ Variants {
                     case "notif": return notifW;         case "focus": return focusW;
                     case "info": return infoW;           case "vis": return visW;
                     case "sysmon": return sysmonW;   case "bat": return batW;
+                    case "traypinned": return trayPinW;
                     }
                     return null;
                 }
@@ -797,6 +799,12 @@ Variants {
                     barWindow: barWindow; mocha: mocha; vertical: barContent.vertical
                     placed: barContent.isPlaced("bat"); grouped: barContent.isGrouped("bat")
                     targetX: barContent.modulePos("bat"); targetY: barContent.modulePos("bat")
+                }
+                TrayPinned {
+                    id: trayPinW
+                    barWindow: barWindow; mocha: mocha; vertical: barContent.vertical
+                    placed: barContent.isPlaced("traypinned"); grouped: barContent.isGrouped("traypinned")
+                    targetX: barContent.modulePos("traypinned"); targetY: barContent.modulePos("traypinned")
                 }
             }
         }

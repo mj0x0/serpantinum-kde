@@ -4,6 +4,7 @@ MediaPill 1.0 MediaPill.qml
 TimeDate 1.0 TimeDate.qml
 Weather 1.0 Weather.qml
 TrayPill 1.0 TrayPill.qml
+TrayPinned 1.0 TrayPinned.qml
 StatusWidget 1.0 StatusWidget.qml
 Kb 1.0 Kb.qml
 NetworkPill 1.0 NetworkPill.qml
