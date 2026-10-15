@@ -127,6 +127,15 @@ Item {
     property bool widgetVisible: parent !== null && parent.visible !== undefined ? parent.visible : true
     property bool anyTimerActive: stateCache.timerTargetEpoch > 0 || stateCache.swStartEpoch > 0 || stateCache.pomoTargetEpoch > 0
 
+    // The digits shown, frozen while the panel is collapsed: the ticker keeps the state
+    // current, but a hidden Text that changes still re-renders the whole overlay.
+    property int  shownTimerMs: 0
+    property real shownSwMs: 0
+    property int  shownPomoMs: 0
+    Binding { target: root; property: "shownTimerMs"; value: stateCache.timerRemainingMs;     when: root.widgetVisible; restoreMode: Binding.RestoreNone }
+    Binding { target: root; property: "shownSwMs";    value: stopwatchView.currentDisplayMs; when: root.widgetVisible; restoreMode: Binding.RestoreNone }
+    Binding { target: root; property: "shownPomoMs";  value: stateCache.pomoRemainingMs;      when: root.widgetVisible; restoreMode: Binding.RestoreNone }
+
     // Keys claimed while this is the active tab - Floating asks childIntercepts() first.
     // Plain 1-3 stay with Floating for tab switching; the modes take Shift+1-3.
     property var interceptedShortcuts: {
@@ -483,7 +492,7 @@ Item {
                     // Running Text Display
                     Text {
                         anchors.centerIn: parent
-                        text: root.formatTime(stateCache.timerRemainingMs, false)
+                        text: root.formatTime(root.shownTimerMs, false)
                         font.family: Fonts.ui
                         font.weight: Font.Black
                         font.pixelSize: root.s(68)
@@ -607,7 +616,7 @@ Item {
                         Text {
                             id: swTimeText
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: root.formatTime(stopwatchView.currentDisplayMs, true)
+                            text: root.formatTime(root.shownSwMs, true)
                             font.family: Fonts.ui
                             font.weight: Font.Black
                             font.pixelSize: root.s(52)
@@ -767,7 +776,7 @@ Item {
 
                         Text {
                             Layout.alignment: Qt.AlignHCenter
-                            text: root.formatTime(stateCache.pomoRemainingMs, false)
+                            text: root.formatTime(root.shownPomoMs, false)
                             font.family: Fonts.ui; font.weight: Font.Black; font.pixelSize: root.s(68)
                             color: root.cText
                         }

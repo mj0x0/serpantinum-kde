@@ -77,30 +77,50 @@ Item {
         from: 0; to: Math.PI * 2; duration: 1800; loops: Animation.Infinite; running: root.widgetVisible
     }
 
-    Component.onCompleted: SysData.subscribe()
-    Component.onDestruction: SysData.unsubscribe()
+    // Readings reach the widget only while it is shown: a collapsed panel that keeps
+    // animating re-renders the whole overlay on every sample.
+    function pull() {
+        cpuUsage  = isNaN(SysData.cpu) ? 0.0 : SysData.cpu / 100.0;
+        tempC     = isNaN(SysData.temp) ? 0.0 : SysData.temp;
+        ramUsage  = isNaN(SysData.ramPercent) ? 0.0 : SysData.ramPercent / 100.0;
+        ramUsedGb = isNaN(SysData.ramGb) ? 0.0 : SysData.ramGb;
+        netRx     = isNaN(SysData.netRx) ? 0 : SysData.netRx;
+        netTx     = isNaN(SysData.netTx) ? 0 : SysData.netTx;
+    }
+    Connections {
+        target: SysData
+        enabled: root.widgetVisible
+        function onCpuChanged() { root.pull() }
+        function onTempChanged() { root.pull() }
+        function onRamPercentChanged() { root.pull() }
+        function onRamGbChanged() { root.pull() }
+        function onNetRxChanged() { root.pull() }
+        function onNetTxChanged() { root.pull() }
+    }
+    onWidgetVisibleChanged: {
+        if (widgetVisible) { SysData.subscribe(); pull(); }
+        else SysData.unsubscribe();
+    }
+    Component.onCompleted: if (widgetVisible) { SysData.subscribe(); pull(); }
+    Component.onDestruction: if (widgetVisible) SysData.unsubscribe()
 
-    // --- ANIMATED DATA STATE BINDINGS ---
-    // Smooths out raw SysData to drive both the visual wave and the dynamic text counters in constant 800ms time
-    property real rawCpu: isNaN(SysData.cpu) ? 0.0 : SysData.cpu / 100.0
-    property real cpuUsage: rawCpu
+    // --- ANIMATED DATA STATE ---
+    // Smooths the readings to drive both the visual wave and the text counters in constant 800ms time
+    property real cpuUsage: 0
     Behavior on cpuUsage { NumberAnimation { duration: 800; easing.type: Easing.OutQuint } }
 
-    property real rawTemp: isNaN(SysData.temp) ? 0.0 : SysData.temp
-    property real tempC: rawTemp
+    property real tempC: 0
     Behavior on tempC { NumberAnimation { duration: 800; easing.type: Easing.OutQuint } }
 
-    property real rawRam: isNaN(SysData.ramPercent) ? 0.0 : SysData.ramPercent / 100.0
-    property real ramUsage: rawRam
+    property real ramUsage: 0
     Behavior on ramUsage { NumberAnimation { duration: 800; easing.type: Easing.OutQuint } }
 
-    property real rawRamGb: isNaN(SysData.ramGb) ? 0.0 : SysData.ramGb
-    property real ramUsedGb: rawRamGb
+    property real ramUsedGb: 0
     Behavior on ramUsedGb { NumberAnimation { duration: 800; easing.type: Easing.OutQuint } }
 
     // Network values snap instantly (no Behavior) because large byte jumps look erratic when interpolated
-    property real netRx: isNaN(SysData.netRx) ? 0 : SysData.netRx
-    property real netTx: isNaN(SysData.netTx) ? 0 : SysData.netTx
+    property real netRx: 0
+    property real netTx: 0
 
     property string rxSpeedStr: root.formatBytes(netRx)
     property string txSpeedStr: root.formatBytes(netTx)
