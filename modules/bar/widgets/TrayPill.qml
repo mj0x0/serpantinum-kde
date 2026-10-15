@@ -25,9 +25,8 @@ StatusWidget {
     readonly property int drawerCount: allItems.length - pinnedItems.length
     readonly property int count: allItems.length
 
-    readonly property real cell: barWindow.s(26)
-    readonly property real buttonCell: barWindow.s(34)
-    readonly property real runLength: pinnedItems.length * cell + (drawerCount > 0 ? buttonCell : 0)
+    readonly property real cell: barWindow.s(34)
+    readonly property real runLength: cell * (pinnedItems.length + (drawerCount > 0 ? 1 : 0))
 
     active: shown && (pinnedItems.length > 0 || drawerCount > 0)
     revealed: barWindow.statusRevealed
@@ -37,18 +36,6 @@ StatusWidget {
 
     Component.onCompleted: TrayDrawerState.register(trayPill)
     Component.onDestruction: TrayDrawerState.unregister(trayPill)
-
-    // Always the light neutral gradient, like the other filled status pills.
-    Rectangle {
-        anchors.fill: parent
-        radius: barWindow.innerRadius
-        opacity: trayPill.fillVisible ? 1.0 : 0.0
-        gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop { position: 0.0; color: Colors.palette.neutral_variant80 }
-            GradientStop { position: 1.0; color: Colors.palette.neutral_variant90 }
-        }
-    }
 
     Grid {
         anchors.centerIn: parent
@@ -79,7 +66,7 @@ StatusWidget {
                         font.pixelSize: barWindow.s(16)
                         color: {
                             var k = (pin.ov && pin.ov.color) ? pin.ov.color : "";
-                            if (!k) return trayPill.onColor;
+                            if (!k) return mocha.text;
                             return mocha[k] !== undefined ? mocha[k] : k;
                         }
                     }
@@ -115,9 +102,22 @@ StatusWidget {
         }
 
         Item {
+            id: drawerButton
             visible: trayPill.drawerCount > 0
-            width: visible ? trayPill.buttonCell : 0
-            height: visible ? trayPill.buttonCell : 0
+            width: visible ? trayPill.cell : 0
+            height: visible ? trayPill.cell : 0
+
+            // The gradient is the button's own chrome; pinned icons stay bare.
+            Rectangle {
+                anchors.fill: parent
+                radius: barWindow.innerRadius
+                opacity: trayPill.fillVisible ? 1.0 : 0.0
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: Colors.palette.neutral_variant80 }
+                    GradientStop { position: 1.0; color: Colors.palette.neutral_variant90 }
+                }
+            }
 
             Text {
                 anchors.centerIn: parent
