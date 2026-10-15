@@ -4,6 +4,8 @@ import "../../../services/audio"
 import "../../traydrawer"
 import "../../../services/theme"
 import "../../../services/tray"
+import "../../../services/settings"
+import "../../../services/bar/BarModules.js" as BarModules
 import QtQuick
 import Quickshell
 import Quickshell.Services.SystemTray
@@ -14,8 +16,14 @@ StatusWidget {
     property bool shown: true
     readonly property bool isOpen: TrayDrawerState.open && TrayDrawerState.screen === barWindow.screen
 
+    // Matches the drawer: pins only leave this count when their module is on the bar.
+    readonly property bool pinnedPlaced: BarModules.isPlaced("traypinned",
+        ShellSettings.value("bar.modules", null),
+        function (k) { return ShellSettings.value("bar.widgets." + k, true) !== false; })
     readonly property int count: {
-        var n = 0, all = SystemTray.items ? SystemTray.items.values : [];
+        var all = SystemTray.items ? SystemTray.items.values : [];
+        if (!pinnedPlaced) return all.length;
+        var n = 0;
         for (var i = 0; i < all.length; i++)
             if (!TrayOverrides.isPinned(all[i].id, all[i].title)) n++;
         return n;

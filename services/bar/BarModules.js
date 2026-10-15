@@ -89,6 +89,13 @@ function parse(raw, on) {
     return { left: normalize(raw.left, seen), center: normalize(raw.center, seen), right: normalize(raw.right, seen) };
 }
 
+// Is a module id actually on the bar? Pinned tray items fall back to the drawer
+// when their module is not placed, so nothing can vanish.
+function isPlaced(id, raw, on) {
+    var m = parse(raw, on);
+    return flat(m.left).concat(flat(m.center), flat(m.right)).indexOf(id) !== -1;
+}
+
 function flat(arr) {
     var r = [];
     for (var i = 0; i < arr.length; i++) { if (Array.isArray(arr[i])) r = r.concat(arr[i]); else r.push(arr[i]); }

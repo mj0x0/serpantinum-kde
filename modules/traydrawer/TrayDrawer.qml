@@ -6,6 +6,8 @@ import "../../services/bar"
 import "../../services/layout"
 import "../../services/theme"
 import "../../services/tray"
+import "../../services/bar/BarModules.js" as BarModules
+import "../../services/settings"
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
@@ -100,9 +102,15 @@ PanelWindow {
 
         MouseArea { anchors.fill: parent }
 
-        // Pinned items live in the bar, so the drawer neither counts nor draws them.
+        // Pinned items live in the bar -- but only if that module is actually placed.
+        // Otherwise pinning would make an icon vanish with nowhere to appear.
+        readonly property bool pinnedPlaced: BarModules.isPlaced("traypinned",
+            ShellSettings.value("bar.modules", null),
+            function (k) { return ShellSettings.value("bar.widgets." + k, true) !== false; })
         readonly property var drawerItems: {
-            var out = [], items = SystemTray.items ? SystemTray.items.values : [];
+            var items = SystemTray.items ? SystemTray.items.values : [];
+            if (!card.pinnedPlaced) return items;
+            var out = [];
             for (var i = 0; i < items.length; i++)
                 if (!TrayOverrides.isPinned(items[i].id, items[i].title)) out.push(items[i]);
             return out;
