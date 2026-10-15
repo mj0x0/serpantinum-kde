@@ -23,6 +23,7 @@ StatusWidget {
     }
 
     active: shownHold
+    stateAccent: power.accent
     subWidth: powerRow.implicitWidth + barWindow.s(24)
     hovered: powerMouse.containsMouse
 
@@ -43,7 +44,7 @@ StatusWidget {
     Rectangle {
         anchors.fill: parent
         radius: barWindow.innerRadius
-        opacity: power.shownHold ? 1.0 : 0.0
+        opacity: (power.shownHold && power.fillVisible) ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 300 } }
         gradient: Gradient {
             orientation: Gradient.Horizontal
@@ -60,14 +61,14 @@ StatusWidget {
             anchors.verticalCenter: parent.verticalCenter
             text: "\u{f04b3}"
             font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16)
-            color: mocha.base
+            color: power.onColor
         }
         Text {
             anchors.verticalCenter: parent.verticalCenter
             visible: !power.vertical && power.count > 0
             text: power.count
             font.family: Fonts.ui; font.pixelSize: barWindow.s(13); font.weight: Font.Black
-            color: mocha.base
+            color: power.onColor
         }
     }
     MouseArea { id: powerMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { Sounds.playSfx("system/quick_click.wav"); PowerState.toggle(); } }

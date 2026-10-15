@@ -6,6 +6,7 @@ import QtQuick
 
 StatusWidget {
     id: awake
+    stateAccent: Colors.palette.secondary60
     active: KeepAwakeState.active
     subWidth: awakeRow.implicitWidth + barWindow.s(24)
     hovered: awakeMouse.containsMouse
@@ -13,7 +14,7 @@ StatusWidget {
     Rectangle {
         anchors.fill: parent
         radius: barWindow.innerRadius
-        opacity: KeepAwakeState.active ? 1.0 : 0.0
+        opacity: (KeepAwakeState.active && awake.fillVisible) ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 300 } }
         gradient: Gradient {
             orientation: Gradient.Horizontal
@@ -30,7 +31,7 @@ StatusWidget {
             anchors.verticalCenter: parent.verticalCenter
             text: "\u{f0176}"
             font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16)
-            color: KeepAwakeState.active ? mocha.base : mocha.text
+            color: KeepAwakeState.active ? awake.onColor : mocha.text
             Behavior on color { ColorAnimation { duration: 300 } }
         }
     }

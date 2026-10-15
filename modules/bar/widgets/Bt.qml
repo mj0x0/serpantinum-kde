@@ -7,6 +7,7 @@ import QtQuick
 StatusWidget {
     id: bt
     active: barWindow.btEnabled
+    stateAccent: Colors.md3.secondary
     subWidth: btRow.implicitWidth + barWindow.s(24)
     hovered: btMouse.containsMouse
 
@@ -27,7 +28,7 @@ StatusWidget {
     Rectangle {
         anchors.fill: parent
         radius: barWindow.innerRadius
-        opacity: barWindow.isBtOn ? 1.0 : 0.0
+        opacity: (barWindow.isBtOn && bt.fillVisible) ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 300 } }
         gradient: Gradient {
             orientation: Gradient.Horizontal
@@ -40,13 +41,13 @@ StatusWidget {
         anchors.verticalCenter: parent.verticalCenter
         x: bt.vertical ? (parent.width - width) / 2 : barWindow.s(12)
         spacing: barWindow.s(8)
-        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.btIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16); color: barWindow.isBtOn ? mocha.base : mocha.subtext0 }
+        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.btIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16); color: barWindow.isBtOn ? bt.onColor : mocha.subtext0 }
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: barWindow.btDevice
             visible: !bt.vertical && text !== ""
             font.family: Fonts.ui; font.pixelSize: barWindow.s(13); font.weight: Font.Black
-            color: barWindow.isBtOn ? mocha.base : mocha.text
+            color: barWindow.isBtOn ? bt.onColor : mocha.text
             width: Math.min(implicitWidth, barWindow.s(100)); elide: Text.ElideRight
         }
     }

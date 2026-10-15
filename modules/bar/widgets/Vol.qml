@@ -6,6 +6,7 @@ import QtQuick
 
 StatusWidget {
     id: vol
+    stateAccent: Colors.md3.tertiary
     subWidth: volRow.implicitWidth + barWindow.s(24)
     hovered: volMouse.containsMouse
 
@@ -26,7 +27,7 @@ StatusWidget {
     Rectangle {
         anchors.fill: parent
         radius: barWindow.innerRadius
-        opacity: barWindow.isSoundActive ? 1.0 : 0.0
+        opacity: (barWindow.isSoundActive && vol.fillVisible) ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 300 } }
         gradient: Gradient {
             orientation: Gradient.Horizontal
@@ -42,14 +43,14 @@ StatusWidget {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: barWindow.volIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16)
-            color: barWindow.isSoundActive ? mocha.base : mocha.subtext0
+            color: barWindow.isSoundActive ? vol.onColor : mocha.subtext0
         }
         Text {
             visible: !vol.vertical
             anchors.verticalCenter: parent.verticalCenter
             text: barWindow.volPercent
             font.family: Fonts.ui; font.pixelSize: barWindow.s(13); font.weight: Font.Black
-            color: barWindow.isSoundActive ? mocha.base : mocha.text
+            color: barWindow.isSoundActive ? vol.onColor : mocha.text
         }
     }
     MouseArea {

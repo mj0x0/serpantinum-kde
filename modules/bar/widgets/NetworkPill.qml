@@ -8,6 +8,7 @@ import Quickshell
 
 StatusWidget {
     id: net
+    stateAccent: Colors.md3.primary
     subWidth: netRow.implicitWidth + barWindow.s(24)
     hovered: netMouse.containsMouse
 
@@ -29,7 +30,7 @@ StatusWidget {
         anchors.fill: parent
         radius: barWindow.innerRadius
         // Net.ready gates the 1-3s warm-up, where every device list is still empty.
-        opacity: !Net.ready ? 0.0 : (barWindow.showEthernet ? (barWindow.ethStatus === "Connected" ? 1.0 : 0.0) : (barWindow.isWifiOn ? 1.0 : 0.0))
+        opacity: (!Net.ready || !net.fillVisible) ? 0.0 : (barWindow.showEthernet ? (barWindow.ethStatus === "Connected" ? 1.0 : 0.0) : (barWindow.isWifiOn ? 1.0 : 0.0))
         Behavior on opacity { NumberAnimation { duration: 300 } }
         gradient: Gradient {
             orientation: Gradient.Horizontal
@@ -47,14 +48,14 @@ StatusWidget {
             anchors.verticalCenter: parent.verticalCenter
             text: barWindow.vpnActive ? "󰦝" : (barWindow.showEthernet ? "󰈀" : barWindow.wifiIcon)
             font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16)
-            color: barWindow.showEthernet ? (barWindow.ethStatus === "Connected" ? mocha.base : mocha.subtext0) : (barWindow.isWifiOn ? mocha.base : mocha.subtext0)
+            color: barWindow.showEthernet ? (barWindow.ethStatus === "Connected" ? net.onColor : mocha.subtext0) : (barWindow.isWifiOn ? net.onColor : mocha.subtext0)
         }
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: barWindow.showEthernet ? barWindow.ethStatus : ((barWindow.isWifiOn ? (barWindow.wifiSsid !== "" ? barWindow.wifiSsid : "On") : "Off"))
             visible: !net.vertical && text !== ""
             font.family: Fonts.ui; font.pixelSize: barWindow.s(13); font.weight: Font.Black
-            color: barWindow.showEthernet ? (barWindow.ethStatus === "Connected" ? mocha.base : mocha.text) : (barWindow.isWifiOn ? mocha.base : mocha.text)
+            color: barWindow.showEthernet ? (barWindow.ethStatus === "Connected" ? net.onColor : mocha.text) : (barWindow.isWifiOn ? net.onColor : mocha.text)
             width: Math.min(implicitWidth, barWindow.s(100)); elide: Text.ElideRight
         }
     }

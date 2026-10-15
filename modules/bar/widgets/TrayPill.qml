@@ -8,6 +8,7 @@ import Quickshell.Services.SystemTray
 
 StatusWidget {
     id: trayPill
+    stateAccent: Colors.palette.neutral_variant80
     property bool shown: true
     readonly property int count: counter.count
     readonly property bool isOpen: TrayDrawerState.open && TrayDrawerState.screen === barWindow.screen
@@ -27,6 +28,7 @@ StatusWidget {
     Rectangle {
         anchors.fill: parent
         radius: barWindow.innerRadius
+        opacity: trayPill.fillVisible ? 1.0 : 0.0
         gradient: Gradient {
             orientation: Gradient.Horizontal
             GradientStop { position: 0.0; color: Colors.palette.neutral_variant80 }
@@ -39,7 +41,7 @@ StatusWidget {
         text: "\u{f15fc}"   // md-dots_grid
         font.family: Fonts.icons
         font.pixelSize: barWindow.s(17)
-        color: mocha.base
+        color: trayPill.onColor
     }
 
     MouseArea {

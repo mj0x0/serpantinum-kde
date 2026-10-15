@@ -23,6 +23,11 @@ Rectangle {
     // Solid styles swallow this inner pill too, the way pillBg drops the outer one;
     // hover still answers, or a naked icon would have no affordance at all.
     readonly property bool nakedIcons: barWindow.isSolid && !barWindow.distinctPills
+    // With no fill behind it, an active glyph carries the accent itself instead of
+    // being knocked out dark. Each widget sets its own accent.
+    property color stateAccent: mocha.text
+    readonly property bool fillVisible: !nakedIcons
+    readonly property color onColor: nakedIcons ? stateAccent : mocha.base
     property color subColor: hovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6)
                                      : (nakedIcons ? "transparent"
                                                    : Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.4))
