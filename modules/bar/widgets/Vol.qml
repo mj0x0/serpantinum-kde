@@ -43,14 +43,14 @@ StatusWidget {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: barWindow.volIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16)
-            color: barWindow.isSoundActive ? vol.onColor : mocha.subtext0
+            color: barWindow.isSoundActive ? vol.onColor : vol.offColor
         }
         Text {
             visible: !vol.vertical
             anchors.verticalCenter: parent.verticalCenter
             text: barWindow.volPercent
             font.family: Fonts.ui; font.pixelSize: barWindow.s(13); font.weight: Font.Black
-            color: barWindow.isSoundActive ? vol.onColor : mocha.text
+            color: barWindow.isSoundActive ? vol.onColor : vol.offText
         }
     }
     MouseArea {

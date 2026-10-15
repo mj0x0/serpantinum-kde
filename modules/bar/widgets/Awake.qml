@@ -31,7 +31,7 @@ StatusWidget {
             anchors.verticalCenter: parent.verticalCenter
             text: "\u{f0176}"
             font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16)
-            color: KeepAwakeState.active ? awake.onColor : mocha.text
+            color: KeepAwakeState.active ? awake.onColor : awake.offText
             Behavior on color { ColorAnimation { duration: 300 } }
         }
     }

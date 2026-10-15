@@ -41,13 +41,13 @@ StatusWidget {
         anchors.verticalCenter: parent.verticalCenter
         x: bt.vertical ? (parent.width - width) / 2 : barWindow.s(12)
         spacing: barWindow.s(8)
-        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.btIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16); color: barWindow.isBtOn ? bt.onColor : mocha.subtext0 }
+        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.btIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16); color: barWindow.isBtOn ? bt.onColor : bt.offColor }
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: barWindow.btDevice
             visible: !bt.vertical && text !== ""
             font.family: Fonts.ui; font.pixelSize: barWindow.s(13); font.weight: Font.Black
-            color: barWindow.isBtOn ? bt.onColor : mocha.text
+            color: barWindow.isBtOn ? bt.onColor : bt.offText
             width: Math.min(implicitWidth, barWindow.s(100)); elide: Text.ElideRight
         }
     }

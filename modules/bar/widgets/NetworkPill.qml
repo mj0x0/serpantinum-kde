@@ -48,14 +48,14 @@ StatusWidget {
             anchors.verticalCenter: parent.verticalCenter
             text: barWindow.vpnActive ? "󰦝" : (barWindow.showEthernet ? "󰈀" : barWindow.wifiIcon)
             font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16)
-            color: barWindow.showEthernet ? (barWindow.ethStatus === "Connected" ? net.onColor : mocha.subtext0) : (barWindow.isWifiOn ? net.onColor : mocha.subtext0)
+            color: barWindow.showEthernet ? (barWindow.ethStatus === "Connected" ? net.onColor : net.offColor) : (barWindow.isWifiOn ? net.onColor : net.offColor)
         }
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: barWindow.showEthernet ? barWindow.ethStatus : ((barWindow.isWifiOn ? (barWindow.wifiSsid !== "" ? barWindow.wifiSsid : "On") : "Off"))
             visible: !net.vertical && text !== ""
             font.family: Fonts.ui; font.pixelSize: barWindow.s(13); font.weight: Font.Black
-            color: barWindow.showEthernet ? (barWindow.ethStatus === "Connected" ? net.onColor : mocha.text) : (barWindow.isWifiOn ? net.onColor : mocha.text)
+            color: barWindow.showEthernet ? (barWindow.ethStatus === "Connected" ? net.onColor : net.offText) : (barWindow.isWifiOn ? net.onColor : net.offText)
             width: Math.min(implicitWidth, barWindow.s(100)); elide: Text.ElideRight
         }
     }
