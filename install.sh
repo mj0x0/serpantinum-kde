@@ -71,7 +71,6 @@ OPTIONAL=(
     "wl-paste:wl-clipboard:the clipboard panel, copying a screenshot"
     "wl-clip-persist:wl-clip-persist:clipboard surviving the app that copied"
     "fd:fd:the launcher's file search"
-    "baloosearch6:baloo:indexed file search, fd covers it otherwise"
     "dbus-monitor:dbus:waiting on MPRIS instead of polling"
     "swappy:swappy:annotating a screenshot before saving"
     "zbarimg:zbar:the QR scanner in the screenshot overlay"
