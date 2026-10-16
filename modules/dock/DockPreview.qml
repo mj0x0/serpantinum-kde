@@ -152,6 +152,8 @@ PopupWindow {
                             id: stream
                             anchors.fill: parent
                             nodeId: cast.nodeId
+                            // kpipewire imports DMA-BUFs through EGL only; on the Vulkan scene graph it needs memory frames.
+                            allowDmaBuf: false
                             // Drawn into a texture up to 4x the box (never past the stream's own size)
                             // and mipmapped, so the shrink averages pixels instead of skipping them.
                             layer.enabled: ready
