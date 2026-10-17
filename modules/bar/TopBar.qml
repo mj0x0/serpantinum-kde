@@ -5,6 +5,7 @@
 import "widgets"
 import "../../services/audio"
 import "../../services/bar"
+import "../../services/bridge"
 import "../../services/caching"
 import "../../services/cava"
 import "../../services/layout"
@@ -211,7 +212,7 @@ Variants {
             property bool startupCascadeFinished: false
             Timer { interval: 1000; running: true; onTriggered: barWindow.startupCascadeFinished = true }
 
-            property bool fastPollerLoaded: false
+            property bool fastPollerLoaded: Bridge.kbLayout !== ""
             property bool isDataReady: fastPollerLoaded
             Timer { interval: 600; running: true; onTriggered: barWindow.isDataReady = true }
 
@@ -256,7 +257,7 @@ Variants {
             readonly property string volIcon: (isMuted || volPct === 0) ? "\u{f075f}"
                                                : volPct < 34 ? "\u{f057f}" : volPct < 67 ? "\u{f0580}" : "\u{f057e}"
 
-            property string kbLayout: "us"
+            property string kbLayout: Bridge.kbLayout || "us"
 
             ListModel {
                 id: workspacesModel
@@ -286,12 +287,6 @@ Variants {
 
             // cava only needs to run while something plays and the visualiser is on the bar.
             Binding { target: Cava; property: "isPlaying"; value: barWindow.musicData.status === "Playing"; when: visW.placed }
-
-            Process {
-                id: wsDaemon
-                command: ["python3", "-u", barWindow.shellPath + "/helpers/ws-bridge.py"]
-                running: true
-            }
 
             Process {
                 id: wsReader
@@ -394,21 +389,7 @@ Variants {
                 }
             }
 
-            Process {
-                id: kbPoller; running: true
-                command: ["bash", "-c", barWindow.shellPath + "/helpers/kb-fetch.sh"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        let txt = this.text.trim();
-                        if (txt !== "" && barWindow.kbLayout !== txt) barWindow.kbLayout = txt;
-                        kbWaiter.running = false; kbWaiter.running = true;
-                        barWindow.fastPollerLoaded = true;
-                    }
-                }
-            }
-            Process { id: kbWaiter; command: ["bash", "-c", barWindow.shellPath + "/helpers/kb-wait.sh"]; onExited: { kbPoller.running = false; kbPoller.running = true; } }
-
-            // Fullscreen state (hide-on-fullscreen). ws-bridge writes 0/1 to
+            // Fullscreen state (hide-on-fullscreen). The bridge's ws module writes 0/1 to
             // runDir/fullscreen on every active-window/fullscreen change.
             Process {
                 id: fsPoller; running: true

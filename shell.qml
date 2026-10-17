@@ -30,6 +30,7 @@ import "modules/screenshot"
 import "modules/volume"
 import "modules/wallpaper"
 import "modules/widgets"
+import "services/bridge"
 import "services/dnd"
 import "services/dock"
 import "services/keepawake"
@@ -44,6 +45,9 @@ import Quickshell.Io
 import Quickshell.Wayland
 
 ShellRoot {
+    // A singleton is built on first use: touching Bridge starts the helper daemon now.
+    Component.onCompleted: void Bridge.kbLayout
+
     TopBar {}
 
     // The dock floats over windows on its edge without reserving space (macOS-style).
