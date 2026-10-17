@@ -13,7 +13,9 @@ This is the KDE replacement, mirroring wm-bridge:
   * switch(n): jump to the n-th virtual desktop (1-based), via a transient
     KWin script
 
-Launched by the TopBar as a child Process (see TopBar.qml wsDaemon).
+Standalone (main) it is launched by the TopBar as a child Process (see
+TopBar.qml wsDaemon). start(bus, loop, ns, emit) runs the same thing inside
+helpers/rice-bridge.py; it prints nothing, so emit is unused.
 """
 import os
 import sys
@@ -33,9 +35,31 @@ IFACE = "io.quickshell.ws"
 HELPER_DIR = os.path.dirname(os.path.abspath(__file__))
 LISTENER_SRC = os.path.normpath(os.path.join(HELPER_DIR, "..", "kwin", "ws-listener.js"))
 RUNTIME = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
-LISTENER_DST = os.path.join(RUNTIME, "qs-mj0x0-ws-listener.js")
-WS_FILE = os.path.join(RUNTIME, "quickshell", "workspaces", "workspaces.json")
-FS_FILE = os.path.join(RUNTIME, "quickshell", "fullscreen")
+
+
+def bus_name(ns=""):
+    return BUS_NAME + ("." + ns if ns else "")
+
+
+def listener_dst(ns=""):
+    return os.path.join(RUNTIME, "qs-mj0x0-" + (ns + "-" if ns else "") + "ws-listener.js")
+
+
+def run_dir(ns=""):
+    return os.path.join(RUNTIME, "quickshell" + ("-" + ns if ns else ""))
+
+
+def ws_file(ns=""):
+    return os.path.join(run_dir(ns), "workspaces", "workspaces.json")
+
+
+def fs_file(ns=""):
+    return os.path.join(run_dir(ns), "fullscreen")
+
+
+LISTENER_DST = listener_dst()
+WS_FILE = ws_file()
+FS_FILE = fs_file()
 
 
 # ── KWin scripting plumbing (same as wm-bridge) ──────────────────────────────
@@ -64,13 +88,22 @@ def _desktop_id(n):
     return str(desks[i][1]) if 0 <= i < len(desks) else None
 
 
-def _setup_listener():
+def _setup_listener(ns=""):
+    dst = listener_dst(ns)
     try:
-        shutil.copyfile(LISTENER_SRC, LISTENER_DST)
+        if ns:
+            with open(LISTENER_SRC) as f:
+                js = f.read()
+            # Only the destination is namespaced; the exported interface stays io.quickshell.ws.
+            js = js.replace('callDBus("%s"' % BUS_NAME, 'callDBus("%s"' % bus_name(ns))
+            with open(dst, "w") as f:
+                f.write(js)
+        else:
+            shutil.copyfile(LISTENER_SRC, dst)
     except OSError as e:
         print(f"# ws-listener copy failed: {e}", file=sys.stderr, flush=True)
         return
-    _load_kwin_script(LISTENER_DST)
+    _load_kwin_script(dst)
 
 
 def _script_loaded(path):
@@ -81,10 +114,10 @@ def _script_loaded(path):
 
 # Anything that runs KWin scripts BY ID (kdotool does, every call) can stop ours
 # instead of its own, since KWin hands out ids as scripts.size(). Reload when gone.
-def _ensure_listener():
-    if not _script_loaded(LISTENER_DST):
+def _ensure_listener(ns=""):
+    if not _script_loaded(listener_dst(ns)):
         print("# listener gone, reloading", file=sys.stderr, flush=True)
-        _setup_listener()
+        _setup_listener(ns)
     return True
 
 
@@ -101,19 +134,21 @@ def _write(path, text):
 
 # ── D-Bus object ─────────────────────────────────────────────────────────────
 class WS(dbus.service.Object):
-    def __init__(self, bus_name):
+    def __init__(self, bus_name, ns=""):
         super().__init__(bus_name, OBJ_PATH)
+        self._ws_file = ws_file(ns)
+        self._fs_file = fs_file(ns)
 
     # inbound: called by the KWin listener on every change
     @dbus.service.method(IFACE, in_signature="s")
     def update(self, state_json):
-        _write(WS_FILE, str(state_json))
+        _write(self._ws_file, str(state_json))
         return True
 
     # inbound: fullscreen state of the active window ("0"/"1")
     @dbus.service.method(IFACE, in_signature="s")
     def fullscreen(self, val):
-        _write(FS_FILE, str(val))
+        _write(self._fs_file, str(val))
         return True
 
     # outbound: fired by the TopBar on pill click (busctl … switch i N)
@@ -131,25 +166,31 @@ class WS(dbus.service.Object):
         return True
 
 
-def main():
-    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    bus = dbus.SessionBus()
-    loop = GLib.MainLoop()
+def start(bus, loop, ns="", emit=None):
+    name = bus_name(ns)
 
     # Replaced by a newer bridge (shell reload or restart): exit instead of lingering.
-    def on_name_lost(name):
-        if str(name) == BUS_NAME:
+    def on_name_lost(lost):
+        if str(lost) == name:
             loop.quit()
     bus.add_signal_receiver(on_name_lost, signal_name="NameLost",
                             dbus_interface="org.freedesktop.DBus")
 
-    bus_name = dbus.service.BusName(
-        BUS_NAME, bus=bus,
+    owner = dbus.service.BusName(
+        name, bus=bus,
         allow_replacement=True, replace_existing=True, do_not_queue=True,
     )
-    WS(bus_name)
-    _setup_listener()
-    GLib.timeout_add_seconds(10, _ensure_listener)
+    ws = WS(owner, ns)
+    _setup_listener(ns)
+    GLib.timeout_add_seconds(10, _ensure_listener, ns)
+    return ws
+
+
+def main():
+    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    bus = dbus.SessionBus()
+    loop = GLib.MainLoop()
+    ws = start(bus, loop)  # noqa: F841  keeps the BusName alive for the loop's lifetime
     loop.run()
 
 

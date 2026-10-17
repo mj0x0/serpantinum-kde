@@ -5,6 +5,10 @@ and who is holding the machine awake. Signal-driven; nothing polls.
 RequestedInhibitions is a(ssssu) = (type, who, why, mode, granted); granted 0 = blocked.
 Blocks persist in powerdevilrc [Inhibitions] BlockedInhibitions, which also names apps
 that are blocked but not asking right now, so those are listed too.
+
+Standalone (main) prints bare JSON lines for PowerInfo.qml. start(bus, loop, ns, emit)
+hooks the same watchers into helpers/rice-bridge.py's loop; this module talks Gio on
+its own connection and ignores the dbus-python bus it is handed.
 """
 
 import json
@@ -26,16 +30,22 @@ RC = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.confi
 SLEEP_BIT = 1
 SCREEN_BIT = 4
 
-bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+conn = Gio.bus_get_sync(Gio.BusType.SESSION, None)
 pending = 0
 owned = True    # False only once PowerDevil has actually left the bus
+_emit = None
+_monitor = None  # the GFileMonitor must outlive start()
+
+
+def _print(tag, text):
+    print(text, flush=True)
 
 
 def call(path, iface, method, args=None, reply=None):
     try:
-        return bus.call_sync(SERVICE, path, iface, method, args,
-                             GLib.VariantType(reply) if reply else None,
-                             Gio.DBusCallFlags.NONE, 2000, None).unpack()
+        return conn.call_sync(SERVICE, path, iface, method, args,
+                              GLib.VariantType(reply) if reply else None,
+                              Gio.DBusCallFlags.NONE, 2000, None).unpack()
     except GLib.Error:
         return None
 
@@ -107,12 +117,12 @@ def snapshot():
     }
 
 
-def emit():
+def publish():
     global pending
     pending = 0
     snap = snapshot()
     if snap is not None:
-        print(json.dumps(snap, default=str), flush=True)
+        _emit("power", json.dumps(snap, default=str))
     return False
 
 
@@ -132,17 +142,22 @@ def schedule(*_):
     # Changes arrive in bursts (properties, then the file); one snapshot per burst.
     global pending
     if not pending:
-        pending = GLib.timeout_add(120, emit)
+        pending = GLib.timeout_add(120, publish)
+
+
+def start(bus, loop, ns="", emit=_print):
+    global _emit, _monitor
+    _emit = emit
+    for path in (PROFILE_PATH, AGENT_PATH):
+        conn.signal_subscribe(SERVICE, None, None, path, None, Gio.DBusSignalFlags.NONE, schedule)
+    Gio.bus_watch_name_on_connection(conn, SERVICE, Gio.BusNameWatcherFlags.NONE, appeared, vanished)
+    _monitor = Gio.File.new_for_path(RC).monitor_file(Gio.FileMonitorFlags.NONE, None)
+    _monitor.connect("changed", schedule)
+    publish()
 
 
 def main():
-    for path in (PROFILE_PATH, AGENT_PATH):
-        bus.signal_subscribe(SERVICE, None, None, path, None, Gio.DBusSignalFlags.NONE, schedule)
-    Gio.bus_watch_name_on_connection(bus, SERVICE, Gio.BusNameWatcherFlags.NONE, appeared, vanished)
-    monitor = Gio.File.new_for_path(RC).monitor_file(Gio.FileMonitorFlags.NONE, None)
-    monitor.connect("changed", schedule)
-
-    emit()
+    start(None, None)
     GLib.MainLoop().run()
     return 0
 

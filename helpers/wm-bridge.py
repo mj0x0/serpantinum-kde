@@ -11,7 +11,9 @@ Wayland protocol to us, so this small daemon is the bridge:
   * performs window actions (activate / close / minimize+genie) on demand by
     running transient KWin scripts
 
-Launched by Quickshell as a child Process (see WindowService.qml).
+Standalone (main) it is launched by Quickshell as a child Process (see
+WindowService.qml). start(bus, loop, ns, emit) runs the same thing inside
+helpers/rice-bridge.py, which owns the bus and the loop.
 """
 import os
 import sys
@@ -32,7 +34,22 @@ IFACE = "io.quickshell.wm"
 HELPER_DIR = os.path.dirname(os.path.abspath(__file__))
 LISTENER_SRC = os.path.normpath(os.path.join(HELPER_DIR, "..", "kwin", "listener.js"))
 RUNTIME = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
-LISTENER_DST = os.path.join(RUNTIME, "qs-mj0x0-listener.js")
+
+
+def bus_name(ns=""):
+    return BUS_NAME + ("." + ns if ns else "")
+
+
+def listener_dst(ns=""):
+    return os.path.join(RUNTIME, "qs-mj0x0-" + (ns + "-" if ns else "") + "listener.js")
+
+
+LISTENER_DST = listener_dst()
+
+
+def _print(tag, text):
+    sys.stdout.write(text + "\n")
+    sys.stdout.flush()
 
 
 # ── KWin scripting plumbing ──────────────────────────────────────────────────
@@ -71,13 +88,22 @@ def _drop_transient(path):
     return False
 
 
-def _setup_listener():
+def _setup_listener(ns=""):
+    dst = listener_dst(ns)
     try:
-        shutil.copyfile(LISTENER_SRC, LISTENER_DST)
+        if ns:
+            with open(LISTENER_SRC) as f:
+                js = f.read()
+            # Only the destination is namespaced; the exported interface stays io.quickshell.wm.
+            js = js.replace('callDBus("%s"' % BUS_NAME, 'callDBus("%s"' % bus_name(ns))
+            with open(dst, "w") as f:
+                f.write(js)
+        else:
+            shutil.copyfile(LISTENER_SRC, dst)
     except OSError as e:
         print(f"# listener copy failed: {e}", file=sys.stderr, flush=True)
         return
-    _load_kwin_script(LISTENER_DST)
+    _load_kwin_script(dst)
 
 
 def _script_loaded(path):
@@ -88,10 +114,10 @@ def _script_loaded(path):
 
 # Anything that runs KWin scripts BY ID (kdotool does, every call) can stop ours
 # instead of its own, since KWin hands out ids as scripts.size(). Reload when gone.
-def _ensure_listener():
-    if not _script_loaded(LISTENER_DST):
+def _ensure_listener(ns=""):
+    if not _script_loaded(listener_dst(ns)):
         print("# listener gone, reloading", file=sys.stderr, flush=True)
-        _setup_listener()
+        _setup_listener(ns)
     return True
 
 
@@ -133,15 +159,15 @@ def _js_minimize(ids, rect):
 
 # ── D-Bus object ─────────────────────────────────────────────────────────────
 class WM(dbus.service.Object):
-    def __init__(self, bus_name):
+    def __init__(self, bus_name, emit=_print):
         super().__init__(bus_name, OBJ_PATH)
+        self._emit = emit
 
     # inbound: called by the KWin listener on every change
     @dbus.service.method(IFACE, in_signature="s")
     def update(self, state_json):
         line = str(state_json).replace("\r", " ").replace("\n", " ").strip()
-        sys.stdout.write(line + "\n")
-        sys.stdout.flush()
+        self._emit("wm", line)
         return True
 
     # inbound: the focused window, every window at all (dialogs, the greeter),
@@ -180,26 +206,32 @@ class WM(dbus.service.Object):
         return True
 
 
-def main():
-    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    bus = dbus.SessionBus()
-    loop = GLib.MainLoop()
+def start(bus, loop, ns="", emit=_print):
+    name = bus_name(ns)
 
     # Replaced by a newer bridge (shell reload or restart): exit instead of lingering.
-    def on_name_lost(name):
-        if str(name) == BUS_NAME:
+    def on_name_lost(lost):
+        if str(lost) == name:
             loop.quit()
     bus.add_signal_receiver(on_name_lost, signal_name="NameLost",
                             dbus_interface="org.freedesktop.DBus")
 
     # Replace any stale instance so a Quickshell restart doesn't deadlock on the name.
-    bus_name = dbus.service.BusName(
-        BUS_NAME, bus=bus,
+    owner = dbus.service.BusName(
+        name, bus=bus,
         allow_replacement=True, replace_existing=True, do_not_queue=True,
     )
-    WM(bus_name)
-    _setup_listener()
-    GLib.timeout_add_seconds(10, _ensure_listener)
+    wm = WM(owner, emit)
+    _setup_listener(ns)
+    GLib.timeout_add_seconds(10, _ensure_listener, ns)
+    return wm
+
+
+def main():
+    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    bus = dbus.SessionBus()
+    loop = GLib.MainLoop()
+    wm = start(bus, loop)  # noqa: F841  keeps the BusName alive for the loop's lifetime
     loop.run()
 
 
