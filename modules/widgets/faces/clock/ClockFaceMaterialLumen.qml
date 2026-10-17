@@ -19,9 +19,13 @@ Item {
 
     property var currentTime: new Date()
 
+    onVisibleChanged: {
+        if (root.visible) root.currentTime = new Date();
+    }
+
     Timer {
         interval: root.showSeconds ? 40 : 1000
-        running: true
+        running: root.visible
         repeat: true
         onTriggered: {
             MemProbe.bump("tick.clock.lumen");

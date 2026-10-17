@@ -46,7 +46,7 @@ void main() {
     if (a < 0.0) a += 2.0 * PI;
 
     float deg = mod(a * 180.0 / PI, 360.0);
-    int h = int(floor(deg / 30.0 + 0.5)) % 12;
+    int h = int(mod(floor(deg / 30.0 + 0.5), 12.0));
     float diff = abs(deg - float(h) * 30.0);
     if (diff > 180.0) diff = 360.0 - diff;
 
