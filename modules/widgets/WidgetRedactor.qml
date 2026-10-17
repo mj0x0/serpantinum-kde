@@ -12,6 +12,7 @@ Scope {
     id: root
 
     property bool isActive: false
+    property bool everOpened: false
     property string targetMonitorName: ""
     property string targetSelectedWidgetId: ""
     readonly property var activeWidgetsModel: (redactorWindowLoader.item && redactorWindowLoader.item.activeWidgetsModel) ? redactorWindowLoader.item.activeWidgetsModel : null
@@ -28,14 +29,19 @@ Scope {
             if (win.redactorMode) {
                 win.redactorMode.selectedId = root.targetSelectedWidgetId;
             }
+            win.layoutFile.reload();
         }
 
+        root.everOpened = true;
         root.isActive = true;
     }
 
     function close() {
         if (redactorWindowLoader.item && redactorWindowLoader.item.redactorMode) {
-            redactorWindowLoader.item.redactorMode.selectedId = "";
+            let win = redactorWindowLoader.item;
+            win.redactorMode.selectedId = "";
+            win.activeWidgetsModel.clear();
+            WidgetSync.setRedactMode(win.safeMonitorName, false);
         }
         root.targetSelectedWidgetId = "";
         root.targetMonitorName = "";
@@ -101,16 +107,19 @@ Scope {
         }
     }
 
+    // Built once and hidden afterwards: destroying a GL window on NVIDIA keeps part of its heap.
     Loader {
         id: redactorWindowLoader
-        active: root.isActive
+        active: root.isActive || root.everOpened
 
         sourceComponent: Component {
             PanelWindow {
                 id: redactorWindow
                 color: "transparent"
+                visible: root.isActive
 
                 property alias redactorMode: redactorMode
+                property alias layoutFile: layoutFile
                 property alias activeWidgetsModel: redactorMode.activeWidgetsModel
 
                 property string monitorName: {
