@@ -275,6 +275,28 @@ Scope {
                         toolbarCheckTimer.restart();
                     }
 
+                    function removeWidget(widgetId) {
+                        let rmId = String(widgetId);
+                        if (!rmId) return;
+                        if (redactorMode.selectedId === rmId) {
+                            redactorMode.selectedId = "";
+                            root.targetSelectedWidgetId = "";
+                        }
+                        WidgetSync.removeWidget(redactorWindow.safeMonitorName, rmId);
+                        if (activeWidgetsModel) {
+                            for (let i = activeWidgetsModel.count - 1; i >= 0; i--) {
+                                if (String(activeWidgetsModel.get(i).wId) === rmId) {
+                                    activeWidgetsModel.remove(i, 1);
+                                }
+                            }
+                            if (activeWidgetsModel.count === 0) {
+                                redactorMode.selectedId = "";
+                                root.targetSelectedWidgetId = "";
+                            }
+                        }
+                        redactorMode.updateToolbarObscured();
+                    }
+
                     function removeAllWidgets() {
                         redactorMode.selectedId = "";
                         root.targetSelectedWidgetId = "";
@@ -1832,27 +1854,7 @@ Scope {
                                             cornerRadius: ThemeBackend.borderRadius
                                             iconFontSize: s(18)
 
-                                            onClicked: {
-                                                let rmId = String(widgetProxy.wId);
-                                                if (redactorMode.selectedId === rmId) {
-                                                    redactorMode.selectedId = "";
-                                                    root.targetSelectedWidgetId = "";
-                                                }
-                                                WidgetSync.removeWidget(redactorWindow.safeMonitorName, rmId);
-                                                let activeModel = redactorMode.activeWidgetsModel;
-                                                if (activeModel) {
-                                                    for (let i = activeModel.count - 1; i >= 0; i--) {
-                                                        if (String(activeModel.get(i).wId) === rmId) {
-                                                            activeModel.remove(i, 1);
-                                                        }
-                                                    }
-                                                    if (activeModel.count === 0) {
-                                                        redactorMode.selectedId = "";
-                                                        root.targetSelectedWidgetId = "";
-                                                    }
-                                                }
-                                                redactorMode.updateToolbarObscured();
-                                            }
+                                            onClicked: redactorMode.removeWidget(widgetProxy.wId)
                                         }
                                     }
 

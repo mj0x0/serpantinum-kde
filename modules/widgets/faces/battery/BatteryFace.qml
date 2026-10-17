@@ -22,6 +22,7 @@ Item {
     readonly property bool hasBattery: UPower.displayDevice.ready ? UPower.displayDevice.isLaptopBattery : !SystemInfo.isDesktop
     readonly property int batCapacity: (UPower.displayDevice.ready && hasBattery) ? Math.round(UPower.displayDevice.percentage * 100) : 0
     readonly property bool isCharging: hasBattery && UPower.displayDevice.ready && (UPower.displayDevice.state === UPowerDeviceState.Charging || UPower.displayDevice.state === UPowerDeviceState.FullyCharged)
+    readonly property bool isActivelyCharging: isCharging && UPower.displayDevice.changeRate > 0.5
 
     readonly property color batColorFlat: {
         if (!hasBattery) return ThemeBackend.subtext0;
@@ -48,15 +49,52 @@ Item {
     readonly property real maxWaveAmp: isCharging ? Scaler.s(10) : Scaler.s(6.5)
     readonly property real waveAmp: (fillLevel < 0.99 && fillLevel > 0.01) ? maxWaveAmp * Math.sin(fillLevel * Math.PI) : 0
 
-    property real wavePhase: 0.0
-    NumberAnimation on wavePhase {
-        id: waveAnim
+    property real wavePhase: 0.8
+
+    Timer {
+        id: waveSettleTimer
+        interval: root.isCharging ? 30000 : 1800
+        repeat: false
+        onTriggered: {
+            if (!root.isActivelyCharging) waveAnimation.stop();
+        }
+    }
+
+    NumberAnimation {
+        id: waveAnimation
         onRunningChanged: running ? MemProbe.track("anim", "battery.wave", "battery") : MemProbe.untrack("anim", "battery.wave")
-        running: root.visible && root.hasBattery && root.fillLevel > 0.0 && root.fillLevel < 1.0
-        loops: Animation.Infinite
+        target: root
+        property: "wavePhase"
         from: 0
         to: Math.PI * 2
         duration: root.isCharging ? 1200 : 2200
+        loops: Animation.Infinite
+        running: root.visible && root.hasBattery && root.fillLevel > 0.0 && root.fillLevel < 1.0 && root.isActivelyCharging
+    }
+
+    onAnimCapacityChanged: {
+        if (root.visible && root.hasBattery && root.fillLevel > 0.0 && root.fillLevel < 1.0) {
+            if (!waveAnimation.running) waveAnimation.start();
+            if (!root.isActivelyCharging) waveSettleTimer.restart();
+        }
+    }
+
+    onVisibleChanged: {
+        if (!visible) {
+            waveAnimation.stop();
+            waveSettleTimer.stop();
+        } else if (isActivelyCharging && hasBattery && fillLevel > 0.0 && fillLevel < 1.0) {
+            waveAnimation.start();
+        }
+    }
+
+    onIsChargingChanged: {
+        if (isCharging && visible && hasBattery && fillLevel > 0.0 && fillLevel < 1.0) {
+            waveAnimation.start();
+            waveSettleTimer.restart();
+        } else if (!isCharging) {
+            waveSettleTimer.restart();
+        }
     }
 
     readonly property string timeString: {

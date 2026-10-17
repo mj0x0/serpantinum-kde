@@ -38,15 +38,6 @@ Item {
         }
     }
 
-    property real wavePhase: 0.0
-    NumberAnimation on wavePhase {
-        from: 0
-        to: Math.PI * 2
-        duration: 1800
-        loops: Animation.Infinite
-        running: root.visible
-    }
-
     property real rawCpu: isNaN(SysData.cpu) ? 0.0 : SysData.cpu / 100.0
     property real cpuUsage: rawCpu
     Behavior on cpuUsage { enabled: root.visible; NumberAnimation { duration: 800; easing.type: Easing.OutQuint } }
@@ -56,10 +47,9 @@ Item {
         value: root.cpuUsage
         colorBase: ThemeBackend.surface0
         colorFill: Qt.lighter(ThemeBackend.mauve, 1.35)
-        icon: ""
+        icon: "\uF2DB"
         title: I18n.t("quickactions.systemusage.cpu")
         valueText: Math.round(root.cpuUsage * 100) + "%"
-        wavePhase: root.wavePhase
         isLive: root.visible
         compact: root.compactMode
         scaleFunc: Scaler.s

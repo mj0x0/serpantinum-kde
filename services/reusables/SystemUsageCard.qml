@@ -15,10 +15,49 @@ Item {
     property string subText: ""
     property alias bottomLeftText: root.subText
 
-    property real wavePhase: 0.0
+    property real internalWavePhase: 0.8
+    property real wavePhase: internalWavePhase
     property bool isLive: true
     property bool hasShadow: false
     property color shadowColor: Qt.rgba(0, 0, 0, 0.22)
+
+    Timer {
+        id: waveSettleTimer
+        interval: 1600
+        repeat: false
+        onTriggered: waveAnimation.stop()
+    }
+
+    NumberAnimation {
+        id: waveAnimation
+        target: root
+        property: "internalWavePhase"
+        from: 0
+        to: Math.PI * 2
+        loops: Animation.Infinite
+        duration: 1800
+    }
+
+    onValueChanged: {
+        if (root.visible && root.isLive && root.fillRatio > 0.001 && root.fillRatio < 0.999) {
+            if (!waveAnimation.running) waveAnimation.start();
+            waveSettleTimer.restart();
+        }
+    }
+
+    onVisibleChanged: {
+        if (!visible) {
+            waveAnimation.stop();
+            waveSettleTimer.stop();
+        }
+    }
+
+    onIsLiveChanged: {
+        if (!isLive) {
+            waveAnimation.stop();
+            waveSettleTimer.stop();
+        }
+    }
 
     property bool compact: false
 
@@ -60,6 +99,8 @@ Item {
     readonly property real fillY: height * (1.0 - root.fillRatio)
     readonly property real waveAmp: (root.fillRatio < 0.99 && root.fillRatio > 0.01) ? root.waveAmpMax * Math.sin(root.fillRatio * Math.PI) : 0
     readonly property real waveCenterOffset: root.waveAmp > 0 ? 0.375 * root.waveAmp * (Math.sin(root.wavePhase) - Math.cos(root.wavePhase)) : 0
+
+
 
     Rectangle {
         anchors.fill: parent
@@ -170,7 +211,7 @@ Item {
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.right: parent.right
-            height: root.height
+            height: root.height - (root.contentMargins * 2)
             anchors.margins: root.contentMargins
 
             IconButton {
