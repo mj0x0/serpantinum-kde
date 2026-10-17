@@ -1,4 +1,5 @@
 import "../../../../services/reusables"
+import "../../../../services/debug"
 import "../../../../services/shims"
 import QtQuick
 import QtQuick.Layouts
@@ -49,6 +50,8 @@ Item {
 
     property real wavePhase: 0.0
     NumberAnimation on wavePhase {
+        id: waveAnim
+        onRunningChanged: running ? MemProbe.track("anim", "battery.wave", "battery") : MemProbe.untrack("anim", "battery.wave")
         running: root.visible && root.hasBattery && root.fillLevel > 0.0 && root.fillLevel < 1.0
         loops: Animation.Infinite
         from: 0

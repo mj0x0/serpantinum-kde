@@ -1,3 +1,4 @@
+import "../../../../services/debug"
 import "../../../../services/shims"
 import "../.."
 import QtQuick
@@ -246,6 +247,7 @@ Item {
         }
 
         onPaint: {
+                MemProbe.bump("canvas.clock.material");
             var ctx = getContext("2d");
             ctx.reset();
 

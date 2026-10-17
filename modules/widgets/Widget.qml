@@ -1,3 +1,4 @@
+import "../../services/debug"
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
@@ -101,12 +102,14 @@ PanelWindow {
     implicitHeight: ((Math.round(wRotation || 0) % 180 === 0) ? effectiveHeight : effectiveWidth) + (root.auraMargin * 2)
 
     Component.onCompleted: {
+        MemProbe.track("widget", root.wId, root.wType + "/" + (root.wVariant || "default"));
         Qt.callLater(() => {
             root.initialized = true;
         });
     }
 
     Component.onDestruction: {
+        MemProbe.untrack("widget", root.wId);
         visible = false;
         faceLoader.active = false;
         faceLoader.source = "";
@@ -168,7 +171,9 @@ PanelWindow {
         opacity: root.wOpacity
         Behavior on opacity { NumberAnimation { duration: 150 } }
         Behavior on rotation { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+        onSourceChanged: MemProbe.bump("face.source." + root.wType)
         onLoaded: {
+            MemProbe.bump("face.load." + root.wType);
             if (item) {
                 try {
                     item.visible = Qt.binding(() => root.visible && !root.isRedacting);

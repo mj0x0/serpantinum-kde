@@ -1,4 +1,5 @@
 import "../../services/caching"
+import "../../services/debug"
 import "../../services/shims"
 import QtQuick
 import Quickshell
@@ -176,7 +177,7 @@ Item {
             if (trimmed !== "") {
                 try {
                     let data = JSON.parse(trimmed);
-                    widgetsModel.clear();
+                    MemProbe.bump("model.clear"); widgetsModel.clear();
                     let needSave = false;
                     let sw = loaderRoot.getScreenWidth();
                     let sh = loaderRoot.getScreenHeight();
@@ -249,8 +250,11 @@ Item {
     }
 
     Component.onCompleted: {
+        MemProbe.track("loader", loaderRoot.safeMonitorName, "");
         loadProcess.running = true;
     }
+
+    Component.onDestruction: MemProbe.untrack("loader", loaderRoot.safeMonitorName)
 
     Connections {
         target: WidgetSync
@@ -259,7 +263,7 @@ Item {
             if (!loaderRoot.isTargetMonitor(monitor)) return;
             if (!widgetsList) return;
             let len = widgetsList.length !== undefined ? widgetsList.length : 0;
-            widgetsModel.clear();
+            MemProbe.bump("model.clear"); widgetsModel.clear();
 
             let sw = loaderRoot.getScreenWidth();
             let sh = loaderRoot.getScreenHeight();
@@ -476,7 +480,7 @@ Item {
 
         function onWidgetsCleared(monitor) {
             if (!loaderRoot.isTargetMonitor(monitor)) return;
-            widgetsModel.clear();
+            MemProbe.bump("model.clear"); widgetsModel.clear();
             loaderRoot.saveNow();
         }
 
@@ -692,7 +696,7 @@ Item {
         }
 
         function clear(): string {
-            widgetsModel.clear();
+            MemProbe.bump("model.clear"); widgetsModel.clear();
             loaderRoot.saveNow();
             return "ok";
         }

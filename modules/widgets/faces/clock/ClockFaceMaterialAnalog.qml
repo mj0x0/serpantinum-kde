@@ -1,3 +1,4 @@
+import "../../../../services/debug"
 import "../../../../services/shims"
 import QtQuick
 
@@ -144,6 +145,7 @@ Item {
             onFillColorChanged: requestPaint()
 
             onPaint: {
+                MemProbe.bump("canvas.clock.analog");
                 var ctx = getContext("2d");
                 ctx.reset();
                 var cx = width / 2;

@@ -1,3 +1,4 @@
+import "../../../../services/debug"
 import "../../../../services/shims"
 import QtQuick
 
@@ -22,7 +23,10 @@ Item {
         interval: root.showSeconds ? 40 : 1000
         running: true
         repeat: true
-        onTriggered: root.currentTime = new Date()
+        onTriggered: {
+            MemProbe.bump("tick.clock.lumen");
+            root.currentTime = new Date();
+        }
     }
 
     function resolveColor(token, fallback) {
