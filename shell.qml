@@ -1,8 +1,8 @@
 //@ pragma UseQApplication
-//@ pragma Env QSG_RHI_BACKEND=vulkan
 //@ pragma Env QSG_NO_VSYNC=1
+//@ pragma Env __NV_DISABLE_EXPLICIT_SYNC=1
+// Shell process only: NVIDIA EGL leaks ~3 KB of heap per presented frame with explicit sync on.
 // KWin 6.8 + NVIDIA: a FIFO swapchain sends commit-timing stamps that stall the whole output.
-// NVIDIA's OpenGL path leaks per rendered frame under Wayland explicit sync; Vulkan does not.
 // The one shell instance: bar, dock, launcher, popups, Floating, notifications,
 // polkit and every IPC target. UseQApplication is required for the tray's context menus.
 

@@ -71,7 +71,7 @@ Singleton {
         // and range stay in step with the parsing below.
         command: [
             "bash", "-c",
-            "cava -p <(printf '[general]\\nbars = %d\\nframerate = 60\\nsensitivity = 150\\n[output]\\nmethod = raw\\nraw_target = /dev/stdout\\ndata_format = ascii\\nascii_max_range = 1000\\nbar_delimiter = 59\\n' " + root.barCount + ")"
+            "cava -p <(printf '[general]\\nbars = %d\\nframerate = 30\\nsensitivity = 150\\n[output]\\nmethod = raw\\nraw_target = /dev/stdout\\ndata_format = ascii\\nascii_max_range = 1000\\nbar_delimiter = 59\\n' " + root.barCount + ")"
         ]
         stdout: SplitParser {
             onRead: data => {
