@@ -8,6 +8,7 @@ import "../../services/bar"
 import "../../services/caching"
 import "../../services/cava"
 import "../../services/layout"
+import "../../services/lyrics"
 import "../../services/network"
 import "../../services/settings"
 import "../../services/theme"
@@ -15,6 +16,7 @@ import "../notifcenter"
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Mpris
 import Quickshell.Wayland
 import Quickshell.Bluetooth
 import "../../services/bar/BarModules.js" as BarModules
@@ -328,67 +330,68 @@ Variants {
                 }
             }
 
-            Process {
-                id: musicForceRefresh
-                running: true
-                command: ["bash", "-c", "bash " + barWindow.shellPath + "/helpers/music_info.sh | tee " + paths.getRunDir("music") + "/music_info.json"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        let txt = this.text.trim();
-                        if (txt !== "") { try { barWindow.musicData = JSON.parse(txt); } catch(e) {} }
-                    }
-                }
+            // Native MPRIS: the bar follows the same player resolution as the lyrics engine.
+            readonly property var mprisPlayer: Lyrics.player
+            readonly property string mprisArtUrl: mprisPlayer && mprisPlayer.trackArtUrl ? "" + mprisPlayer.trackArtUrl : ""
+            readonly property string mprisTrackKey: mprisPlayer ? (mprisPlayer.trackTitle || "") + "|" + (mprisPlayer.trackArtist || "") : ""
+            property string coverPath: ""
+
+            function mmss(secs) {
+                let s = Math.max(0, Math.floor(secs || 0));
+                let m = Math.floor(s / 60), r = s % 60;
+                return (m < 10 ? "0" : "") + m + ":" + (r < 10 ? "0" : "") + r;
             }
-            function refreshMusic() { musicForceRefresh.running = true }
+            function rebuildMusic() {
+                let p = barWindow.mprisPlayer;
+                if (!p) { barWindow.musicData = { "status": "Stopped", "title": "", "artUrl": "", "timeStr": "" }; return; }
+                let len = p.lengthSupported ? p.length : 0;
+                let pos = p.positionSupported ? p.position : 0;
+                if (len > 0 && pos > len) pos = len;
+                let status = p.isPlaying ? "Playing" : (p.playbackState === MprisPlaybackState.Paused ? "Paused" : "Stopped");
+                let name = ("" + p.dbusName).replace("org.mpris.MediaPlayer2.", "");
+                barWindow.musicData = {
+                    "status": status, "title": p.trackTitle || "", "artist": p.trackArtist || "", "album": p.trackAlbum || "",
+                    "length": Math.floor(len), "position": Math.floor(pos),
+                    "lengthStr": mmss(len), "positionStr": mmss(pos), "timeStr": mmss(pos) + " / " + mmss(len),
+                    "percent": len > 0 ? pos * 100 / len : 0,
+                    "playerName": name, "source": p.identity || name, "artUrl": barWindow.coverPath
+                };
+            }
+            function refreshMusic() { barWindow.rebuildMusic() }
+            // Covers stay in the session cache the lock screens and the music popup read; fetched once per track.
+            function fetchCover() {
+                let p = barWindow.mprisPlayer;
+                if (!p) { barWindow.coverPath = ""; return; }
+                coverProc.command = ["bash", barWindow.shellPath + "/helpers/cover-cache.sh", barWindow.mprisArtUrl, p.trackTitle || "", p.trackArtist || ""];
+                coverProc.running = false; coverProc.running = true;
+            }
+            onMprisPlayerChanged: { fetchCover(); rebuildMusic() }
+            onMprisArtUrlChanged: fetchCover()
+            onMprisTrackKeyChanged: { if (barWindow.mprisArtUrl === "") fetchCover(); rebuildMusic() }
+
+            Connections {
+                target: barWindow.mprisPlayer
+                function onTrackChanged() { barWindow.rebuildMusic() }
+                function onPostTrackChanged() { barWindow.rebuildMusic() }
+                function onPlaybackStateChanged() { barWindow.rebuildMusic() }
+            }
 
             Timer {
                 interval: 1000
                 running: barWindow.musicData !== null && barWindow.musicData.status === "Playing"
                 repeat: true
-                onTriggered: {
-                    if (!barWindow.musicData || barWindow.musicData.status !== "Playing") return;
-                    if (!barWindow.musicData.timeStr || barWindow.musicData.timeStr === "") return;
-                    let parts = barWindow.musicData.timeStr.split(" / ");
-                    if (parts.length !== 2) return;
-                    let posParts = parts[0].split(":").map(Number);
-                    let lenParts = parts[1].split(":").map(Number);
-                    let posSecs = (posParts.length === 3) ? (posParts[0] * 3600 + posParts[1] * 60 + posParts[2]) : (posParts[0] * 60 + posParts[1]);
-                    let lenSecs = (lenParts.length === 3) ? (lenParts[0] * 3600 + lenParts[1] * 60 + lenParts[2]) : (lenParts[0] * 60 + lenParts[1]);
-                    if (isNaN(posSecs) || isNaN(lenSecs)) return;
-                    posSecs++;
-                    if (posSecs > lenSecs) posSecs = lenSecs;
-                    let newPosStr = "";
-                    if (posParts.length === 3) {
-                        let h = Math.floor(posSecs / 3600), m = Math.floor((posSecs % 3600) / 60), s = posSecs % 60;
-                        newPosStr = h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-                    } else {
-                        let m = Math.floor(posSecs / 60), s = posSecs % 60;
-                        newPosStr = (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-                    }
-                    let newData = Object.assign({}, barWindow.musicData);
-                    newData.timeStr = newPosStr + " / " + parts[1];
-                    newData.positionStr = newPosStr;
-                    if (lenSecs > 0) newData.percent = (posSecs / lenSecs) * 100;
-                    barWindow.musicData = newData;
-                }
+                triggeredOnStart: true
+                onTriggered: barWindow.rebuildMusic()
             }
 
             Process {
-                id: mprisWatcher
-                running: true
-                command: ["bash", "-c", "bash " + barWindow.shellPath + "/helpers/mpris-wait.sh"]
-                onExited: {
-                    musicForceRefresh.running = false; musicForceRefresh.running = true;
-                    running = false; running = true;
+                id: coverProc
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let path = this.text.trim();
+                        if (path !== "") { barWindow.coverPath = path; barWindow.rebuildMusic(); }
+                    }
                 }
-            }
-
-            Timer {
-                id: artRetryTimer
-                interval: 500
-                repeat: true
-                running: barWindow.displayArtUrl && barWindow.displayArtUrl.indexOf("placeholder_blank.png") !== -1
-                onTriggered: { musicForceRefresh.running = false; musicForceRefresh.running = true; }
             }
 
             Process {
