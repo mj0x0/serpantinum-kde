@@ -965,8 +965,54 @@ Item {
                             color: window.text
                         }
                         BarArranger {
+                            id: arranger
                             Layout.fillWidth: true
                             host: window
+                        }
+                        Row {
+                            label: "Ring the groups"
+                            glyph: "\u{f00e9}"
+                            desc: "Each group's pill in the bar gets a ring in its own colour, picked below, and the chips above match; off, pills are plain and grouped chips wear the accent"
+                            Toggle {
+                                checked: ShellSettings.value("bar.colorGroups", true) !== false
+                                onToggled: v => ShellSettings.setValue("bar.colorGroups", v)
+                            }
+                        }
+                        Row {
+                            label: "Ring width"
+                            glyph: "\u{f0b7e}"
+                            desc: "Thickness of the ring around a group's pill, in pixels"
+                            Slider {
+                                from: 1; to: 6; step: 1
+                                value: Number(ShellSettings.value("bar.groupRingWidth", 2))
+                                onCommitted: v => ShellSettings.setValue("bar.groupRingWidth", v)
+                                enabled: arranger.colorsOn
+                                opacity: enabled ? 1 : 0.4
+                            }
+                        }
+                        Repeater {
+                            model: arranger.colorsOn ? arranger.groups : []
+                            Row {
+                                required property var modelData
+                                required property int index
+                                label: "Group " + (index + 1)
+                                glyph: modelData.icon
+                                desc: modelData.names
+                                Swatches {
+                                    width: window.s(240)
+                                    options: [
+                                        { key: "mauve",    color: window.mauve },
+                                        { key: "sapphire", color: window.sapphire },
+                                        { key: "green",    color: window.green },
+                                        { key: "yellow",   color: window.yellow },
+                                        { key: "peach",    color: window.peach },
+                                        { key: "pink",     color: window.pink },
+                                        { key: "red",      color: window.red }
+                                    ]
+                                    current: arranger.colorKey(modelData.gid)
+                                    onPicked: v => arranger.pickColor(modelData.gid, v)
+                                }
+                            }
                         }
                     }
 

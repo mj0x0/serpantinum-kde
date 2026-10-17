@@ -31,17 +31,22 @@ Singleton {
     property var pendingCfg: null
     property string queuedJson: ""
 
-    function setValue(path, val) {
+    function setValue(path, val) { var one = ({}); one[path] = val; setValues(one); }
+
+    // Several keys in one write: { "bar.modules": ..., "bar.groupColors": ... }.
+    function setValues(map) {
         var next;
         try { next = JSON.parse(JSON.stringify(pendingCfg || cfg || {})); } catch (e) { next = ({}); }
-        var parts = ("" + path).split(".");
-        var cur = next;
-        for (var i = 0; i < parts.length - 1; i++) {
-            if (cur[parts[i]] === null || typeof cur[parts[i]] !== "object")
-                cur[parts[i]] = ({});
-            cur = cur[parts[i]];
+        for (var path in map) {
+            var parts = ("" + path).split(".");
+            var cur = next;
+            for (var i = 0; i < parts.length - 1; i++) {
+                if (cur[parts[i]] === null || typeof cur[parts[i]] !== "object")
+                    cur[parts[i]] = ({});
+                cur = cur[parts[i]];
+            }
+            cur[parts[parts.length - 1]] = map[path];
         }
-        cur[parts[parts.length - 1]] = val;
         pendingCfg = next;
         // JSON on argv, not through a shell string: no quoting to get wrong.
         var json = JSON.stringify(next);

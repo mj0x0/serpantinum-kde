@@ -101,3 +101,53 @@ function flat(arr) {
     for (var i = 0; i < arr.length; i++) { if (Array.isArray(arr[i])) r = r.concat(arr[i]); else r.push(arr[i]); }
     return r;
 }
+
+// Settings' colour per group, keyed by the group's first member (upstream's "g_<id>").
+var GROUP_PALETTE = ["mauve", "sapphire", "green", "yellow", "peach", "pink", "red"];
+
+function groupId(members) { return "g_" + members[0]; }
+
+function groupIds(m) {
+    var ids = [], secs = [m.left, m.center, m.right];
+    for (var a = 0; a < secs.length; a++)
+        for (var i = 0; i < secs[a].length; i++) if (Array.isArray(secs[a][i])) ids.push(groupId(secs[a][i]));
+    return ids;
+}
+
+// Existing groups keep their value, gone groups are dropped, each new group takes the
+// first palette colour nobody holds.
+function assignGroupColors(prev, ids) {
+    var out = {}, used = [];
+    for (var i = 0; i < ids.length; i++) {
+        var v = prev && typeof prev[ids[i]] === "string" ? prev[ids[i]] : "";
+        if (v !== "") { out[ids[i]] = v; used.push(v); }
+    }
+    for (var j = 0; j < ids.length; j++) {
+        if (out[ids[j]] !== undefined) continue;
+        var pick = GROUP_PALETTE[used.length % GROUP_PALETTE.length];
+        for (var k = 0; k < GROUP_PALETTE.length; k++) if (used.indexOf(GROUP_PALETTE[k]) === -1) { pick = GROUP_PALETTE[k]; break; }
+        out[ids[j]] = pick; used.push(pick);
+    }
+    return out;
+}
+
+// One row per group for the Settings swatches: its key, lead glyph and member names.
+function groupRows(m) {
+    var rows = [], secs = [m.left, m.center, m.right];
+    for (var a = 0; a < secs.length; a++)
+        for (var i = 0; i < secs[a].length; i++) {
+            var g = secs[a][i];
+            if (!Array.isArray(g)) continue;
+            var names = [];
+            for (var j = 0; j < g.length; j++) names.push((INFO[g[j]] || {}).label || g[j]);
+            rows.push({ gid: groupId(g), icon: (INFO[g[0]] || {}).icon || "", names: names.join(" \u00b7 ") });
+        }
+    return rows;
+}
+
+function sameColors(a, b) {
+    var ka = Object.keys(a || {}), kb = Object.keys(b || {});
+    if (ka.length !== kb.length) return false;
+    for (var i = 0; i < ka.length; i++) if (a[ka[i]] !== b[ka[i]]) return false;
+    return true;
+}

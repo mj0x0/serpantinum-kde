@@ -28,6 +28,11 @@ Item {
     property string pendingId: ""
     property string pendingList: ""
     property string lastSaved: ""
+    property var groupColors: ({})
+    property var fileColors: ({})   // bar.groupColors as last read or written
+    property var groups: []         // [{ gid, icon, names }] for the host's swatch rows
+    // Off: every group wears the accent and bar.groupColors is neither read nor written.
+    readonly property bool colorsOn: ShellSettings.value("bar.colorGroups", true) !== false
 
     // --- config <-> models ---------------------------------------------------------
     function widgetOn(k) { return ShellSettings.value("bar.widgets." + k, true) !== false; }
@@ -45,7 +50,7 @@ Item {
         var add = function (arr, model) {
             for (var i = 0; i < arr.length; i++) {
                 var entry = Array.isArray(arr[i]) ? arr[i] : [arr[i]];
-                var gid = Array.isArray(arr[i]) ? "g_" + arr[i][0] : "";
+                var gid = Array.isArray(arr[i]) ? BarModules.groupId(arr[i]) : "";
                 for (var j = 0; j < entry.length; j++) {
                     if (used[entry[j]]) continue;
                     used[entry[j]] = true;
@@ -58,14 +63,22 @@ Item {
             if (!used[BarModules.KNOWN[k]]) availableModel.append(chip(BarModules.KNOWN[k], ""));
         lastSaved = JSON.stringify(m);
     }
-    function load() { loadFrom(currentModules()); }
+    function storedColors() {
+        var v = ShellSettings.value("bar.groupColors", null);
+        return (v && typeof v === "object" && !Array.isArray(v)) ? v : ({});
+    }
+    function load() { var m = currentModules(); fileColors = storedColors(); loadFrom(m); assignColors(m, fileColors); groups = BarModules.groupRows(m); }
     Component.onCompleted: load()
 
-    // A hand-edited file reloads the lists; our own writes round-trip unchanged.
+    // A hand-edited file reloads the lists or recolours the chips; a write of our own is
+    // ignored until it has landed.
     Connections {
         target: ShellSettings
         function onCfgChanged() {
-            if (JSON.stringify(root.currentModules()) !== root.lastSaved) root.load();
+            if (ShellSettings.pendingCfg) return;
+            if (JSON.stringify(root.currentModules()) !== root.lastSaved) { root.load(); return; }
+            var stored = root.storedColors();
+            if (!BarModules.sameColors(stored, root.fileColors)) { root.fileColors = stored; root.assignColors(root.currentModules(), stored); }
         }
     }
 
@@ -88,15 +101,61 @@ Item {
     }
 
     function save() {
+        syncGroupIds();
         var obj = { left: buildArray(leftModel), center: buildArray(centerModel), right: buildArray(rightModel) };
-        lastSaved = JSON.stringify(BarModules.parse(obj, root.widgetOn));
-        ShellSettings.setValue("bar.modules", obj);
+        var m = BarModules.parse(obj, root.widgetOn);
+        lastSaved = JSON.stringify(m);
+        assignColors(m, groupColors);
+        groups = BarModules.groupRows(m);
+        if (!colorsOn) { ShellSettings.setValue("bar.modules", obj); return; }
+        fileColors = groupColors;
+        ShellSettings.setValues({ "bar.modules": obj, "bar.groupColors": groupColors });
     }
 
     function reset() {
         var m = BarModules.defaultModules(root.widgetOn);
         loadFrom(m);
-        ShellSettings.setValue("bar.modules", m);
+        groups = BarModules.groupRows(m);
+        if (!colorsOn) { assignColors(m, fileColors); ShellSettings.setValue("bar.modules", m); return; }
+        fileColors = ({});
+        assignColors(m, fileColors);
+        ShellSettings.setValues({ "bar.modules": m, "bar.groupColors": fileColors });
+    }
+
+    // --- group colours (bar.groupColors) ---------------------------------------------
+    // Every group holds a palette slot, assigned in memory on load and written in the same
+    // file write as the layout, so opening Settings never writes (upstream does the same).
+    function assignColors(m, prev) { groupColors = BarModules.assignGroupColors(prev, BarModules.groupIds(m)); }
+    // The swatch rows: the stored palette name ("" for a hex or nothing), and a pick.
+    function colorKey(gid) { var v = groupColors[gid]; return BarModules.GROUP_PALETTE.indexOf(v) !== -1 ? v : ""; }
+    function pickColor(gid, key) {
+        var next = Object.assign({}, groupColors);
+        next[gid] = key;
+        groupColors = next;
+        fileColors = next;
+        ShellSettings.setValue("bar.groupColors", next);
+    }
+    // The key follows a run's first chip (upstream's scheme): a reordered run is re-keyed
+    // and keeps its colour, a run split off an old key starts fresh, a lone chip is no group.
+    function syncGroupIds() {
+        var ms = [leftModel, centerModel, rightModel], old = groupColors, next = ({}), holder = ({}), changed = false;
+        for (var a = 0; a < ms.length; a++) {
+            var m = ms[a], i = 0;
+            while (i < m.count) {
+                var gid = m.get(i).groupId || "";
+                if (gid === "") { i++; continue; }
+                var j = i;
+                while (j < m.count && (m.get(j).groupId || "") === gid) j++;
+                var want = j - i < 2 ? "" : BarModules.groupId([m.get(i).moduleId]);
+                if (want !== gid) { changed = true; for (var k = i; k < j; k++) m.setProperty(k, "groupId", want); }
+                if (want !== "" && old[gid] !== undefined && (holder[gid] === undefined || want === gid)) {
+                    if (holder[gid] !== undefined) delete next[holder[gid]];
+                    next[want] = old[gid]; holder[gid] = want;
+                }
+                i = j;
+            }
+        }
+        if (changed) groupColors = next;
     }
 
     // --- drag, drop and groups --------------------------------------------------------
@@ -163,7 +222,7 @@ Item {
         }
         if (aIdx === -1 || bIdx === -1) return;
         var gid = m.get(bIdx).groupId || "";
-        if (gid === "") { gid = "g_" + bId; m.setProperty(bIdx, "groupId", gid); }
+        if (gid === "") { gid = BarModules.groupId([bId]); m.setProperty(bIdx, "groupId", gid); }
         var moving = m.get(aIdx);
         var data = { moduleId: moving.moduleId, moduleLabel: moving.moduleLabel, moduleIcon: moving.moduleIcon, isPlaceholder: false, placeholderWidth: 0, groupId: gid };
         var wasBefore = aIdx < bIdx;
@@ -230,12 +289,16 @@ Item {
         }
         return found ? target : count;
     }
-    // Editor-only tint per group; nothing is persisted for it.
+    // A stored palette name follows the theme; a hex is taken as written (upstream's form).
     function groupColor(gid) {
-        var palette = [host.mauve, host.sapphire, host.green, host.yellow, host.peach, host.pink, host.red];
+        var v = groupColors[gid];
+        if (typeof v === "string") {
+            if (BarModules.GROUP_PALETTE.indexOf(v) !== -1) return host[v];
+            if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+        }
         var h = 0;
         for (var i = 0; i < gid.length; i++) h = ((h << 5) - h + gid.charCodeAt(i)) | 0;
-        return palette[Math.abs(h) % palette.length];
+        return host[BarModules.GROUP_PALETTE[Math.abs(h) % BarModules.GROUP_PALETTE.length]];
     }
 
     // --- one box per list -------------------------------------------------------------
@@ -357,7 +420,7 @@ Item {
                             anchors.fill: parent
                             implicitWidth: chipRow.implicitWidth + host.s(20)
                             radius: root.chipR
-                            color: d.isGrouped ? root.groupColor(d.groupId) : host.surface1
+                            color: d.isGrouped ? (root.colorsOn ? root.groupColor(d.groupId) : host.accent) : host.surface1
                             border.width: 1
                             border.color: d.isGrouped ? "transparent" : host.surface2
                             Behavior on color { ColorAnimation { duration: 150 } }
