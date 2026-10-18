@@ -286,8 +286,8 @@ Item {
         SequentialAnimation { PauseAnimation { duration: 180 } NumberAnimation { target: root; property: "introSliders";      from: 0; to: 1.0; duration: 260; easing.type: Easing.OutCubic } }
         SequentialAnimation { PauseAnimation { duration: 210 } NumberAnimation { target: root; property: "introQuickActions"; from: 0; to: 1.0; duration: 260; easing.type: Easing.OutCubic } }
         SequentialAnimation { PauseAnimation { duration: 240 } NumberAnimation { target: root; property: "introNotifs";       from: 0; to: 1.0; duration: 260; easing.type: Easing.OutCubic } }
-        SequentialAnimation { PauseAnimation { duration: 270 } NumberAnimation { target: root; property: "introPhone";        from: 0; to: 1.0; duration: 260; easing.type: Easing.OutCubic } }
-        SequentialAnimation { PauseAnimation { duration: 300 } NumberAnimation { target: root; property: "introActions";      from: 0; to: 1.0; duration: 260; easing.type: Easing.OutCubic } }
+        SequentialAnimation { PauseAnimation { duration: 300 } NumberAnimation { target: root; property: "introPhone";        from: 0; to: 1.0; duration: 260; easing.type: Easing.OutCubic } }
+        SequentialAnimation { PauseAnimation { duration: 270 } NumberAnimation { target: root; property: "introActions";      from: 0; to: 1.0; duration: 260; easing.type: Easing.OutCubic } }
         SequentialAnimation { PauseAnimation { duration: 330 } NumberAnimation { target: root; property: "introCore";         from: 0; to: 1.0; duration: 260; easing.type: Easing.OutCubic } }
     }
 
@@ -503,6 +503,107 @@ Item {
             }
 
             Item { Layout.fillWidth: true }
+        }
+    }
+
+    component PhoneContent : Item {
+        id: pRoot
+        property color contentTextColor: ThemeBackend.text
+        property color accentColor: ThemeBackend.blue
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: root.s(20)
+            anchors.rightMargin: root.s(20)
+            spacing: root.s(16)
+
+            Text {
+                font.family: "Iosevka Nerd Font"
+                font.pixelSize: root.s(32)
+                color: KConnState.online ? pRoot.accentColor : ThemeBackend.overlay0
+                text: KConnState.online ? "\u{f011c}" : "\u{f03f0}"
+                Behavior on color { ColorAnimation { duration: 400 } }
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            ColumnLayout {
+                spacing: root.s(2)
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+
+                RowLayout {
+                    spacing: root.s(5)
+
+                    Text {
+                        font.family: ThemeBackend.fontFamily
+                        font.weight: Font.Black
+                        font.pixelSize: root.s(20)
+                        color: KConnState.online ? pRoot.contentTextColor : ThemeBackend.overlay0
+                        text: KConnState.online ? (KConnState.charge >= 0 ? KConnState.charge + "%" : "\u2014") : "Disconnected"
+                    }
+
+                    Text {
+                        Layout.alignment: Qt.AlignVCenter
+                        visible: KConnState.online && KConnState.charging
+                        font.family: "Iosevka Nerd Font"
+                        font.pixelSize: root.s(13)
+                        color: pRoot.contentTextColor === ThemeBackend.crust ? ThemeBackend.crust : ThemeBackend.green
+                        text: "\u{f140b}"
+                    }
+                }
+
+                // Sub-label: the device, its signal bars and the network type.
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: root.s(6)
+
+                    Text {
+                        font.family: ThemeBackend.fontFamily
+                        font.weight: Font.Bold
+                        font.pixelSize: root.s(10)
+                        color: pRoot.contentTextColor === ThemeBackend.crust ? Qt.alpha(ThemeBackend.crust, 0.85) : ThemeBackend.subtext0
+                        text: KConnState.online ? KConnState.deviceName : "KDE Connect"
+                        elide: Text.ElideRight
+                        Layout.maximumWidth: implicitWidth
+                    }
+
+                    Row {
+                        Layout.alignment: Qt.AlignVCenter
+                        visible: KConnState.online && KConnState.sigStrength >= 0
+                        spacing: root.s(2)
+                        readonly property real tallest: root.s(3) + 3 * root.s(2)
+                        height: tallest
+                        Repeater {
+                            model: 4
+                            delegate: Rectangle {
+                                required property int index
+                                width: root.s(2.5)
+                                height: root.s(3) + index * root.s(2)
+                                y: parent.tallest - height
+                                radius: Radius.inner(root.s(1.25), root.s(1.25))
+                                color: index < KConnState.sigStrength ? pRoot.accentColor : Qt.alpha(pRoot.contentTextColor, 0.18)
+                                Behavior on color { ColorAnimation { duration: 300 } }
+                            }
+                        }
+                    }
+
+                    // Some phones report strength without a network type ("Unknown").
+                    Text {
+                        Layout.alignment: Qt.AlignVCenter
+                        visible: KConnState.online && !!KConnState.sigType && KConnState.sigType !== "Unknown"
+                        text: KConnState.sigType
+                        font.family: ThemeBackend.fontFamily
+                        font.weight: Font.Bold
+                        font.pixelSize: root.s(10)
+                        color: pRoot.contentTextColor === ThemeBackend.crust ? Qt.alpha(ThemeBackend.crust, 0.85) : ThemeBackend.subtext0
+                    }
+
+                    Item { Layout.fillWidth: true }
+                }
+            }
+
+            // Room for the action bubble, which is drawn over this content.
+            Item { Layout.preferredWidth: root.s(34) * 3 + root.s(22) }
         }
     }
 
@@ -929,357 +1030,7 @@ Item {
                 transform: SlideIn { progress: root.introNotifs }
             }
 
-            // 5. KDE Connect: the ring, kept from the old centre, with the ghost buttons.
-            Rectangle {
-                id: phoneBox
-                Layout.fillWidth: true
-                Layout.preferredHeight: root.s(128)
-                Layout.maximumHeight: root.s(128)
-                radius: root.boxRadius
-                color: root.boxColor
-                opacity: root.introPhone
-                transform: SlideIn { progress: root.introPhone }
-
-                readonly property bool isDangerState: KConnState.online && !KConnState.charging && KConnState.charge >= 0 && KConnState.charge < 15
-                readonly property color ringStart: ThemeBackend.blue
-                readonly property color ringEnd: Qt.lighter(ringStart, 1.15)
-
-                Connections {
-                    target: KConnState
-                    function onChargeChanged()   { batCanvas.requestPaint(); }
-                    function onOnlineChanged()   { batCanvas.requestPaint(); }
-                    function onChargingChanged() { batCanvas.requestPaint(); }
-                }
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: root.s(12)
-                    spacing: root.s(14)
-
-                    Item {
-                        id: ringSlot
-                        Layout.preferredWidth: root.ringSize
-                        Layout.preferredHeight: root.ringSize
-                        Layout.alignment: Qt.AlignVCenter
-
-                        Rectangle {
-                            id: centralCore
-                            anchors.fill: parent
-                            radius: root.ringRadius
-                            gradient: Gradient {
-                                orientation: Gradient.Vertical
-                                GradientStop { position: 0.0; color: ThemeBackend.surface0 }
-                                GradientStop { position: 1.0; color: ThemeBackend.base }
-                            }
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: root.ringRadius
-                                color: ThemeBackend.maroon
-                                opacity: phoneBox.isDangerState ? 0.2 : 0.0
-                                Behavior on opacity { NumberAnimation { duration: 400 } }
-                            }
-
-                            Item {
-                                id: ringAnim
-                                anchors.fill: parent
-
-                                property real pumpPhase: 0.0
-                                NumberAnimation on pumpPhase {
-                                    running: heroMa.containsMouse && KConnState.charging
-                                    loops: Animation.Infinite
-                                    from: 0.0; to: 1.0; duration: 1200; easing.type: Easing.InOutSine
-                                    onStopped: batCanvas.requestPaint()
-                                }
-                                property real dischargePhase: 1.0
-                                NumberAnimation on dischargePhase {
-                                    running: heroMa.containsMouse && !KConnState.charging
-                                    loops: Animation.Infinite
-                                    from: 1.0; to: 0.0; duration: 1600; easing.type: Easing.InOutSine
-                                    onStopped: batCanvas.requestPaint()
-                                }
-                                onPumpPhaseChanged: if (heroMa.containsMouse && KConnState.charging) batCanvas.requestPaint()
-                                onDischargePhaseChanged: if (heroMa.containsMouse && !KConnState.charging) batCanvas.requestPaint()
-
-                                Canvas {
-                                    id: batCanvas
-                                    anchors.fill: parent
-
-                                    // The inset rounded rect as perimeter segments (top-centre start, clockwise), so
-                                    // progress, the surge and the drain can be stroked as any [from, to] range of it.
-                                    function geom() {
-                                        var inset = root.s(8);
-                                        var L = width - 2 * inset;
-                                        var r = Math.max(0, Math.min(root.ringRadius - inset, L / 2));
-                                        var st = L - 2 * r, q = Math.PI * r / 2, x = inset, y = inset;
-                                        var segs = [
-                                            { line: true, x0: x + L / 2, y0: y, x1: x + L - r, y1: y, len: st / 2 },
-                                            { line: false, cx: x + L - r, cy: y + r, a0: -Math.PI / 2, len: q },
-                                            { line: true, x0: x + L, y0: y + r, x1: x + L, y1: y + L - r, len: st },
-                                            { line: false, cx: x + L - r, cy: y + L - r, a0: 0, len: q },
-                                            { line: true, x0: x + L - r, y0: y + L, x1: x + r, y1: y + L, len: st },
-                                            { line: false, cx: x + r, cy: y + L - r, a0: Math.PI / 2, len: q },
-                                            { line: true, x0: x, y0: y + L - r, x1: x, y1: y + r, len: st },
-                                            { line: false, cx: x + r, cy: y + r, a0: Math.PI, len: q },
-                                            { line: true, x0: x + r, y0: y, x1: x + L / 2, y1: y, len: st / 2 }
-                                        ];
-                                        return { x: x, y: y, L: L, r: r, segs: segs, P: 4 * st + 2 * Math.PI * r };
-                                    }
-                                    function segPoint(sg, t) {
-                                        if (sg.line) { var f = sg.len > 0 ? t / sg.len : 0; return { x: sg.x0 + (sg.x1 - sg.x0) * f, y: sg.y0 + (sg.y1 - sg.y0) * f }; }
-                                        var rr = sg.len / (Math.PI / 2), a = sg.a0 + (rr > 0 ? t / rr : 0);
-                                        return { x: sg.cx + rr * Math.cos(a), y: sg.cy + rr * Math.sin(a) };
-                                    }
-                                    function pointAt(g, d) {
-                                        d = Math.max(0, Math.min(g.P, d));
-                                        for (var i = 0; i < g.segs.length; i++) {
-                                            if (d <= g.segs[i].len || i === g.segs.length - 1) return segPoint(g.segs[i], Math.min(d, g.segs[i].len));
-                                            d -= g.segs[i].len;
-                                        }
-                                        return { x: g.x + g.L / 2, y: g.y };
-                                    }
-                                    function tracePath(ctx, g) {
-                                        var x = g.x, y = g.y, L = g.L, r = g.r;
-                                        ctx.beginPath();
-                                        ctx.moveTo(x + L / 2, y);
-                                        ctx.lineTo(x + L - r, y);
-                                        ctx.arcTo(x + L, y, x + L, y + r, r);
-                                        ctx.lineTo(x + L, y + L - r);
-                                        ctx.arcTo(x + L, y + L, x + L - r, y + L, r);
-                                        ctx.lineTo(x + r, y + L);
-                                        ctx.arcTo(x, y + L, x, y + L - r, r);
-                                        ctx.lineTo(x, y + r);
-                                        ctx.arcTo(x, y, x + r, y, r);
-                                        ctx.closePath();
-                                    }
-                                    function strokeRange(ctx, g, from, to, widthPx, style, alpha) {
-                                        var a = Math.max(0, from), b = Math.min(g.P, to);
-                                        if (b - a <= 0.5) return;
-                                        ctx.beginPath();
-                                        var pos = 0, started = false;
-                                        for (var i = 0; i < g.segs.length; i++) {
-                                            var sg = g.segs[i], s0 = pos, s1 = pos + sg.len;
-                                            pos = s1;
-                                            if (sg.len <= 0 || s1 <= a || s0 >= b) continue;
-                                            var ta = Math.max(a, s0) - s0, tb = Math.min(b, s1) - s0;
-                                            var p0 = segPoint(sg, ta);
-                                            if (!started) { ctx.moveTo(p0.x, p0.y); started = true; }
-                                            if (sg.line) { var p1 = segPoint(sg, tb); ctx.lineTo(p1.x, p1.y); }
-                                            else { var rr = sg.len / (Math.PI / 2); ctx.arc(sg.cx, sg.cy, rr, sg.a0 + ta / rr, sg.a0 + tb / rr, false); }
-                                        }
-                                        ctx.lineWidth = widthPx;
-                                        ctx.strokeStyle = style;
-                                        ctx.globalAlpha = alpha;
-                                        ctx.stroke();
-                                    }
-
-                                    onPaint: {
-                                        var ctx = getContext("2d");
-                                        ctx.clearRect(0, 0, width, height);
-                                        var g = geom();
-                                        var pct = (KConnState.online && KConnState.charge >= 0) ? (KConnState.charge / 100) : 0;
-                                        var endLen = pct * g.P;
-                                        ctx.lineCap = "round";
-                                        ctx.lineJoin = "round";
-
-                                        tracePath(ctx, g);
-                                        ctx.lineWidth = root.s(4);
-                                        ctx.strokeStyle = ThemeBackend.surface1;
-                                        ctx.globalAlpha = 1.0;
-                                        ctx.stroke();
-
-                                        var fillGrad = ctx.createLinearGradient(0, height, width, 0);
-                                        fillGrad.addColorStop(0, phoneBox.ringStart.toString());
-                                        fillGrad.addColorStop(1, phoneBox.ringEnd.toString());
-                                        strokeRange(ctx, g, 0, endLen, root.s(7), fillGrad, 1.0);
-
-                                        if (heroMa.containsMouse && pct > 0.02) {
-                                            if (KConnState.charging) {
-                                                var surge = ringAnim.pumpPhase * (endLen + 0.095 * g.P) - 0.048 * g.P;
-                                                if (surge > 0 && surge < endLen) {
-                                                    strokeRange(ctx, g, surge - 0.064 * g.P, Math.min(endLen, surge + 0.064 * g.P), root.s(11), phoneBox.ringStart.toString(), 0.5 * Math.sin(ringAnim.pumpPhase * Math.PI));
-                                                    strokeRange(ctx, g, surge - 0.032 * g.P, Math.min(endLen, surge + 0.032 * g.P), root.s(14), phoneBox.ringEnd.toString(), 0.8 * Math.sin(ringAnim.pumpPhase * Math.PI));
-                                                }
-                                                if (ringAnim.pumpPhase > 0.7) {
-                                                    var flarePhase = (ringAnim.pumpPhase - 0.7) / 0.3;
-                                                    var tip = pointAt(g, endLen);
-                                                    ctx.beginPath();
-                                                    ctx.arc(tip.x, tip.y, root.s(3.5) + flarePhase * root.s(7), 0, 2 * Math.PI);
-                                                    ctx.fillStyle = phoneBox.ringEnd.toString();
-                                                    ctx.globalAlpha = (1.0 - flarePhase) * 0.6;
-                                                    ctx.fill();
-                                                }
-                                            } else {
-                                                var drainCenter = ringAnim.dischargePhase * endLen;
-                                                for (var d = 0; d < 2; d++) {
-                                                    var spread = (0.032 + d * 0.024) * g.P;
-                                                    strokeRange(ctx, g, drainCenter - spread, Math.min(endLen, drainCenter + spread), root.s(7) + (1 - d) * root.s(1), phoneBox.ringEnd.toString(), 0.2 * Math.sin(ringAnim.dischargePhase * Math.PI));
-                                                }
-                                            }
-                                        }
-                                        ctx.globalAlpha = 1.0;
-                                    }
-                                }
-
-                                RowLayout {
-                                    anchors.centerIn: parent
-                                    spacing: root.s(3)
-                                    Text {
-                                        visible: KConnState.online && KConnState.charging
-                                        font.family: "Iosevka Nerd Font"
-                                        font.pixelSize: root.s(14)
-                                        color: phoneBox.ringStart
-                                        text: "󰂄"
-                                    }
-                                    Text {
-                                        font.family: ThemeBackend.fontFamily
-                                        font.weight: Font.Black
-                                        font.pixelSize: KConnState.online ? root.s(20) : root.s(22)
-                                        color: KConnState.online ? ThemeBackend.text : ThemeBackend.overlay0
-                                        text: KConnState.online ? (KConnState.charge >= 0 ? KConnState.charge + "%" : "—") : "󰏰"
-                                    }
-                                }
-                            }
-
-                            MouseArea {
-                                id: heroMa
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onEntered: batCanvas.requestPaint()
-                                onExited: batCanvas.requestPaint()
-                                // Click refreshes, double-click rings the phone.
-                                onClicked: KConnState.refresh()
-                                onDoubleClicked: KConnState.ring()
-                            }
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignVCenter
-                        spacing: root.s(4)
-
-                        // Name, then signal bars and a charging bolt on the same line, like a phone's status bar.
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: root.s(8)
-
-                            Text {
-                                Layout.fillWidth: true
-                                Layout.maximumWidth: implicitWidth
-                                font.family: ThemeBackend.fontFamily
-                                font.weight: Font.Bold
-                                font.pixelSize: root.s(14)
-                                color: KConnState.online ? ThemeBackend.text : ThemeBackend.overlay0
-                                text: KConnState.online ? KConnState.deviceName : "Phone disconnected"
-                                elide: Text.ElideRight
-                                Behavior on color { ColorAnimation { duration: 300 } }
-                            }
-
-                            Row {
-                                Layout.alignment: Qt.AlignVCenter
-                                visible: KConnState.online && KConnState.sigStrength >= 0
-                                spacing: root.s(2)
-                                readonly property real tallest: root.s(4) + 3 * root.s(2.5)
-                                height: tallest
-                                Repeater {
-                                    model: 4
-                                    delegate: Rectangle {
-                                        required property int index
-                                        width: root.s(3)
-                                        height: root.s(4) + index * root.s(2.5)
-                                        y: parent.tallest - height
-                                        radius: Radius.inner(root.s(1.5), root.s(1.5))
-                                        color: index < KConnState.sigStrength ? phoneBox.ringStart : Qt.alpha(ThemeBackend.text, 0.18)
-                                        Behavior on color { ColorAnimation { duration: 300 } }
-                                    }
-                                }
-                            }
-
-                            // Some phones report strength without a network type ("Unknown").
-                            Text {
-                                Layout.alignment: Qt.AlignVCenter
-                                visible: KConnState.online && !!KConnState.sigType && KConnState.sigType !== "Unknown"
-                                text: KConnState.sigType
-                                font.family: ThemeBackend.fontFamily
-                                font.weight: Font.Bold
-                                font.pixelSize: root.s(10)
-                                color: ThemeBackend.subtext0
-                            }
-
-                            Text {
-                                Layout.alignment: Qt.AlignVCenter
-                                visible: KConnState.online && KConnState.charging
-                                text: "\u{f140b}"   // md-lightning_bolt
-                                font.family: "Iosevka Nerd Font"
-                                font.pixelSize: root.s(13)
-                                color: phoneBox.ringStart
-                            }
-
-                            Item { Layout.fillWidth: true }
-                        }
-
-                        Text {
-                            visible: !KConnState.online
-                            font.family: ThemeBackend.fontFamily
-                            font.pixelSize: root.s(10)
-                            color: ThemeBackend.overlay0
-                            text: "KDE Connect"
-                        }
-
-                        // Ghost buttons: a chip fades in only on hover.
-                        Row {
-                            spacing: root.s(6)
-                            visible: opacity > 0.01
-                            opacity: KConnState.online ? 1.0 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: 250 } }
-
-                            Repeater {
-                                model: [
-                                    { icon: "󰆏", act: "clip",   tip: "Send clipboard" },
-                                    { icon: "󰉋", act: "browse", tip: "Browse files" },
-                                    { icon: "󰂚", act: "ring",   tip: "Ring" }
-                                ]
-                                delegate: Item {
-                                    required property var modelData
-                                    width: root.s(34); height: root.s(34)
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        radius: Radius.inner(width / 2)
-                                        color: ThemeBackend.surface1
-                                        opacity: kaMa.containsMouse ? 0.9 : 0.0
-                                        Behavior on opacity { NumberAnimation { duration: 160 } }
-                                    }
-                                    Text {
-                                        anchors.centerIn: parent
-                                        font.family: "Iosevka Nerd Font"
-                                        font.pixelSize: root.s(16)
-                                        color: kaMa.containsMouse ? ThemeBackend.blue : ThemeBackend.overlay1
-                                        text: modelData.icon
-                                        Behavior on color { ColorAnimation { duration: 160 } }
-                                    }
-                                    MouseArea {
-                                        id: kaMa
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            if (typeof Sounds !== "undefined") Sounds.playSfx("system/quick_click.wav");
-                                            if (modelData.act === "clip") KConnState.sendClipboard();
-                                            else if (modelData.act === "browse") KConnState.browse();
-                                            else if (modelData.act === "ring") KConnState.ring();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 6. power actions: hold to fill, or click twice (remote input can't hold)
+            // 5. power actions: hold to fill, or click twice (remote input can't hold)
             RowLayout {
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.s(73)
@@ -1494,6 +1245,193 @@ Item {
                             onReleased: letGo()
                             onCanceled: letGo()
                         }
+                    }
+                }
+            }
+
+            // 6. KDE Connect: the phone as a wave-filled row, matching the battery row below.
+            Rectangle {
+                id: phoneBox
+                Layout.fillWidth: true
+                Layout.preferredHeight: root.s(72)
+                Layout.maximumHeight: root.s(72)
+                radius: root.boxRadius
+                color: root.boxColor
+                clip: true
+                opacity: root.introPhone
+                transform: SlideIn { progress: root.introPhone }
+
+                readonly property bool isDangerState: KConnState.online && !KConnState.charging && KConnState.charge >= 0 && KConnState.charge < 15
+                readonly property color ringStart: ThemeBackend.blue
+                readonly property color fillColor: isDangerState ? ThemeBackend.red : ringStart
+                readonly property int phoneCharge: (KConnState.online && KConnState.charge >= 0) ? KConnState.charge : 0
+
+                property real animCharge: 0
+                Behavior on animCharge { NumberAnimation { duration: 1200; easing.type: Easing.OutQuint } }
+                onPhoneChargeChanged: animCharge = phoneCharge
+                Component.onCompleted: animCharge = phoneCharge
+
+                property real fillLevel: animCharge / 100
+                property real maxWaveAmp: KConnState.charging ? root.s(9) : root.s(1.8)
+                property real waveAmp: (fillLevel < 0.99 && fillLevel > 0.01) ? maxWaveAmp * Math.sin(fillLevel * Math.PI) : 0
+
+                Canvas {
+                    id: phoneWave
+                    anchors.fill: parent
+                    visible: KConnState.online && phoneBox.fillLevel > 0.001
+                    renderTarget: Canvas.Image
+                    renderStrategy: Canvas.Immediate
+                    property real wavePhase: 0.0
+                    NumberAnimation on wavePhase {
+                        running: KConnState.online && phoneBox.fillLevel > 0.0 && phoneBox.fillLevel < 1.0
+                        loops: Animation.Infinite
+                        from: 0; to: Math.PI * 2; duration: KConnState.charging ? 1200 : 3400
+                    }
+                    onWavePhaseChanged: requestPaint()
+                    Connections {
+                        target: phoneBox
+                        function onFillLevelChanged() { phoneWave.requestPaint() }
+                        function onWaveAmpChanged() { phoneWave.requestPaint() }
+                        function onFillColorChanged() { phoneWave.requestPaint() }
+                    }
+
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        ctx.clearRect(0, 0, width, height);
+                        if (phoneBox.fillLevel <= 0.001) return;
+                        var r = Radius.fit(phoneBox.radius, width, height);
+                        var currentW = width * phoneBox.fillLevel;
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        if (phoneBox.fillLevel < 0.99 && phoneBox.waveAmp > 0) {
+                            var amp = Math.min(phoneBox.waveAmp, currentW);
+                            ctx.lineTo(currentW, 0);
+                            ctx.bezierCurveTo(currentW + Math.cos(wavePhase + Math.PI) * amp, height * 0.33, currentW + Math.sin(wavePhase) * amp, height * 0.66, currentW, height);
+                            ctx.lineTo(0, height);
+                        } else {
+                            ctx.lineTo(currentW, 0); ctx.lineTo(currentW, height); ctx.lineTo(0, height);
+                        }
+                        ctx.closePath();
+                        ctx.clip();
+                        ctx.beginPath();
+                        ctx.moveTo(r, 0); ctx.lineTo(width - r, 0); ctx.arcTo(width, 0, width, r, r);
+                        ctx.lineTo(width, height - r); ctx.arcTo(width, height, width - r, height, r);
+                        ctx.lineTo(r, height); ctx.arcTo(0, height, 0, height - r, r);
+                        ctx.lineTo(0, r); ctx.arcTo(0, 0, r, 0, r);
+                        ctx.closePath();
+                        ctx.fillStyle = phoneBox.fillColor.toString();
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+
+                PhoneContent {
+                    anchors.fill: parent
+                    contentTextColor: ThemeBackend.text
+                    accentColor: phoneBox.ringStart
+                }
+
+                // Second copy clipped to the fill, so text flips colour at the wave edge.
+                Item {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    visible: KConnState.online
+                    property real phaseOffset: Math.sin(phoneWave.wavePhase) - Math.cos(phoneWave.wavePhase)
+                    property real centerOffset: phoneBox.fillLevel > 0.01 && phoneBox.fillLevel < 0.99 ? 0.375 * phoneBox.waveAmp * phaseOffset : 0
+                    width: Math.max(0, Math.min(parent.width, (parent.width * phoneBox.fillLevel) + centerOffset))
+                    clip: true
+                    PhoneContent {
+                        width: phoneBox.width
+                        height: phoneBox.height
+                        contentTextColor: ThemeBackend.crust
+                        accentColor: ThemeBackend.crust
+                    }
+                }
+
+                // Refresh and ring stay on the charge side, clear of the action buttons.
+                MouseArea {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: parent.width * 0.45
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: KConnState.refresh()
+                    onDoubleClicked: KConnState.ring()
+                }
+
+                // Lifted in a shadowed bubble, like the profile switch on the battery row.
+                Item {
+                    id: phoneActions
+                    anchors.right: parent.right
+                    anchors.rightMargin: root.s(12)
+                    anchors.verticalCenter: parent.verticalCenter
+                    implicitWidth: actionRow.implicitWidth + root.s(10)
+                    implicitHeight: actionRow.implicitHeight + root.s(8)
+                    visible: opacity > 0.01
+                    opacity: KConnState.online ? 1.0 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.topMargin: root.s(1.5)
+                        anchors.bottomMargin: -root.s(1.5)
+                        radius: Radius.inner(root.s(14), height / 2)
+                        color: Qt.rgba(0, 0, 0, 0.25)
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Radius.inner(root.s(14), height / 2)
+                        color: ThemeBackend.surface0
+                    }
+
+                    Row {
+                        id: actionRow
+                        anchors.centerIn: parent
+                        spacing: root.s(6)
+
+                    Repeater {
+                        model: [
+                            { icon: "\u{f018f}", act: "clip",   tip: "Send clipboard" },
+                            { icon: "\u{f024b}", act: "browse", tip: "Browse files" },
+                            { icon: "\u{f009a}", act: "ring",   tip: "Ring" }
+                        ]
+                        delegate: Item {
+                            required property var modelData
+                            width: root.s(34); height: root.s(34)
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: Radius.inner(width / 2)
+                                color: ThemeBackend.surface1
+                                opacity: kaMa.containsMouse ? 0.9 : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 160 } }
+                            }
+                            Text {
+                                anchors.centerIn: parent
+                                font.family: "Iosevka Nerd Font"
+                                font.pixelSize: root.s(16)
+                                color: kaMa.containsMouse ? ThemeBackend.blue : ThemeBackend.overlay1
+                                text: modelData.icon
+                                Behavior on color { ColorAnimation { duration: 160 } }
+                            }
+                            MouseArea {
+                                id: kaMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (typeof Sounds !== "undefined") Sounds.playSfx("system/quick_click.wav");
+                                    if (modelData.act === "clip") KConnState.sendClipboard();
+                                    else if (modelData.act === "browse") KConnState.browse();
+                                    else if (modelData.act === "ring") KConnState.ring();
+                                }
+                            }
+                        }
+                    }
                     }
                 }
             }
