@@ -482,6 +482,7 @@ PanelWindow {
     Shortcut { sequence: "Left"; enabled: root.armed; onActivated: root.isVideoMode = false }
     Shortcut { sequence: "Right"; enabled: root.armed; onActivated: root.isVideoMode = true }
     Shortcut { sequence: "F11"; enabled: root.armed; onActivated: root.toggleMaximize() }
+    Shortcut { sequence: "F"; enabled: root.armed; onActivated: { if (root.isVideoMode) { root.isMaximized = false; root.selectWholeScreen(); root.videoAction(); } else root.toggleMaximize() } }
     // The record shortcut while the overlay is already up switches it to video mode.
     Connections { target: ScreenshotState; function onVideoModeChanged() { if (root.armed && ScreenshotState.videoMode) root.isVideoMode = true } }
 
