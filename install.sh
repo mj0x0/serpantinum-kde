@@ -77,6 +77,7 @@ OPTIONAL=(
     "xdg-user-dir:xdg-user-dirs:the Screenshots folder, ~/Pictures otherwise"
     "ffmpeg:ffmpeg:video wallpaper frames, recording thumbnails"
     "gpu-screen-recorder:gpu-screen-recorder:screen recording from the screenshot overlay"
+    "mkvpropedit:mkvtoolnix-cli:HDR peak metadata on recordings, or players crush them"
     "curl:curl:weather and album art"
     "bluetoothctl:bluez-utils:the Bluetooth panel"
     "nmcli:networkmanager:VPN status"

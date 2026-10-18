@@ -1357,7 +1357,7 @@ Item {
                         Row {
                             label: "HDR"
                             glyph: "\u{f0d7d}"
-                            desc: "Record HDR outputs as HDR (hevc_hdr, full range). Off tonemaps to SDR. Ignored on SDR outputs"
+                            desc: "Keep HDR on HDR outputs (hevc_hdr, mkv); needs an HDR-aware player, mpv tonemaps it right. Off lets GSR tonemap to SDR, which plays anywhere"
                             Toggle {
                                 checked: ShellSettings.value("record.hdr", true) !== false
                                 onToggled: v => ShellSettings.setValue("record.hdr", v)
