@@ -1,7 +1,9 @@
-// Recording dot with elapsed time (any PipeWire screencast) and the quick-action timer;
-// nothing on screen while neither runs. serpantinum v2's InfoWidget on our sources.
-import "../../../services/timer"
+// Recording dot with elapsed time (our GSR recording, else any PipeWire screencast) and the
+// quick-action timer; nothing on screen while neither runs. serpantinum v2's InfoWidget on our sources.
+import "../../../services/audio"
+import "../../../services/record"
 import "../../../services/theme"
+import "../../../services/timer"
 import QtQuick
 
 Rectangle {
@@ -15,9 +17,13 @@ Rectangle {
     property real targetY: 0
     property bool isHovered: infoMouse.containsMouse
 
-    readonly property bool recording: barWindow.isRecording
-    readonly property int recSeconds: recording ? Math.max(0, Math.floor((barWindow.nowTick - barWindow.recStartEpoch) / 1000)) : 0
+    readonly property bool owned: RecordState.recording
+    readonly property bool recording: owned || barWindow.isRecording
+    readonly property bool paused: owned && RecordState.paused
+    readonly property int recSeconds: owned ? RecordState.elapsed
+                                     : (recording ? Math.max(0, Math.floor((barWindow.nowTick - barWindow.recStartEpoch) / 1000)) : 0)
     readonly property string recText: String(Math.floor(recSeconds / 60)).padStart(2, "0") + ":" + String(recSeconds % 60).padStart(2, "0")
+    readonly property color recColor: paused ? mocha.yellow : mocha.red
     readonly property bool timerOn: TimerState.active
     readonly property color timerColor: mocha[TimerState.tone] !== undefined ? mocha[TimerState.tone] : mocha.blue
     readonly property bool hasContent: recording || timerOn
@@ -44,14 +50,31 @@ Rectangle {
     opacity: hasContent ? 1.0 : 0.0
     Behavior on opacity { NumberAnimation { duration: 300 } }
 
-    MouseArea { id: infoMouse; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton }
+    MouseArea {
+        id: infoMouse
+        anchors.fill: parent
+        hoverEnabled: true
+        // A foreign screencast is only an indicator; our own recording is stoppable.
+        acceptedButtons: info.owned ? (Qt.LeftButton | Qt.MiddleButton) : Qt.NoButton
+        cursorShape: info.owned ? Qt.PointingHandCursor : Qt.ArrowCursor
+        onClicked: mouse => {
+            Sounds.playSfx("system/quick_click.wav");
+            if (mouse.button === Qt.MiddleButton) RecordState.togglePause();
+            else RecordState.stop();
+        }
+    }
 
     component RecDot : Rectangle {
-        width: barWindow.s(10); height: width; radius: width / 2
-        color: mocha.red
+        id: dot
+        width: barWindow.s(10); height: width
+        radius: (info.owned && info.isHovered) ? barWindow.s(2) : width / 2
+        Behavior on radius { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+        color: info.recColor
+        Behavior on color { ColorAnimation { duration: 250 } }
         SequentialAnimation on opacity {
-            running: info.recording && !info.isHovered
+            running: info.recording && !info.isHovered && !info.paused
             loops: Animation.Infinite
+            onRunningChanged: if (!running) dot.opacity = 1.0
             NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
             NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
         }
@@ -66,7 +89,7 @@ Rectangle {
             visible: info.recording
             spacing: barWindow.s(6)
             RecDot { anchors.verticalCenter: parent.verticalCenter }
-            Text { anchors.verticalCenter: parent.verticalCenter; text: info.recText; font.family: Fonts.ui; font.pixelSize: barWindow.s(14); font.weight: Font.Bold; color: mocha.red }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: info.recText; font.family: Fonts.ui; font.pixelSize: barWindow.s(14); font.weight: Font.Bold; color: info.recColor; Behavior on color { ColorAnimation { duration: 250 } } }
         }
         Row {
             visible: info.timerOn
@@ -86,8 +109,8 @@ Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: barWindow.s(2)
             RecDot { anchors.horizontalCenter: parent.horizontalCenter }
-            Text { anchors.horizontalCenter: parent.horizontalCenter; text: String(Math.floor(info.recSeconds / 60)).padStart(2, "0"); font.family: Fonts.ui; font.pixelSize: barWindow.s(11); font.weight: Font.Bold; color: mocha.red }
-            Text { anchors.horizontalCenter: parent.horizontalCenter; text: String(info.recSeconds % 60).padStart(2, "0"); font.family: Fonts.ui; font.pixelSize: barWindow.s(11); font.weight: Font.Bold; color: mocha.red }
+            Text { anchors.horizontalCenter: parent.horizontalCenter; text: String(Math.floor(info.recSeconds / 60)).padStart(2, "0"); font.family: Fonts.ui; font.pixelSize: barWindow.s(11); font.weight: Font.Bold; color: info.recColor; Behavior on color { ColorAnimation { duration: 250 } } }
+            Text { anchors.horizontalCenter: parent.horizontalCenter; text: String(info.recSeconds % 60).padStart(2, "0"); font.family: Fonts.ui; font.pixelSize: barWindow.s(11); font.weight: Font.Bold; color: info.recColor; Behavior on color { ColorAnimation { duration: 250 } } }
         }
         Column {
             visible: info.timerOn
