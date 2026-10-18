@@ -318,6 +318,7 @@ Item {
         { name: "Launcher",   icon: "\u{f0349}" },
         { name: "Dock",       icon: "\u{f10a9}" },
         { name: "Wallpaper",  icon: "\u{f05e2}" },
+        { name: "Recording",  icon: "\u{f0567}" },
         { name: "Music",      icon: "\u{f075a}" },
         { name: "Calendar",   icon: "\u{f00ed}" },
         { name: "Weather",    icon: "\u{f0590}" },
@@ -1346,6 +1347,128 @@ Item {
                                     visible: ("" + ShellSettings.value("wallpaper.wallhaven.apiKey", "")) !== ""
                                     onClicked: ShellSettings.setValue("wallpaper.wallhaven.apiKey", "")
                                 }
+                            }
+                        }
+                    }
+
+                    // Recording
+                    Page {
+                        title: "Recording"
+                        Row {
+                            label: "HDR"
+                            glyph: "\u{f0d7d}"
+                            desc: "Record HDR outputs as HDR (hevc_hdr, full range). Off tonemaps to SDR. Ignored on SDR outputs"
+                            Toggle {
+                                checked: ShellSettings.value("record.hdr", true) !== false
+                                onToggled: v => ShellSettings.setValue("record.hdr", v)
+                            }
+                        }
+                        Row {
+                            label: "Audio"
+                            glyph: "\u{f057e}"
+                            desc: "What the recording hears"
+                            Chips {
+                                options: ["off", "system", "system+mic"]
+                                current: "" + ShellSettings.value("record.audio", "system")
+                                onPicked: v => ShellSettings.setValue("record.audio", v)
+                            }
+                        }
+                        Row {
+                            label: "Frame rate"
+                            glyph: "\u{f04c5}"
+                            desc: "Maximum fps; variable pacing by default"
+                            Chips {
+                                options: ["30", "60", "120", "144"]
+                                current: "" + ShellSettings.value("record.fps", 60)
+                                onPicked: v => ShellSettings.setValue("record.fps", Number(v))
+                            }
+                        }
+                        Row {
+                            label: "Quality"
+                            glyph: "\u{f0435}"
+                            desc: "GSR quality preset"
+                            Chips {
+                                options: ["medium", "high", "very_high", "ultra"]
+                                current: "" + ShellSettings.value("record.quality", "very_high")
+                                onPicked: v => ShellSettings.setValue("record.quality", v)
+                            }
+                        }
+                        Row {
+                            label: "SDR codec"
+                            glyph: "\u{f061a}"
+                            desc: "Encoder for SDR files"
+                            Chips {
+                                options: ["h264", "hevc", "av1"]
+                                current: "" + ShellSettings.value("record.codec", "h264")
+                                onPicked: v => ShellSettings.setValue("record.codec", v)
+                            }
+                        }
+                        Row {
+                            label: "HDR codec"
+                            glyph: "\u{f061a}"
+                            desc: "Encoder for HDR files"
+                            Chips {
+                                options: ["hevc_hdr", "av1_hdr"]
+                                current: "" + ShellSettings.value("record.hdrCodec", "hevc_hdr")
+                                onPicked: v => ShellSettings.setValue("record.hdrCodec", v)
+                            }
+                        }
+                        Row {
+                            label: "Container"
+                            glyph: "\u{f03d7}"
+                            desc: "SDR files; HDR files use the HDR container"
+                            Chips {
+                                options: ["mp4", "mkv", "webm"]
+                                current: "" + ShellSettings.value("record.container", "mp4")
+                                onPicked: v => ShellSettings.setValue("record.container", v)
+                            }
+                        }
+                        Row {
+                            label: "HDR container"
+                            glyph: "\u{f03d7}"
+                            desc: "mkv carries the HDR metadata reliably"
+                            Chips {
+                                options: ["mkv", "mp4"]
+                                current: "" + ShellSettings.value("record.hdrContainer", "mkv")
+                                onPicked: v => ShellSettings.setValue("record.hdrContainer", v)
+                            }
+                        }
+                        Row {
+                            label: "Cursor"
+                            glyph: "\u{f01c0}"
+                            desc: "Include the pointer"
+                            Toggle {
+                                checked: ShellSettings.value("record.cursor", true) !== false
+                                onToggled: v => ShellSettings.setValue("record.cursor", v)
+                            }
+                        }
+                        Row {
+                            label: "Frame pacing"
+                            glyph: "\u{f07da}"
+                            desc: "cfr for editors that dislike variable frame rate"
+                            Chips {
+                                options: ["vfr", "cfr"]
+                                current: "" + ShellSettings.value("record.frameMode", "vfr")
+                                onPicked: v => ShellSettings.setValue("record.frameMode", v)
+                            }
+                        }
+                        Row {
+                            label: "Colour range"
+                            glyph: "\u{f0195}"
+                            desc: "SDR only; HDR always records full range"
+                            Chips {
+                                options: ["limited", "full"]
+                                current: "" + ShellSettings.value("record.colorRange", "limited")
+                                onPicked: v => ShellSettings.setValue("record.colorRange", v)
+                            }
+                        }
+                        Row {
+                            label: "Save folder"
+                            glyph: "\u{f024b}"
+                            desc: "Screencast_<date>.<ext> lands here"
+                            PathField {
+                                value: "" + ShellSettings.value("record.dir", "~/Videos/Screencasts")
+                                onCommitted: v => ShellSettings.setValue("record.dir", v)
                             }
                         }
                     }
