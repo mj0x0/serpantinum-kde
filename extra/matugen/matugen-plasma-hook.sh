@@ -236,6 +236,10 @@ if [[ $rc -eq 0 && -s "$SCHEME_DIR/$SCHEME.colors" ]]; then
     variant "$SCHEME_DIR/$active.colors" "$SCHEME-alt" > "$SCHEME_DIR/$SCHEME-alt.colors"
     plasma-apply-colorscheme "$SCHEME-alt" >/dev/null 2>&1 9>&- || true
     plasma-apply-colorscheme "$active"     >>"$LOG" 2>&1 9>&- || true
+
+    # Applying the scheme makes KDE's GTK sync service rewrite gtk.css, which drops
+    # the matugen import; the gtk4 post_hook already ran, so restore it here.
+    "$HERE/post-hook-scripts/gtk-themes-reload.sh" >>"$LOG" 2>&1 9>&- || true
 fi
 
 echo "----- exit: $rc -----" >> "$LOG"

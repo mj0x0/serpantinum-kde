@@ -2157,7 +2157,8 @@ Scope {
                         id: toolbar
                         implicitWidth: toolbarLayout.implicitWidth + s(32)
                         width: implicitWidth
-                        height: s(100)
+                        // Content-derived: a fixed height squeezed the buttons instead of centring them.
+                        height: toolbarLayout.implicitHeight + s(32)
                         anchors.bottom: parent.bottom
                         anchors.bottomMargin: s(24)
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -2206,9 +2207,9 @@ Scope {
                                 IconButton {
                                     size: s(40)
                                     cornerRadius: ThemeBackend.borderRadius
+                                    centerInk: true
                                     buttonIcon: "󰕰"
-                                    iconOffsetX: 0
-                                    iconFontSize: s(20)
+                                    iconFontSize: s(18)
                                     accentColor: redactorMode.gridEnabled ? ThemeBackend.mauve : ThemeBackend.surface0
                                     textColor: redactorMode.gridEnabled ? ThemeBackend.crust : ThemeBackend.text
                                     Layout.alignment: Qt.AlignVCenter
@@ -2225,13 +2226,13 @@ Scope {
                                 IconButton {
                                     size: s(40)
                                     cornerRadius: ThemeBackend.borderRadius
+                                    centerInk: true
                                     buttonIcon: "󰑐"
                                     iconFontSize: s(20)
                                     accentColor: ThemeBackend.surface0
                                     textColor: ThemeBackend.text
                                     Layout.alignment: Qt.AlignVCenter
                                     visible: redactorMode.activeWidgetsModel ? (redactorMode.activeWidgetsModel.count > 0) : false
-                                    iconOffsetX: -1
                                     onClicked: redactorMode.removeAllWidgets()
                                 }
 

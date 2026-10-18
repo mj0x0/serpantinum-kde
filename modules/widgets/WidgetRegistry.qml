@@ -46,10 +46,11 @@ QtObject {
 
             IconButton {
                 size: Scaler.s(48)
-                iconOffsetX: (itemCol.typeData && itemCol.typeData.iconOffsetX !== undefined) ? Scaler.s(itemCol.typeData.iconOffsetX) : 0
+                centerInk: true
                 cornerRadius: ThemeBackend.borderRadius
                 buttonIcon: (itemCol.typeData && itemCol.typeData.icon) ? itemCol.typeData.icon : ""
-                iconFontSize: Scaler.s(22)
+                // Glyph ink varies a lot at a fixed size; iconScale trims the outliers.
+                iconFontSize: Scaler.s(22 * ((itemCol.typeData && itemCol.typeData.iconScale) || 1))
                 accentColor: ThemeBackend.surface0
                 textColor: ThemeBackend.text
                 Layout.alignment: Qt.AlignHCenter
@@ -372,6 +373,7 @@ QtObject {
         "weather": {
             name: I18n.t("widgets.types.weather"),
             icon: String.fromCodePoint(0xF0590),
+            iconScale: 1.1,
             iconOffsetX: 0,
             defaultWidth: 250,
             defaultHeight: 120,
