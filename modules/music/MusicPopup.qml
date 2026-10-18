@@ -2254,6 +2254,13 @@ Item {
                                 spacing: root.s(6)
                                 visible: !Lyrics.loading && Lyrics.title !== ""
 
+                                // Seeded here too: the handlers below only fire on a change, so a
+                                // rebuilt popup would otherwise show empty boxes until the next track.
+                                Component.onCompleted: {
+                                    artistField.text = Lyrics.artist;
+                                    titleField.text = Lyrics.title;
+                                }
+
                                 QueryField {
                                     id: artistField
                                     placeholder: "Artist"
