@@ -2300,9 +2300,14 @@ Item {
                             // user's edits survive until then.
                             Connections {
                                 target: Lyrics
+                                // The service sets title before artist, so onTitleChanged alone
+                                // would refill the artist box from the previous track.
                                 function onTitleChanged() {
                                     artistField.text = Lyrics.artist;
                                     titleField.text = Lyrics.title;
+                                }
+                                function onArtistChanged() {
+                                    artistField.text = Lyrics.artist;
                                 }
                             }
 
