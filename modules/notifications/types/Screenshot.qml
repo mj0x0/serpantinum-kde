@@ -27,9 +27,20 @@ Notification {
         return p ? p.toString() : "";
     }
 
+    function getFolderPath() {
+        var n = (model && model.notif) ? model.notif : (delegateWrapper ? delegateWrapper.realNotif : null);
+        var body = (model && model.body) ? model.body : (n && n.body ? n.body : "");
+        var m = /^Folder: (.+)$/m.exec(body);
+        return m ? m[1].trim() : "";
+    }
+
     onCardClicked: {
+        // A recording's image is its cached thumbnail; the body names the real folder.
+        let folder = getFolderPath();
         let p = getImagePath();
-        if (p !== "" && (p.startsWith("/") || p.startsWith("file://"))) {
+        if (folder !== "") {
+            Quickshell.execDetached(["xdg-open", folder]);
+        } else if (p !== "" && (p.startsWith("/") || p.startsWith("file://"))) {
             let filePath = p.startsWith("file://") ? p.replace("file://", "") : p;
             let folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
             Quickshell.execDetached(["xdg-open", folderPath]);
