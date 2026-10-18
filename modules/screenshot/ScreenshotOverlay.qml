@@ -1,10 +1,11 @@
 // serpantinum v2's screenshot overlay on KDE (see NOTICE). The screen is frozen once when
 // the overlay opens (helpers/kwinshot, falling back to spectacle), the selection is drawn
 // over that image, and helpers/screenshot.sh crops the freeze - so the saved file is the
-// pixels that were selected.
+// pixels that were selected. Video mode hands the same selection to gpu-screen-recorder.
 
 import "../../services/caching"
 import "../../services/layout"
+import "../../services/record"
 import "../../services/reusables" as V2
 import "../../services/settings"
 import "../../services/theme"
@@ -113,7 +114,13 @@ PanelWindow {
         animateChanges = false;
         qrModel.clear();
         loadCachedRegion();
+        recHdr = ShellSettings.value("record.hdr", true) === true;
+        recAudio = "" + ShellSettings.value("record.audio", "system");
+        if (audioModes.indexOf(recAudio) < 0) recAudio = "system";
+        RecordState.refreshHdr();
         isLoading = false;
+        // After loading, so the mode change still preselects the screen over the cached region.
+        isVideoMode = ScreenshotState.videoMode;
 
         freezeStarted = false;
         freezePath = root.runPath + "/freeze_" + Date.now() + ".png";
@@ -149,6 +156,8 @@ PanelWindow {
             procs: { output: outputProc.running, kwinshot: kwinshotProc.running,
                      spectacle: freezeProc.running, check: freezeCheckProc.running, qr: qrProc.running },
             isSelecting: root.isSelecting, hasSelection: root.hasSelection, isVideoMode: root.isVideoMode,
+            recHdr: root.recHdr, recAudio: root.recAudio, hdrAvailable: root.hdrAvailable,
+            regionString: root.regionString, fullScreenSelected: root.fullScreenSelected,
             sinceToggleMs: Date.now() - ScreenshotState.lastToggle
         });
     }
@@ -187,6 +196,8 @@ PanelWindow {
 
     function armOverlay() {
         root.freezeImg = root.freezePath;
+        // The target output is only known now; a video open preselected it before that.
+        if (root.isVideoMode) root.selectWholeScreen();
         root.armed = true;
         // The freeze is not instant, so re-arm the re-press guard from when the UI appears.
         ScreenshotState.lastToggle = Date.now();
@@ -365,13 +376,17 @@ PanelWindow {
     property bool isQrSuccess: false
     ListModel { id: qrModel }
 
+    function selectWholeScreen() {
+        root.startX = 0; root.startY = 0;
+        root.endX = root.screenW; root.endY = root.screenH;
+        root.hasSelection = true;
+    }
+
     function toggleMaximize() {
-        if (root.isVideoMode) return;
         if (!isMaximized) {
             preStartX = root.startX; preStartY = root.startY;
             preEndX = root.endX; preEndY = root.endY;
-            root.startX = 0; root.startY = 0;
-            root.endX = root.screenW; root.endY = root.screenH;
+            root.selectWholeScreen();
             isMaximized = true;
         } else {
             root.startX = preStartX; root.startY = preStartY;
@@ -381,31 +396,72 @@ PanelWindow {
         root.saveCache();
     }
 
-    // --- Video: spectacle draws its own selector and has no audio options, so the
-    // mode only dims the screen and hands off; -R toggles, so it also stops a recording.
+    // --- Video: a whole-screen selection is GSR's zero-copy output path, so the mode starts there.
     property bool isVideoMode: false
+    // Parked photo region; kept apart from maximize's pre* so F11 in video mode cannot clobber it.
+    property rect photoRegion: Qt.rect(0, 0, 0, 0)
+
+    property bool recHdr: true
+    property string recAudio: "system"
+    readonly property var audioModes: ["off", "system", "system+mic"]
+    readonly property bool hdrAvailable: RecordState.isHdr(root.targetMonitorName)
+
+    function setRecHdr(v) {
+        if (v === root.recHdr) return;
+        root.recHdr = v;
+        ShellSettings.setValue("record.hdr", v);
+    }
+
+    function setRecAudio(v) {
+        if (v === root.recAudio) return;
+        root.recAudio = v;
+        ShellSettings.setValue("record.audio", v);
+    }
+
+    readonly property bool fullScreenSelected:
+        Math.abs(selX) <= 1 && Math.abs(selY) <= 1
+        && Math.abs(selW - root.width) <= 1 && Math.abs(selH - root.height) <= 1
+
+    // GSR's -region in logical global coordinates, unlike geometryString's freeze pixels.
+    readonly property string regionString: {
+        let sc = root.targetScreen;
+        let ox = sc ? sc.x : 0, oy = sc ? sc.y : 0;
+        return `${Math.round(selW)}x${Math.round(selH)}+${Math.round(ox + selX)}+${Math.round(oy + selY)}`;
+    }
 
     onIsVideoModeChanged: {
         if (root.isLoading) return;
         root.isMaximized = false;
 
         if (root.isVideoMode) {
-            root.preStartX = root.startX; root.preStartY = root.startY;
-            root.preEndX = root.endX; root.preEndY = root.endY;
-            root.startX = 0; root.startY = 0;
-            root.endX = root.screenW; root.endY = root.screenH;
-            root.hasSelection = true;
+            root.photoRegion = Qt.rect(root.startX, root.startY, root.endX - root.startX, root.endY - root.startY);
+            root.selectWholeScreen();
         } else {
-            root.startX = root.preStartX; root.startY = root.preStartY;
-            root.endX = root.preEndX; root.endY = root.preEndY;
-            root.hasSelection = Math.abs(root.endX - root.startX) >= 10
-                             && Math.abs(root.endY - root.startY) >= 10;
+            let r = root.photoRegion;
+            root.startX = r.x; root.startY = r.y;
+            root.endX = r.x + r.width; root.endY = r.y + r.height;
+            root.hasSelection = Math.abs(r.width) >= 10 && Math.abs(r.height) >= 10;
         }
     }
 
     function startRecording() {
-        Quickshell.execDetached(["spectacle", "-R", "region"]);
+        if (!root.hasSelection) return;
+        RecordState.start({
+            output: root.targetMonitorName,
+            region: root.fullScreenSelected ? "" : root.regionString,
+            hdr: root.hdrAvailable && root.recHdr,
+            audio: root.recAudio
+        });
         ScreenshotState.hide();
+    }
+
+    function videoAction() {
+        if (RecordState.recording) {
+            RecordState.stop();
+            ScreenshotState.hide();
+        } else {
+            root.startRecording();
+        }
     }
 
     // --- Capture ------------------------------------------------------------
@@ -420,11 +476,13 @@ PanelWindow {
     }
 
     Shortcut { sequence: "Escape"; enabled: root.armed; onActivated: ScreenshotState.hide() }
-    Shortcut { sequence: "Return"; enabled: root.armed; onActivated: { if (root.isVideoMode) root.startRecording(); else root.capture(root.isEditMode) } }
+    Shortcut { sequence: "Return"; enabled: root.armed; onActivated: { if (root.isVideoMode) root.videoAction(); else root.capture(root.isEditMode) } }
     Shortcut { sequence: "Tab"; enabled: root.armed; onActivated: root.isVideoMode = !root.isVideoMode }
     Shortcut { sequence: "Left"; enabled: root.armed; onActivated: root.isVideoMode = false }
     Shortcut { sequence: "Right"; enabled: root.armed; onActivated: root.isVideoMode = true }
     Shortcut { sequence: "F11"; enabled: root.armed; onActivated: root.toggleMaximize() }
+    // The record shortcut while the overlay is already up switches it to video mode.
+    Connections { target: ScreenshotState; function onVideoModeChanged() { if (root.armed && ScreenshotState.videoMode) root.isVideoMode = true } }
 
     component AnimWrap: Item {
         property bool isShown: false
@@ -470,11 +528,11 @@ PanelWindow {
             Rectangle {
                 anchors.fill: parent
                 color: root.dimColor
-                opacity: (root.isVideoMode || (!root.isSelecting && !root.hasSelection)) ? 1.0 : 0.0
+                opacity: (!root.isSelecting && !root.hasSelection) ? 1.0 : 0.0
                 Behavior on opacity { enabled: root.animateChanges; NumberAnimation { duration: 150 } }
                 Text {
                     anchors.centerIn: parent
-                    text: root.isVideoMode ? "Click record (Spectacle picks the area)" : "Select region to capture"
+                    text: root.isVideoMode ? "Drag a region, or record the whole screen" : "Select a region to capture"
                     font.family: Fonts.ui; font.weight: Font.DemiBold; font.pixelSize: s(24); color: root.text
                 }
             }
@@ -565,7 +623,6 @@ PanelWindow {
             }
 
             onPositionChanged: (mouse) => {
-                if (root.isVideoMode) { cursorShape = Qt.ArrowCursor; return; }
                 let mode = root.isSelecting ? root.interactionMode : getInteractionMode(mouse.x, mouse.y, mouse.modifiers);
                 switch(mode) {
                     case 2: cursorShape = Qt.ClosedHandCursor; break;
@@ -597,7 +654,6 @@ PanelWindow {
 
             onPressed: (mouse) => {
                 if (mouse.button === Qt.RightButton) { ScreenshotState.hide(); return; }
-                if (root.isVideoMode) return;
 
                 root.isScanningQr = false;
                 root.showQrPopup = false;
@@ -624,7 +680,7 @@ PanelWindow {
                     root.saveCache();
                     // Fresh mouse selection -> capture right away on release instead of
                     // waiting for the toolbar shutter. interactionMode 1 is a new rectangle.
-                    if (root.captureOnRelease && root.interactionMode === 1) {
+                    if (root.captureOnRelease && root.interactionMode === 1 && !root.isVideoMode) {
                         root.capture(root.isEditMode);
                         return;
                     }
@@ -721,6 +777,62 @@ PanelWindow {
                 }
 
                 AnimWrap {
+                    isShown: root.isVideoMode && root.hdrAvailable; contentWidth: s(96)
+                    V2.Switch {
+                        id: hdrSwitch
+                        width: s(96)
+                        height: s(36)
+                        options: ["SDR", "HDR"]
+                        currentIndex: root.recHdr ? 1 : 0
+                        accentColor: root.red
+                        baseColor: root.surface0
+                        textColor: root.text
+                        activeTextColor: root.crust
+                        cornerRadius: root.radius
+                        fontFamily: Fonts.ui
+                        fontPixelSize: s(12)
+
+                        Connections {
+                            target: root
+                            function onRecHdrChanged() {
+                                hdrSwitch.currentIndex = root.recHdr ? 1 : 0;
+                            }
+                        }
+
+                        onValueChanged: function(index, value) { root.setRecHdr(index === 1) }
+                        onToggled: function(index) { root.setRecHdr(index === 1) }
+                    }
+                }
+
+                AnimWrap {
+                    isShown: root.isVideoMode; contentWidth: s(132)
+                    V2.Switch {
+                        id: audioSwitch
+                        width: s(132)
+                        height: s(36)
+                        options: ["\u{f0581}", "\u{f057e}", "\u{f036c}"]   // volume-off, volume-high, microphone
+                        currentIndex: Math.max(0, root.audioModes.indexOf(root.recAudio))
+                        accentColor: root.red
+                        baseColor: root.surface0
+                        textColor: root.text
+                        activeTextColor: root.crust
+                        cornerRadius: root.radius
+                        fontFamily: Fonts.icons
+                        fontPixelSize: s(16)
+
+                        Connections {
+                            target: root
+                            function onRecAudioChanged() {
+                                audioSwitch.currentIndex = Math.max(0, root.audioModes.indexOf(root.recAudio));
+                            }
+                        }
+
+                        onValueChanged: function(index, value) { root.setRecAudio(root.audioModes[index]) }
+                        onToggled: function(index) { root.setRecAudio(root.audioModes[index]) }
+                    }
+                }
+
+                AnimWrap {
                     isShown: !root.isVideoMode; contentWidth: s(36)
                     V2.IconButton { size: s(36); cornerRadius: root.radius; centerInk: true; buttonIcon: "\u{f03eb}"; iconFontSize: s(18); accentColor: root.surface0; textColor: root.text; onClicked: root.capture(true) }
                 }
@@ -800,7 +912,7 @@ PanelWindow {
                     Rectangle {
                         width: actionArea.pressed ? s(32) : (actionArea.containsMouse ? s(40) : s(36))
                         height: width
-                        radius: width / 2
+                        radius: (root.isVideoMode && RecordState.recording) ? s(6) : width / 2
                         anchors.centerIn: parent
                         color: root.isVideoMode ? root.red : root.mauve
                         Behavior on color { enabled: root.animateChanges; ColorAnimation { duration: 250 } }
@@ -813,7 +925,7 @@ PanelWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (root.isVideoMode) root.startRecording();
+                            if (root.isVideoMode) root.videoAction();
                             else root.capture(root.isEditMode);
                         }
                     }
