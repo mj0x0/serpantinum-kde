@@ -477,6 +477,7 @@ PanelWindow {
 
     Shortcut { sequence: "Escape"; enabled: root.armed; onActivated: ScreenshotState.hide() }
     Shortcut { sequence: "Return"; enabled: root.armed; onActivated: { if (root.isVideoMode) root.videoAction(); else root.capture(root.isEditMode) } }
+    Shortcut { sequence: "Space"; enabled: root.armed; onActivated: { if (root.isVideoMode) root.videoAction(); else root.capture(root.isEditMode) } }
     Shortcut { sequence: "Tab"; enabled: root.armed; onActivated: root.isVideoMode = !root.isVideoMode }
     Shortcut { sequence: "Left"; enabled: root.armed; onActivated: root.isVideoMode = false }
     Shortcut { sequence: "Right"; enabled: root.armed; onActivated: root.isVideoMode = true }
