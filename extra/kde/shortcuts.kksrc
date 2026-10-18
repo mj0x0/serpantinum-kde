@@ -68,6 +68,14 @@ Name=Clear All Notifications
 Exec=qs -c @SHELL_NAME@ ipc call power toggle
 Name=Power Widget
 
+[Custom Commands][serpantinum-kde.record.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call record toggle
+Name=Record screen (start or stop)
+
+[Custom Commands][serpantinum-kde.record-pause.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call record pause
+Name=Pause or resume recording
+
 [Custom Commands][serpantinum-kde.screenshot.desktop]
 Exec=qs -c @SHELL_NAME@ ipc call screenshot toggle
 Name=Screenshot region
@@ -159,6 +167,12 @@ _launch=Meta+Shift+Backspace
 
 [serpantinum-kde.power.desktop][Global Shortcuts]
 _launch=Meta+Shift+P
+
+[serpantinum-kde.record.desktop][Global Shortcuts]
+_launch=Meta+Shift+R
+
+[serpantinum-kde.record-pause.desktop][Global Shortcuts]
+_launch=Meta+Alt+R
 
 [serpantinum-kde.screenshot.desktop][Global Shortcuts]
 _launch=Print
