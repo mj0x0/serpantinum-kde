@@ -37,6 +37,7 @@ import "services/keepawake"
 import "services/layout"
 import "services/notifications"
 import "services/polkit"
+import "services/record"
 import "services/settings"
 import "services/wallpaper"
 import QtQuick
@@ -263,6 +264,16 @@ ShellRoot {
         function hide(): void { ScreenshotState.hide() }
         // Same region overlay, but the crop goes through swappy before it is saved.
         function edit(): void { ScreenshotState.toggleEdit() }
+    }
+
+    // qs -p <this file> ipc call record toggle
+    IpcHandler {
+        target: "record"
+        // Stops a live recording, otherwise opens the screenshot overlay in video mode.
+        function toggle(): void { if (RecordState.recording) RecordState.stop(); else ScreenshotState.showVideo() }
+        function stop(): void { RecordState.stop() }
+        function pause(): void { RecordState.togglePause() }
+        function status(): string { return RecordState.debugState() }
     }
 
     // qs -p <this file> ipc call calendar toggle
