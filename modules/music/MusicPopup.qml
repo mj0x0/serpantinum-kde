@@ -252,14 +252,6 @@ Item {
     // ANTI-JITTER LOCK: Prevents background polling from reverting UI during processing
     property real lastEqUpdate: 0
 
-    property real globalOrbitAngle: 0
-    NumberAnimation on globalOrbitAngle {
-        from: 0; to: Math.PI * 2
-        duration: 90000
-        loops: Animation.Infinite
-        running: true
-    }
-
     // --- CANVAS LIGHTNING ANIMATION STATE ---
     property real eqLightningProgress: 0.0
     property real eqLightningFade: 1.0 // 1.0 = fully faded out
@@ -409,6 +401,12 @@ Item {
     }
 
     // PROPER EXCEPTION-FREE FIX: Explicit bindings so GradientStop actually repaints
+    // Upstream's scrim: the art supplies the colour, this just grades it down so the
+    // controls and lyrics stay legible. Explicit properties for the same repaint reason as bc1-4.
+    readonly property color scrimTop: Qt.alpha(root.base, 0.55)
+    readonly property color scrimMid: Qt.alpha(root.base, 0.72)
+    readonly property color scrimBottom: Qt.alpha(root.base, 0.90)
+
     property color bc1: borderColors[0] || root.mauve
     property color bc2: borderColors[1] || root.blue
     property color bc3: borderColors[2] || root.red
@@ -751,29 +749,16 @@ Item {
                     Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.InOutQuad } }
                 }
 
-                // LAYER 1.5: Flowing Orbits
+                // LAYER 1.5: Scrim over the art, heaviest at the bottom where the controls sit.
                 Rectangle {
-                    width: parent.width * 0.8; height: width; radius: width / 2
-                    x: (parent.width / 2 - width / 2) + Math.cos(root.globalOrbitAngle * 2) * root.s(150)
-                    y: (parent.height / 2 - height / 2) + Math.sin(root.globalOrbitAngle * 2) * root.s(100)
-                    
-                    // Fixed: Hides orbits when stopped
-                    opacity: root.musicData.status === "Playing" ? 0.08 : (root.musicData.status === "Paused" ? 0.04 : 0.0)
-                    color: root.musicData.status === "Playing" ? root.mauve : root.surface2
-                    Behavior on color { ColorAnimation { duration: 1000 } }
-                    Behavior on opacity { NumberAnimation { duration: 1000 } }
-                }
-                
-                Rectangle {
-                    width: parent.width * 0.9; height: width; radius: width / 2
-                    x: (parent.width / 2 - width / 2) + Math.sin(root.globalOrbitAngle * 1.5) * root.s(-150)
-                    y: (parent.height / 2 - height / 2) + Math.cos(root.globalOrbitAngle * 1.5) * root.s(-100)
-                    
-                    // Fixed: Hides orbits when stopped
-                    opacity: root.musicData.status === "Playing" ? 0.08 : (root.musicData.status === "Paused" ? 0.02 : 0.0)
-                    color: root.musicData.status === "Playing" ? root.blue : root.surface1
-                    Behavior on color { ColorAnimation { duration: 1000 } }
-                    Behavior on opacity { NumberAnimation { duration: 1000 } }
+                    anchors.fill: parent
+                    opacity: (root.musicData.blur && root.musicData.status !== "Stopped" && root.musicData.status !== "Offline") ? 1.0 : 0.0
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: root.scrimTop; Behavior on color { ColorAnimation { duration: 600 } } }
+                        GradientStop { position: 0.5; color: root.scrimMid; Behavior on color { ColorAnimation { duration: 600 } } }
+                        GradientStop { position: 1.0; color: root.scrimBottom; Behavior on color { ColorAnimation { duration: 600 } } }
+                    }
+                    Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.InOutQuad } }
                 }
             }
 
