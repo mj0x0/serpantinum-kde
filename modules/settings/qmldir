@@ -1,4 +1,16 @@
 SettingsPopup 1.0 SettingsPopup.qml
 BarArranger 1.0 BarArranger.qml
 ThemeGrid 1.0 ThemeGrid.qml
+SettingsRow 1.0 SettingsRow.qml
+SettingsToggle 1.0 SettingsToggle.qml
+SettingsSwatches 1.0 SettingsSwatches.qml
+SettingsChips 1.0 SettingsChips.qml
+SettingsStepper 1.0 SettingsStepper.qml
+SettingsSlider 1.0 SettingsSlider.qml
+SettingsToggleChips 1.0 SettingsToggleChips.qml
+SettingsAppChips 1.0 SettingsAppChips.qml
+SettingsGlyphSlots 1.0 SettingsGlyphSlots.qml
+SettingsBtn 1.0 SettingsBtn.qml
+SettingsFontPicker 1.0 SettingsFontPicker.qml
+SettingsPathField 1.0 SettingsPathField.qml
 singleton SettingsState 1.0 SettingsState.qml
