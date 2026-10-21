@@ -458,18 +458,22 @@ Item {
                     // Appearance
                     Page {
                         title: "Appearance"
+                        SettingsHeading { host: window; text: "Themes" }
                         ThemeGrid {
                             Layout.fillWidth: true
                             host: window
                         }
+                        SettingsHeading { host: window; text: "Shell look" }
                         ThemeAppearanceSection {
                             Layout.fillWidth: true
                             host: window
                         }
+                        SettingsHeading { host: window; text: "Colour generation" }
                         ThemeMatugenSection {
                             Layout.fillWidth: true
                             host: window
                         }
+                        SettingsHeading { host: window; text: "Applications" }
                         ThemeAppsSection {
                             Layout.fillWidth: true
                             host: window

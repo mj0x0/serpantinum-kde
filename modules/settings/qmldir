@@ -29,3 +29,4 @@ ThemeAppearanceSection 1.0 ThemeAppearanceSection.qml
 ThemeMatugenSection 1.0 ThemeMatugenSection.qml
 ThemeAppsSection 1.0 ThemeAppsSection.qml
 singleton SettingsState 1.0 SettingsState.qml
+SettingsHeading 1.0 SettingsHeading.qml
