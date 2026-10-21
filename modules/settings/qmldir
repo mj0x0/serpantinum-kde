@@ -13,4 +13,19 @@ SettingsGlyphSlots 1.0 SettingsGlyphSlots.qml
 SettingsBtn 1.0 SettingsBtn.qml
 SettingsFontPicker 1.0 SettingsFontPicker.qml
 SettingsPathField 1.0 SettingsPathField.qml
+BarPlacementSection 1.0 BarPlacementSection.qml
+BarStyleSection 1.0 BarStyleSection.qml
+BarAutohideSection 1.0 BarAutohideSection.qml
+BarLayoutSection 1.0 BarLayoutSection.qml
+BarModuleCard 1.0 BarModuleCard.qml
+BarMenuCard 1.0 BarMenuCard.qml
+BarWorkspacesCard 1.0 BarWorkspacesCard.qml
+BarTimeDateCard 1.0 BarTimeDateCard.qml
+BarSysmonCard 1.0 BarSysmonCard.qml
+BarBatteryCard 1.0 BarBatteryCard.qml
+BarMediaCard 1.0 BarMediaCard.qml
+OsdSection 1.0 OsdSection.qml
+ThemeAppearanceSection 1.0 ThemeAppearanceSection.qml
+ThemeMatugenSection 1.0 ThemeMatugenSection.qml
+ThemeAppsSection 1.0 ThemeAppsSection.qml
 singleton SettingsState 1.0 SettingsState.qml

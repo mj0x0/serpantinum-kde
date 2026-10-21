@@ -60,41 +60,6 @@ Item {
 
     property int currentTab: 0
 
-    // The bar's pips follow KWin, so the Workspaces stepper edits KWin's desktops, not a setting.
-    property int desktopCount: 0
-    FileView {
-        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/quickshell/workspaces/workspaces.json"
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: { try { window.desktopCount = JSON.parse(text()).length; } catch (e) {} }
-    }
-    readonly property string helpersDir: ("" + Quickshell.shellDir).replace(/^file:\/\//, "") + "/helpers"
-    function setDesktops(n) { Quickshell.execDetached(["python3", window.helpersDir + "/desktops.py", "set", "" + n]); }
-
-    // Mirrors Workspaces.qml; the bar falls back to the number past the list or on "".
-    readonly property var defaultGlyphs: ["\u{f018d}", "\u{f059f}", "\u{f0169}", "\u{f024b}", "\u{f0b79}",
-                                          "\u{f075a}", "\u{f0297}", "\u{f02e9}", "\u{f01ee}", "\u{f0493}"]
-    readonly property var wsGlyphs: {
-        var g = ShellSettings.value("bar.workspaces.glyphs", null);
-        return (g && typeof g.length === "number" && g.length > 0) ? g : defaultGlyphs;
-    }
-    function setWsGlyph(i, g) {
-        var arr = wsGlyphs.slice();
-        while (arr.length <= i) arr.push("");
-        arr[i] = g;
-        ShellSettings.setValue("bar.workspaces.glyphs", arr);
-    }
-
-    readonly property var actionOptions: [
-        { key: "settings", label: "Settings", glyph: "\u{f0493}" },
-        { key: "search",   label: "Search",   glyph: "\u{f0349}" },
-        { key: "focus",    label: "Focus",    glyph: "\u{f0109}" }
-    ]
-    readonly property var enabledActions: {
-        var v = ShellSettings.value("bar.actions", null);
-        return (v && typeof v.length === "number") ? v : ["settings", "search", "focus"];
-    }
-
     // Polkit allows one agent per session: KDE's unit has to be masked before ours can register.
     property string kdeAgentState: ""
     Process {
@@ -135,43 +100,23 @@ Item {
         kdeAgentRefresh.restart();
     }
 
-    // Scheme, seed, mode and contrast only steer matugen; a palette carries its own.
-    readonly property bool staticTheme: ("" + ShellSettings.value("appearance.theme", "matugen")) !== "matugen"
-
-    // matugen's candidate seeds for the current wallpaper, written by the hook.
-    property var seeds: []
-    FileView {
-        path: Quickshell.env("HOME") + "/.local/state/quickshell/generated/seeds.json"
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            try { window.seeds = (JSON.parse(text()) || {}).seeds || []; }
-            catch (e) { window.seeds = []; }
-        }
-    }
-
-    // The matugen app catalog install.sh ships; null means missing or unreadable.
-    property var appCatalog: null
-    FileView {
-        path: Quickshell.env("HOME") + "/.config/matugen/apps.json"
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            try {
-                var a = (JSON.parse(text()) || {}).apps;
-                window.appCatalog = (a && typeof a.length === "number") ? a : null;
-            } catch (e) { window.appCatalog = null; }
-        }
-        onLoadFailed: window.appCatalog = null
-    }
-    readonly property var themedApps: {
-        var v = ShellSettings.value("appearance.apps", null);
-        return (v && typeof v.length === "number") ? v : [];
-    }
-    readonly property var pathApps: (window.appCatalog || []).filter(
-        a => a.path && window.themedApps.indexOf(a.key) !== -1)
-
     // Deep link: SettingsState.section names a tab, matched case-insensitively.
+    // A child tab only shows while its parent is the current page, or it is.
+    function tabShown(i) {
+        var t = window.tabs[i];
+        if (!t || !t.under) return true;
+        return window.currentTab === i || window.currentTab === window.tabIndexOf(t.under);
+    }
+    function shownBefore(i) {
+        var n = 0;
+        for (var k = 0; k < i; k++) if (window.tabShown(k)) n++;
+        return n;
+    }
+    function tabIsChild(i) {
+        var t = window.tabs[i];
+        return !!(t && t.under);
+    }
+
     function tabIndexOf(name) {
         for (var i = 0; i < tabs.length; i++)
             if (tabs[i].name.toLowerCase() === ("" + name).toLowerCase()) return i;
@@ -313,10 +258,12 @@ Item {
         { name: "General",    icon: "\u{f0493}" },
         { name: "Appearance", icon: "\u{f0765}" },
         { name: "Bar",        icon: "\u{f0309}" },
+        { name: "Modules",     icon: "\u{f12a8}", under: "Bar" },
         { name: "Tray",       icon: "\u{f0f1d}" },
         { name: "Notifications", icon: "\u{f009a}" },
         { name: "Launcher",   icon: "\u{f0349}" },
         { name: "Dock",       icon: "\u{f10a9}" },
+        { name: "On-Screen Display", icon: "\u{f057e}" },
         { name: "Wallpaper",  icon: "\u{f05e2}" },
         { name: "Recording",  icon: "\u{f0567}" },
         { name: "Music",      icon: "\u{f075a}" },
@@ -408,8 +355,10 @@ Item {
                         z: 0
                         radius: Radius.outer(window.s(8))
                         color: window.accent
-                        y: window.currentTab * (window.s(44) + window.s(4))
-                        width: tabsCol.width
+                        y: window.shownBefore(window.currentTab) * (window.s(44) + window.s(4))
+                        x: window.tabIsChild(window.currentTab) ? window.s(16) : 0
+                        width: tabsCol.width - x
+                        Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
                         height: window.s(44)
                         opacity: window.tabOpacity(window.currentTab)
                         transform: Translate { x: window.s(-24) * (1.0 - window.tabProgress(window.currentTab)) }
@@ -428,6 +377,8 @@ Item {
                                 required property int index
                                 required property var modelData
                                 Layout.fillWidth: true
+                                Layout.leftMargin: modelData.under ? window.s(16) : 0
+                                visible: window.tabShown(index)
                                 slot: index
                                 label: modelData.name
                                 glyph: modelData.icon
@@ -509,145 +460,17 @@ Item {
                             Layout.fillWidth: true
                             host: window
                         }
-                        Row {
-                            label: "Corner radius"
-                            glyph: "\u{f0607}"
-                            desc: Radius.active
-                                ? "serpantinum v2's rounded style, in px: 0 is square, 64 the roundest"
-                                : "Off: each popup keeps its own corners"
-                            RowLayout {
-                                spacing: window.s(12)
-                                Slider {
-                                    visible: Radius.active
-                                    from: 0; to: 64; step: 1
-                                    value: Radius.value
-                                    onCommitted: v => ShellSettings.setValue("ui.radius", v)
-                                }
-                                Toggle {
-                                    checked: Radius.active
-                                    onToggled: v => ShellSettings.setValue("ui.radius", v ? 8 : null)
-                                }
-                            }
-                        }
-                        Row {
-                            label: "Font"
-                            glyph: "\u{f06d6}"
-                            desc: "Text across the shell; icons stay on Iosevka Nerd Font. Now: " + Fonts.ui
-                            ColumnLayout {
-                                spacing: window.s(6)
-                                FontPicker {
-                                    current: Fonts.ui
-                                    onPicked: f => ShellSettings.setValue("ui.font", f)
-                                }
-                                Btn {
-                                    label: "Reset to " + Fonts.defaultUi
-                                    onClicked: ShellSettings.setValue("ui.font", null)
-                                }
-                            }
-                        }
-                        Row {
-                            label: "Scheme"
-                            glyph: "\u{f08b5}"
-                            visible: !window.staticTheme
-                            desc: "How matugen derives the palette from the seed colour"
-                            Chips {
-                                width: window.s(470)
-                                options: ["tonal-spot", "vibrant", "expressive", "content",
-                                          "fidelity", "neutral", "monochrome", "rainbow",
-                                          "fruit-salad", "smart"]
-                                current: "" + ShellSettings.value("appearance.schemeType", "tonal-spot")
-                                onPicked: v => ShellSettings.setValue("appearance.schemeType", v)
-                            }
-                        }
-                        Row {
-                            label: "Seed"
-                            glyph: "\u{f020a}"
-                            visible: !window.staticTheme
-                            desc: window.seeds.length
-                                ? "matugen's candidates for this wallpaper, most dominant first"
-                                : "Change the wallpaper once to populate these"
-                            Swatches {
-                                options: window.seeds.map((c, i) => ({ key: "dominant " + (i + 1), color: c }))
-                                current: "" + ShellSettings.value("appearance.prefer", "dominant 1")
-                                onPicked: v => ShellSettings.setValue("appearance.prefer", v)
-                            }
-                        }
-                        Row {
-                            label: "Or by rule"
-                            glyph: "\u{f062e}"
-                            visible: !window.staticTheme
-                            desc: "Picks without regard to area. No single rule suits every wallpaper"
-                            Chips {
-                                width: window.s(330)
-                                options: ["saturation", "less-saturation", "lightness",
-                                          "darkness", "value"]
-                                current: "" + ShellSettings.value("appearance.prefer", "dominant 1")
-                                onPicked: v => ShellSettings.setValue("appearance.prefer", v)
-                            }
-                        }
-                        Row {
-                            label: "Mode"
-                            glyph: "\u{f0510}"
-                            visible: !window.staticTheme
-                            desc: ""
-                            Chips {
-                                options: ["dark", "light", "smart"]
-                                current: "" + ShellSettings.value("appearance.mode", "dark")
-                                onPicked: v => ShellSettings.setValue("appearance.mode", v)
-                            }
-                        }
-                        Row {
-                            label: "Contrast"
-                            glyph: "\u{f00df}"
-                            visible: !window.staticTheme
-                            desc: "0 is the Material spec; 1 is maximum"
-                            Slider {
-                                from: -1; to: 1; step: 0.1
-                                value: ShellSettings.value("appearance.contrast", 0)
-                                onCommitted: v => ShellSettings.setValue("appearance.contrast", v)
-                            }
-                        }
-                        Row {
-                            label: "Application themes"
-                            glyph: "\u{f03d8}"
-                            desc: window.appCatalog
-                                ? "Apps matugen themes as well. Install what each one needs first"
-                                : "No app catalog yet: run ./install.sh matugen"
-                        }
-                        AppChips {
+                        ThemeAppearanceSection {
                             Layout.fillWidth: true
-                            visible: window.appCatalog !== null
-                            options: window.appCatalog || []
-                            current: window.themedApps
-                            onChanged: v => ShellSettings.setValue("appearance.apps", v)
+                            host: window
                         }
-                        Repeater {
-                            model: window.pathApps
-                            delegate: Row {
-                                id: pathRow
-                                required property var modelData
-                                readonly property string path:
-                                    "" + ShellSettings.value("appearance.appPaths." + modelData.key, "")
-                                label: modelData.label + ": " + (modelData.path.label || "Path")
-                                glyph: modelData.glyph || ""
-                                desc: pathRow.path === "" ? "Skipped until a path is set" : ""
-                                PathField {
-                                    placeholder: pathRow.modelData.path.placeholder || ""
-                                    value: pathRow.path
-                                    onCommitted: v => ShellSettings.setValue(
-                                        "appearance.appPaths." + pathRow.modelData.key, v)
-                                }
-                            }
+                        ThemeMatugenSection {
+                            Layout.fillWidth: true
+                            host: window
                         }
-                        Row {
-                            label: "Extra templates"
-                            glyph: "\u{f0219}"
-                            desc: "A TOML file in ~/.config/matugen, appended to what matugen renders. Yours to write"
-                            PathField {
-                                placeholder: "user.toml"
-                                value: "" + ShellSettings.value("appearance.userToml", "")
-                                onCommitted: v => ShellSettings.setValue("appearance.userToml", v.trim() || null)
-                            }
+                        ThemeAppsSection {
+                            Layout.fillWidth: true
+                            host: window
                         }
                         Text {
                             Layout.fillWidth: true
@@ -662,313 +485,33 @@ Item {
                     // Bar
                     Page {
                         title: "Bar"
-                        Row {
-                            label: "Style"
-                            glyph: "\u{f0831}"
-                            desc: "modular is the segmented default; fill hugs the screen edge"
-                            Chips {
-                                options: ["modular", "solid", "fill"]
-                                current: "" + ShellSettings.value("bar.style", "modular")
-                                onPicked: v => ShellSettings.setValue("bar.style", v)
-                            }
-                        }
-                        Row {
-                            label: "Vitals shape"
-                            glyph: "\u{f035b}"
-                            desc: "pill is the liquid-fill default; wave and circle are ring gauges"
-                            Chips {
-                                options: ["pill", "wave", "circle"]
-                                current: "" + ShellSettings.value("bar.sysmonStyle", "pill")
-                                onPicked: v => ShellSettings.setValue("bar.sysmonStyle", v)
-                            }
-                        }
-                        Row {
-                            label: "Clock face"
-                            glyph: "\u{f00f0}"
-                            desc: "classic stacks time over date; material drops the minute on a diagonal; badge is a dot matrix"
-                            Chips {
-                                options: ["classic", "material", "badge"]
-                                current: "" + ShellSettings.value("bar.timeStyle", "classic")
-                                onPicked: v => ShellSettings.setValue("bar.timeStyle", v)
-                            }
-                        }
-                        Row {
-                            label: "Battery shape"
-                            glyph: "\u{f0079}"
-                            desc: "classic is the gradient wave fill; minimal adds a cap; text drops the pill"
-                            Chips {
-                                options: ["classic", "minimal", "text"]
-                                current: "" + ShellSettings.value("bar.batStyle", "classic")
-                                onPicked: v => ShellSettings.setValue("bar.batStyle", v)
-                            }
-                        }
-                        Row {
-                            label: "Volume OSD"
-                            glyph: "\u{f057e}"
-                            desc: "Shows volume and mic changes near the bar. Turn Plasma's own volume OSD "
-                                + "off in System Settings -> Sound, or the two will stack"
-                            Toggle {
-                                checked: ShellSettings.value("osd.enabled", true) !== false
-                                onToggled: v => ShellSettings.setValue("osd.enabled", v)
-                            }
-                        }
-                        Row {
-                            label: "OSD attaches to the bar"
-                            glyph: "\u{f0176}"
-                            desc: "Only takes effect on a solid or fill bar at full opacity, with a matching "
-                                + "orientation; otherwise the position below is used"
-                            Toggle {
-                                checked: ShellSettings.value("osd.attachToBar", true) !== false
-                                onToggled: v => ShellSettings.setValue("osd.attachToBar", v)
-                            }
-                        }
-                        Row {
-                            label: "OSD orientation"
-                            glyph: "\u{f0bbf}"
-                            desc: "A side bar only attaches a vertical OSD; a top or bottom bar only a horizontal one"
-                            Chips {
-                                options: ["horizontal", "vertical"]
-                                current: "" + ShellSettings.value("osd.orientation", "horizontal")
-                                onPicked: v => ShellSettings.setValue("osd.orientation", v)
-                            }
-                        }
-                        Row {
-                            label: "OSD across"
-                            glyph: "\u{f04c1}"
-                            desc: "Horizontal position when it is not attached: 0 is the left edge, 100 the right"
-                            Slider {
-                                from: 0; to: 100; step: 5
-                                value: Number(ShellSettings.value("osd.horizontalPosition", 50))
-                                onCommitted: v => ShellSettings.setValue("osd.horizontalPosition", Math.round(v))
-                            }
-                        }
-                        Row {
-                            label: "OSD down"
-                            glyph: "\u{f04c0}"
-                            desc: "Vertical position when it is not attached: 0 is the top, 100 the bottom"
-                            Slider {
-                                from: 0; to: 100; step: 5
-                                value: Number(ShellSettings.value("osd.verticalPosition", 90))
-                                onCommitted: v => ShellSettings.setValue("osd.verticalPosition", Math.round(v))
-                            }
-                        }
-                        Row {
-                            label: "Hide empty workspaces"
-                            glyph: "\u{f05b0}"
-                            desc: "Only workspaces with windows show; the active one always does"
-                            Toggle {
-                                checked: ShellSettings.value("bar.hideEmptyWorkspaces", false) === true
-                                onToggled: v => ShellSettings.setValue("bar.hideEmptyWorkspaces", v)
-                            }
-                        }
-                        Row {
-                            label: "Position"
-                            glyph: "\u{f0053}"
-                            desc: "Which screen edge holds the bar"
-                            Chips {
-                                options: ["top", "bottom", "left", "right"]
-                                current: "" + ShellSettings.value("bar.position", "top")
-                                onPicked: v => ShellSettings.setValue("bar.position", v)
-                            }
-                        }
-                        Row {
-                            label: "Size"
-                            glyph: "\u{f084e}"
-                            desc: "Scales the bar and every widget in it"
-                            Slider {
-                                from: 0.6; to: 1.4; step: 0.05
-                                value: Number(ShellSettings.value("bar.size", 1.0))
-                                onCommitted: v => ShellSettings.setValue("bar.size", v)
-                            }
-                        }
-                        Row {
-                            label: "Opacity"
-                            glyph: "\u{f05cc}"
-                            desc: "Background alpha of the bar surfaces"
-                            Slider {
-                                from: 20; to: 100; step: 5
-                                value: Number(ShellSettings.value("bar.opacity", 85))
-                                onCommitted: v => ShellSettings.setValue("bar.opacity", v)
-                            }
-                        }
-                        Row {
-                            label: "Blur"
-                            glyph: "\u{f00a3}"
-                            desc: "Frost what sits behind the bar surfaces"
-                            Toggle {
-                                checked: ShellSettings.value("bar.blur", false) === true
-                                onToggled: v => ShellSettings.setValue("bar.blur", v)
-                            }
-                        }
-                        Row {
-                            label: "Width"
-                            glyph: "\u{f046b}"
-                            desc: "Percent of the screen edge; never below the content. fill ignores it"
-                            Slider {
-                                from: 25; to: 100; step: 5
-                                value: Number(ShellSettings.value("bar.width", 100))
-                                onCommitted: v => ShellSettings.setValue("bar.width", v)
-                            }
-                        }
-                        Row {
-                            label: "Fit width"
-                            glyph: "\u{f084c}"
-                            desc: "Bar hugs its content — no dead space; Width is ignored"
-                            Toggle {
-                                checked: ShellSettings.value("bar.fitWidth", false) === true
-                                onToggled: v => ShellSettings.setValue("bar.fitWidth", v)
-                            }
-                        }
-                        Row {
-                            label: "Distinct pills"
-                            glyph: "\u{f0409}"
-                            desc: "Keep the segmented tint on solid and fill"
-                            Toggle {
-                                checked: ShellSettings.value("bar.distinctPills", false) === true
-                                onToggled: v => ShellSettings.setValue("bar.distinctPills", v)
-                            }
-                        }
-                        Row {
-                            label: "Autohide"
-                            glyph: "\u{f0209}"
-                            desc: "Bar slides away; hover the screen edge to reveal"
-                            Toggle {
-                                checked: ShellSettings.value("bar.autohide", false) === true
-                                onToggled: v => ShellSettings.setValue("bar.autohide", v)
-                            }
-                        }
-                        Row {
-                            label: "Autohide delay"
-                            glyph: "\u{f051f}"
-                            desc: "How long the bar lingers, in milliseconds"
-                            Slider {
-                                from: 0; to: 3000; step: 100
-                                value: Number(ShellSettings.value("bar.autohideTimeout", 1000))
-                                onCommitted: v => ShellSettings.setValue("bar.autohideTimeout", v)
-                            }
-                        }
-                        Row {
-                            label: "Workspaces"
-                            glyph: "\u{f0570}"
-                            desc: "KDE's virtual desktops, added or removed at the end over D-Bus; the pips follow"
-                            Stepper {
-                                from: 1; to: 20
-                                value: window.desktopCount
-                                onCommitted: v => window.setDesktops(v)
-                            }
-                        }
-                        Row {
-                            label: "Workspace style"
-                            glyph: "\u{f0139}"
-                            desc: "pills are v2's; glyphs puts an icon on each desktop; shapes rolls a Material shape per focus"
-                            Chips {
-                                options: ["pills", "dots", "squares", "numbers", "glyphs", "shapes", "underline", "pacman"]
-                                current: "" + ShellSettings.value("bar.workspaces.style", "pills")
-                                onPicked: v => ShellSettings.setValue("bar.workspaces.style", v)
-                            }
-                        }
-                        Row {
-                            label: "Workspace glyphs"
-                            glyph: "\u{f0832}"
-                            visible: ShellSettings.value("bar.workspaces.style", "pills") === "glyphs"
-                            desc: "Click a desktop to pick its icon. # shows the number instead"
-                            ColumnLayout {
-                                spacing: window.s(8)
-                                GlyphSlots {
-                                    Layout.preferredWidth: window.s(360)
-                                    width: window.s(360)
-                                    count: window.desktopCount > 0 ? window.desktopCount : window.defaultGlyphs.length
-                                    glyphs: window.wsGlyphs
-                                    onPicked: (i, g) => window.setWsGlyph(i, g)
-                                }
-                                Btn {
-                                    Layout.alignment: Qt.AlignRight
-                                    label: "Reset icons"
-                                    onClicked: ShellSettings.setValue("bar.workspaces.glyphs", null)
-                                }
-                            }
-                        }
-                        Row {
-                            label: "Active indicator"
-                            glyph: "\u{f04fe}"
-                            desc: "Sliding highlight (pills, numbers, glyphs) or bar (underline) behind the active one"
-                            Toggle {
-                                checked: ShellSettings.value("bar.workspaces.activeIndicator", true) !== false
-                                onToggled: v => ShellSettings.setValue("bar.workspaces.activeIndicator", v)
-                            }
-                        }
-                        Row {
-                            label: "Occupied tint"
-                            glyph: "\u{f0266}"
-                            desc: "Occupied workspaces read differently from empty ones"
-                            Toggle {
-                                checked: ShellSettings.value("bar.workspaces.occupiedBg", true) !== false
-                                onToggled: v => ShellSettings.setValue("bar.workspaces.occupiedBg", v)
-                            }
-                        }
-                        Row {
-                            label: "Tint colour"
-                            glyph: "\u{f00e9}"
-                            desc: "Palette roles, so it re-themes with the wallpaper"
-                            Swatches {
-                                width: window.s(300)
-                                options: [
-                                    { key: "text",     color: window.text },
-                                    { key: "mauve",    color: window.mauve },
-                                    { key: "sapphire", color: window.sapphire },
-                                    { key: "green",    color: window.green },
-                                    { key: "yellow",   color: window.yellow },
-                                    { key: "peach",    color: window.peach },
-                                    { key: "pink",     color: window.pink },
-                                    { key: "red",      color: window.red }
-                                ]
-                                current: "" + ShellSettings.value("bar.workspaces.occupiedColor", "text")
-                                onPicked: v => ShellSettings.setValue("bar.workspaces.occupiedColor", v)
-                                enabled: ShellSettings.value("bar.workspaces.occupiedBg", true) !== false
-                                opacity: enabled ? 1 : 0.4
-                            }
-                        }
-                        Row {
-                            label: "Media player"
-                            glyph: "\u{f075a}"
-                            desc: "mini is v2's compact player with a popout; side bars always use mini"
-                            Chips {
-                                options: ["full", "mini"]
-                                current: "" + ShellSettings.value("bar.media.style", "full")
-                                onPicked: v => ShellSettings.setValue("bar.media.style", v)
-                            }
-                        }
-                        Row {
-                            label: "Actions"
-                            glyph: "\u{f12a8}"
-                            desc: "Buttons in the Actions widget; with none picked it leaves the bar"
-                            ToggleChips {
-                                options: window.actionOptions
-                                current: window.enabledActions
-                                onChanged: v => ShellSettings.setValue("bar.actions", v)
-                            }
-                        }
-                        Row {
-                            label: "Make room for the panel"
-                            glyph: "\u{f04e1}"
-                            desc: "Centre and right sections slide left while the System Panel is open"
-                            Toggle {
-                                checked: ShellSettings.value("bar.packForPanel", false) === true
-                                onToggled: v => ShellSettings.setValue("bar.packForPanel", v)
-                            }
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            Layout.topMargin: window.s(8)
-                            text: "Layout"
-                            font.family: window.fontFamily
-                            font.pixelSize: window.s(12)
-                            color: window.text
-                        }
-                        BarArranger {
+                        BarPlacementSection {
                             Layout.fillWidth: true
                             host: window
                         }
+                        BarStyleSection {
+                            Layout.fillWidth: true
+                            host: window
+                        }
+                        BarAutohideSection {
+                            Layout.fillWidth: true
+                            host: window
+                        }
+                        BarLayoutSection {
+                            Layout.fillWidth: true
+                            host: window
+                        }
+                    }
+
+                    // Bar modules
+                    Page {
+                        title: "Bar modules"
+                        BarMenuCard { host: window }
+                        BarWorkspacesCard { host: window }
+                        BarTimeDateCard { host: window }
+                        BarSysmonCard { host: window }
+                        BarBatteryCard { host: window }
+                        BarMediaCard { host: window }
                     }
 
                     // Tray
@@ -1221,6 +764,15 @@ Item {
                                 opacity: enabled ? 1 : 0.4
                                 onCommitted: v => ShellSettings.setValue("dock.hideDelay", v)
                             }
+                        }
+                    }
+
+                    // On-Screen Display
+                    Page {
+                        title: "On-Screen Display"
+                        OsdSection {
+                            Layout.fillWidth: true
+                            host: window
                         }
                     }
 
