@@ -4,17 +4,22 @@
 # and hands that PNG back here with --freeze, so the saved file is the pixels it showed.
 #   --geometry "X,Y WxH"  region in capture pixels   --freeze FILE  crop this instead of capturing
 #   --full  whole current monitor   --edit  annotate first   --scan-qr  print QR codes and exit
+#   --ocr [--ocr-langs eng+heb] [--ocr-upscale 2]  print recognised text as one JSON line and exit
 
 set -uo pipefail
 
 EDIT=false
 FULL=false
 SCAN_QR=false
+OCR=false
+OCR_LANGS="eng"
+OCR_UPSCALE=2
 GEOMETRY=""
 FREEZE=""
 
 usage() {
     echo "usage: screenshot.sh [--full] [--geometry \"X,Y WxH\"] [--freeze FILE] [--edit] [--scan-qr]" >&2
+    echo "                     [--ocr [--ocr-langs LANGS] [--ocr-upscale N]]" >&2
     exit 1
 }
 
@@ -23,6 +28,9 @@ while [ "$#" -gt 0 ]; do
         --edit) EDIT=true; shift ;;
         --full) FULL=true; shift ;;
         --scan-qr) SCAN_QR=true; shift ;;
+        --ocr) OCR=true; shift ;;
+        --ocr-langs) [ "$#" -ge 2 ] || usage; OCR_LANGS="$2"; shift 2 ;;
+        --ocr-upscale) [ "$#" -ge 2 ] || usage; OCR_UPSCALE="$2"; shift 2 ;;
         --geometry) [ "$#" -ge 2 ] || usage; GEOMETRY="$2"; shift 2 ;;
         --freeze) [ "$#" -ge 2 ] || usage; FREEZE="$2"; shift 2 ;;
         -h|--help) usage ;;
@@ -36,8 +44,12 @@ if [ "$FULL" = true ]; then
     FREEZE=""
 fi
 
+case "$OCR_UPSCALE" in 1|2|3) ;; *) OCR_UPSCALE=2 ;; esac
+case "$OCR_LANGS" in ''|*[!A-Za-z0-9_+]*) OCR_LANGS="eng" ;; esac
+
 HELPER_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 QR_PARSER="$HELPER_DIR/screenshot-qr.py"
+OCR_PARSER="$HELPER_DIR/screenshot-ocr.py"
 RUN_DIR="${XDG_RUNTIME_DIR:-/tmp}/quickshell/screenshot"
 # xdg-user-dir answers $HOME when PICTURES is unset, which is not where screenshots go.
 PICTURES="$(xdg-user-dir PICTURES 2>/dev/null)"
@@ -45,16 +57,22 @@ PICTURES="$(xdg-user-dir PICTURES 2>/dev/null)"
 SAVE_DIR="$PICTURES/Screenshots"
 
 # The overlay hands us its freeze and forgets it, so the capture path owns that file.
-# A QR scan is the exception: the overlay stays up and keeps showing it.
+# QR scans and OCR are the exception: the overlay stays up and keeps showing it.
 drop_freeze() {
-    [ "$SCAN_QR" = true ] && return 0
+    [ "$SCAN_QR" = true ] || [ "$OCR" = true ] && return 0
     [ -n "$FREEZE" ] && rm -f "$FREEZE"
     return 0
 }
 
 # The overlay has already closed by the time we run, so stderr reaches nobody.
+# OCR is still being watched: it gets the reason as JSON on stdout instead.
 fail() {
     local why="${1:-The capture did not finish.}"
+    if [ "$OCR" = true ]; then
+        why="${why//\\/\\\\}"
+        printf '{"ok": false, "error": "%s"}\n' "${why//\"/\\\"}"
+        exit 0
+    fi
     echo "screenshot: $why" >&2
     drop_freeze
     if command -v notify-send >/dev/null 2>&1; then
@@ -76,6 +94,8 @@ DEPS=()
 [ -z "$FREEZE" ] && DEPS+=(spectacle)
 [ -n "$GEOMETRY" ] && DEPS+=(magick)
 [ "$SCAN_QR" = true ] && DEPS+=(zbarimg python3)
+[ "$OCR" = true ] && DEPS+=(tesseract python3)
+[ "$OCR" = true ] && [ "$OCR_UPSCALE" -gt 1 ] && DEPS+=(magick)
 [ "$EDIT" = true ] && DEPS+=(swappy)
 [ "${#DEPS[@]}" -gt 0 ] && need "${DEPS[@]}"
 
@@ -83,7 +103,9 @@ mkdir -p "$RUN_DIR" || fail "Cannot create $RUN_DIR"
 CAPTURE=""
 REGION="$RUN_DIR/region_$$.png"
 QR_RAW="$RUN_DIR/qr_$$.txt"
-trap 'rm -f "$REGION" "$CAPTURE" "$QR_RAW"' EXIT
+OCR_IMG="$RUN_DIR/ocr_$$.png"
+OCR_OUT="$RUN_DIR/ocr_$$"
+trap 'rm -f "$REGION" "$CAPTURE" "$QR_RAW" "$OCR_IMG" "$OCR_OUT".txt "$OCR_OUT".tsv "$OCR_OUT".err' EXIT
 
 SRC="$FREEZE"
 if [ -z "$SRC" ]; then
@@ -114,6 +136,22 @@ if [ "$SCAN_QR" = true ]; then
     # Two passes: --xml carries the geometry, --raw the undamaged bytes. See the parser.
     zbarimg --raw -q "$REGION" > "$QR_RAW" 2>/dev/null
     zbarimg --xml -q "$REGION" 2>/dev/null | python3 -I "$QR_PARSER" "$QR_RAW"
+    exit 0
+fi
+
+if [ "$OCR" = true ]; then
+    # Native-size UI text comes back as garbage; 2x grayscale reads cleanly.
+    if [ "$OCR_UPSCALE" -gt 1 ]; then
+        magick "$REGION" -resize "$((OCR_UPSCALE * 100))%" -colorspace gray "$OCR_IMG" \
+            || fail "Could not prepare the selection for recognition."
+    else
+        OCR_IMG="$REGION"
+    fi
+    # One run writes both the boxes (tsv) and the plain text (txt).
+    tesseract "$OCR_IMG" "$OCR_OUT" -l "$OCR_LANGS" txt tsv 2> "$OCR_OUT.err"
+    [ -f "$OCR_OUT.tsv" ] || : > "$OCR_OUT.tsv"
+    python3 -I "$OCR_PARSER" "$OCR_UPSCALE" "$OCR_OUT.txt" "$OCR_OUT.err" < "$OCR_OUT.tsv" 2>/dev/null \
+        || echo '{"ok": false, "error": "The text parser failed."}'
     exit 0
 fi
 
