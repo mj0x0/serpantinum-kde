@@ -110,6 +110,7 @@ PanelWindow {
         isSelecting = false;
         isScanningQr = false;
         showQrPopup = false;
+        resetOcr();
         freezeHandedOff = false;
         animateChanges = false;
         qrModel.clear();
@@ -136,6 +137,7 @@ PanelWindow {
         isSelecting = false;
         isScanningQr = false;
         showQrPopup = false;
+        resetOcr();
         hasSelection = false;
         if (freezeImg !== "" && !freezeHandedOff)
             Quickshell.execDetached(["rm", "-f", freezeImg]);
@@ -154,7 +156,9 @@ PanelWindow {
             freezeFromKwinshot: root.freezeFromKwinshot, kwinshotUsable: root.kwinshotUsable,
             kwinshotPending: root.kwinshotPending, imageStatus: freezeBackground.status,
             procs: { output: outputProc.running, kwinshot: kwinshotProc.running,
-                     spectacle: freezeProc.running, check: freezeCheckProc.running, qr: qrProc.running },
+                     spectacle: freezeProc.running, check: freezeCheckProc.running, qr: qrProc.running,
+                     ocr: ocrProc.running },
+            isOcrRunning: root.isOcrRunning, showOcrPopup: root.showOcrPopup, ocrLines: ocrModel.count,
             isSelecting: root.isSelecting, hasSelection: root.hasSelection, isVideoMode: root.isVideoMode,
             recHdr: root.recHdr, recAudio: root.recAudio, hdrAvailable: root.hdrAvailable,
             regionString: root.regionString, fullScreenSelected: root.fullScreenSelected,
@@ -376,6 +380,20 @@ PanelWindow {
     property bool isQrSuccess: false
     ListModel { id: qrModel }
 
+    property bool isOcrRunning: false
+    property bool showOcrPopup: false
+    property string ocrText: ""
+    property string ocrError: ""
+    ListModel { id: ocrModel }
+
+    function resetOcr() {
+        isOcrRunning = false;
+        showOcrPopup = false;
+        ocrText = "";
+        ocrError = "";
+        ocrModel.clear();
+    }
+
     function selectWholeScreen() {
         root.startX = 0; root.startY = 0;
         root.endX = root.screenW; root.endY = root.screenH;
@@ -475,7 +493,8 @@ PanelWindow {
         ScreenshotState.hide();
     }
 
-    Shortcut { sequence: "Escape"; enabled: root.armed; onActivated: ScreenshotState.hide() }
+    Shortcut { sequence: "Escape"; enabled: root.armed; onActivated: { if (root.showOcrPopup) root.showOcrPopup = false; else if (root.showQrPopup) root.showQrPopup = false; else ScreenshotState.hide() } }
+    Shortcut { sequence: "T"; enabled: root.armed && !root.isVideoMode; onActivated: root.performOcr() }
     Shortcut { sequence: "Return"; enabled: root.armed; onActivated: { if (root.isVideoMode) root.videoAction(); else root.capture(root.isEditMode) } }
     Shortcut { sequence: "Space"; enabled: root.armed; onActivated: { if (root.isVideoMode) root.videoAction(); else root.capture(root.isEditMode) } }
     Shortcut { sequence: "Tab"; enabled: root.armed; onActivated: root.isVideoMode = !root.isVideoMode }
@@ -570,7 +589,8 @@ PanelWindow {
             opacity: (root.isSelecting || root.hasSelection) ? 1.0 : 0.0
             x: root.selX; y: root.selY; width: root.selW; height: root.selH
             color: "transparent"
-            border.color: (root.showQrPopup && root.isQrSuccess) ? root.green : (root.isVideoMode ? root.red : root.mauve)
+            border.color: ((root.showQrPopup && root.isQrSuccess) || (root.showOcrPopup && root.ocrText !== ""))
+                ? root.green : (root.isVideoMode ? root.red : root.mauve)
             border.width: s(2)
             z: 6
             visible: opacity > 0
@@ -593,6 +613,39 @@ PanelWindow {
                 Behavior on opacity { enabled: root.animateChanges; NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
                 Behavior on pad { enabled: root.animateChanges; NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
                 visible: opacity > 0
+            }
+        }
+
+        Repeater {
+            model: ocrModel
+            delegate: Rectangle {
+                id: ocrBox
+                property bool flashing: false
+                opacity: (root.showOcrPopup && model.oW > 0) ? 1.0 : 0.0
+                x: model.oX - s(2); y: model.oY - s(2)
+                width: model.oW + s(4); height: model.oH + s(4)
+                color: flashing ? Qt.alpha(root.green, 0.6) : (ocrBoxArea.containsMouse ? Qt.alpha(root.green, 0.32) : Qt.alpha(root.green, 0.18))
+                border.color: root.green
+                border.width: s(1)
+                radius: s(4)
+                z: 34
+                Behavior on opacity { enabled: root.animateChanges; NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                Behavior on color { enabled: root.animateChanges; ColorAnimation { duration: 150 } }
+                visible: opacity > 0
+
+                Timer { id: ocrFlash; interval: 350; onTriggered: ocrBox.flashing = false }
+
+                MouseArea {
+                    id: ocrBoxArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        Quickshell.clipboardText = model.oText;
+                        ocrBox.flashing = true;
+                        ocrFlash.restart();
+                    }
+                }
             }
         }
 
@@ -659,6 +712,8 @@ PanelWindow {
 
                 root.isScanningQr = false;
                 root.showQrPopup = false;
+                root.showOcrPopup = false;
+                root.isOcrRunning = false;
 
                 root.interactionMode = getInteractionMode(mouse.x, mouse.y, mouse.modifiers);
                 root.isSelecting = true;
@@ -710,6 +765,7 @@ PanelWindow {
             property bool fitsOutsideBottom: (root.selY + root.selH + totalHeight + s(15)) <= root.height
 
             property bool shouldShow: root.hasSelection && !root.isSelecting && !root.isScanningQr && !root.showQrPopup
+                && !root.isOcrRunning && !root.showOcrPopup
             opacity: shouldShow ? 1.0 : 0.0
             Behavior on opacity {
                 enabled: root.animateChanges && !root.isSelecting
@@ -842,6 +898,11 @@ PanelWindow {
                 AnimWrap {
                     isShown: !root.isVideoMode; contentWidth: s(36)
                     V2.IconButton { size: s(36); cornerRadius: root.radius; centerInk: true; buttonIcon: "\u{f0433}"; iconFontSize: s(18); accentColor: root.surface0; textColor: root.text; onClicked: root.performQrScan() }
+                }
+
+                AnimWrap {
+                    isShown: !root.isVideoMode; contentWidth: s(36)
+                    V2.IconButton { size: s(36); cornerRadius: root.radius; centerInk: true; buttonIcon: "\u{f113d}"; iconFontSize: s(18); accentColor: root.surface0; textColor: root.text; onClicked: root.performOcr() }
                 }
 
                 AnimWrap {
@@ -1046,6 +1107,91 @@ PanelWindow {
                 }
             }
         }
+
+        Rectangle {
+            id: ocrCard
+            readonly property bool hasText: root.ocrText !== ""
+            readonly property real bodyHeight: hasText ? Math.min(ocrBodyText.implicitHeight, root.height * 0.4) : 0
+            readonly property bool fitsBelow: (root.selY + root.selH + height + s(15)) <= root.height
+            readonly property bool fitsAbove: (root.selY - height - s(15)) >= 0
+
+            opacity: (root.showOcrPopup && !root.isSelecting) ? 1.0 : 0.0
+            width: Math.min(s(640), root.width - s(40))
+            height: s(56) + (hasText ? bodyHeight + s(16) : 0)
+            x: Math.max(s(10), Math.min(root.width - width - s(10), root.selX + (root.selW / 2) - (width / 2)))
+            y: (fitsBelow ? (root.selY + root.selH + s(15))
+                : (fitsAbove ? (root.selY - height - s(15)) : Math.max(s(10), root.selY + root.selH - height - s(15))))
+               + (1.0 - opacity) * s(15)
+            radius: root.radius
+            color: root.base
+            border.color: hasText ? root.green : root.red
+            border.width: s(2)
+            z: 40
+            Behavior on opacity { enabled: root.animateChanges; NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
+            visible: opacity > 0
+
+            MouseArea { anchors.fill: parent; acceptedButtons: Qt.LeftButton | Qt.RightButton }
+
+            RowLayout {
+                id: ocrHeader
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: s(10)
+                height: s(36)
+                spacing: s(8)
+
+                Text {
+                    text: ocrCard.hasText ? "Text recognised" : (root.ocrError !== "" ? root.ocrError : "No text found")
+                    color: ocrCard.hasText ? root.text : root.red
+                    font.family: Fonts.ui
+                    font.pixelSize: s(13)
+                    font.weight: Font.DemiBold
+                    Layout.fillWidth: true
+                    Layout.leftMargin: s(8)
+                    elide: Text.ElideRight
+                    wrapMode: Text.NoWrap
+                }
+
+                V2.IconButton {
+                    visible: ocrCard.hasText
+                    size: s(36); cornerRadius: root.radius; centerInk: true
+                    buttonIcon: "\u{f018f}"; iconFontSize: s(18)
+                    accentColor: root.surface0; textColor: root.text
+                    // The shell owns the selection, so recognised text never reaches a shell.
+                    onClicked: Quickshell.clipboardText = root.ocrText
+                }
+
+                Rectangle { width: s(2); Layout.fillHeight: true; Layout.topMargin: s(4); Layout.bottomMargin: s(4); color: root.surface0; radius: s(1) }
+                V2.IconButton { size: s(36); cornerRadius: root.radius; centerInk: true; buttonIcon: "\u{f0156}"; iconFontSize: s(18); accentColor: root.red; textColor: root.crust; onClicked: root.showOcrPopup = false }
+            }
+
+            Flickable {
+                anchors.top: ocrHeader.bottom
+                anchors.topMargin: s(6)
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: s(18)
+                anchors.rightMargin: s(18)
+                height: ocrCard.bodyHeight
+                visible: ocrCard.hasText
+                clip: true
+                contentWidth: width
+                contentHeight: ocrBodyText.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
+
+                Text {
+                    id: ocrBodyText
+                    width: parent.width
+                    text: root.ocrText
+                    color: root.text
+                    font.family: Fonts.ui
+                    font.pixelSize: s(13)
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignLeft
+                }
+            }
+        }
     }
 
     // --- QR scan ------------------------------------------------------------
@@ -1058,6 +1204,7 @@ PanelWindow {
         if (qrProc.running || root.freezeImg === "" || !root.hasSelection) return;
         root.isScanningQr = true;
         root.showQrPopup = false;
+        root.showOcrPopup = false;
         qrModel.clear();
         qrProc.command = ["bash", root.helper, "--scan-qr", "--geometry", root.geometryString,
                           "--freeze", root.freezeImg];
@@ -1158,5 +1305,79 @@ PanelWindow {
 
         root.isQrSuccess = anySuccess;
         root.showQrPopup = true;
+    }
+
+    // --- OCR ----------------------------------------------------------------
+    Process {
+        id: ocrProc
+        stdout: StdioCollector { onStreamFinished: root.onOcrResult(this.text) }
+    }
+
+    function performOcr() {
+        if (ocrProc.running || root.freezeImg === "" || !root.hasSelection || root.isVideoMode) return;
+        root.isOcrRunning = true;
+        root.showOcrPopup = false;
+        root.showQrPopup = false;
+        root.ocrText = "";
+        root.ocrError = "";
+        ocrModel.clear();
+        let langs = "" + ShellSettings.value("screenshot.ocr.langs", "eng");
+        if (langs.trim() === "") langs = "eng";
+        let upscale = Math.round(Number(ShellSettings.value("screenshot.ocr.upscale", 2)));
+        if (!(upscale >= 1 && upscale <= 3)) upscale = 2;
+        ocrProc.command = ["bash", root.helper, "--ocr", "--geometry", root.geometryString,
+                           "--freeze", root.freezeImg, "--ocr-langs", langs, "--ocr-upscale", "" + upscale];
+        ocrProc.running = true;
+    }
+
+    function onOcrResult(out) {
+        let wanted = root.isOcrRunning;
+        root.isOcrRunning = false;
+        if (!wanted || !root.armed) return;
+        ocrModel.clear();
+        root.ocrText = "";
+        root.ocrError = "";
+
+        let res = null;
+        let raw = ("" + out).trim();
+        let line = raw.split("\n").find(l => l.trim().startsWith("{")) || "";
+        try { res = JSON.parse(line); } catch (e) { res = null; }
+
+        if (!res || typeof res !== "object") {
+            root.ocrError = raw === "" ? "Recognition timed out or failed." : "Unreadable helper reply.";
+            root.showOcrPopup = true;
+            return;
+        }
+        if (res.ok !== true) {
+            root.ocrError = ("" + (res.error || "Recognition failed.")).trim() || "Recognition failed.";
+            root.showOcrPopup = true;
+            return;
+        }
+
+        let text = ("" + (res.text || "")).replace(/\s+$/, "");
+        let scale = root.freezeScale || 1.0;
+        let lines = Array.isArray(res.lines) ? res.lines : [];
+        for (let i = 0; i < lines.length; i++) {
+            let l = lines[i];
+            if (!l || typeof l !== "object") continue;
+            let w = Number(l.w), h = Number(l.h);
+            let t = "" + (l.text || "");
+            if (!(w > 0 && h > 0) || t.trim() === "") continue;
+            ocrModel.append({
+                oX: root.selX + Number(l.x || 0) / scale, oY: root.selY + Number(l.y || 0) / scale,
+                oW: w / scale, oH: h / scale, oText: t
+            });
+        }
+
+        if (text === "") {
+            root.ocrError = "No text found";
+            root.showOcrPopup = true;
+            return;
+        }
+        root.ocrText = text;
+        // The shell owns the selection, so recognised text never reaches a shell.
+        if (ShellSettings.value("screenshot.ocr.autoCopy", true) !== false)
+            Quickshell.clipboardText = text;
+        root.showOcrPopup = true;
     }
 }
