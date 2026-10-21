@@ -79,6 +79,28 @@ Item {
             }
         }
     }
+    // Installed tesseract packs, read once; empty when tesseract is missing.
+    property var ocrLangs: []
+    property bool ocrProbed: false
+    readonly property var ocrLangOptions: window.ocrLangs.map(l => ({ key: l, label: l, glyph: "" }))
+    readonly property var ocrLangsCurrent: ("" + ShellSettings.value("screenshot.ocr.langs", "eng")).split("+")
+    Process {
+        id: ocrLangProbe
+        // Through sh so the stream still finishes when tesseract is absent.
+        command: ["sh", "-c", "tesseract --list-langs 2>/dev/null; true"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var out = [];
+                var lines = this.text.split("\n");
+                for (var i = 1; i < lines.length; i++) {
+                    var l = lines[i].trim();
+                    if (l !== "" && l !== "osd") out.push(l);
+                }
+                window.ocrLangs = out;
+                window.ocrProbed = true;
+            }
+        }
+    }
     // `mask --now` is detached, so the unit takes a moment to go; re-probe a few times.
     Timer {
         id: kdeAgentRefresh
@@ -128,7 +150,7 @@ Item {
         var i = tabIndexOf(SettingsState.section);
         if (i >= 0) currentTab = i;
     }
-    Component.onCompleted: { syncSection(); intro.start(); }
+    Component.onCompleted: { syncSection(); intro.start(); ocrLangProbe.running = true; }
     Connections {
         target: SettingsState
         function onSectionChanged() { window.syncSection() }
@@ -267,6 +289,7 @@ Item {
         { name: "Dock",       icon: "\u{f10a9}" },
         { name: "On-Screen Display", icon: "\u{f057e}" },
         { name: "Wallpaper",  icon: "\u{f05e2}" },
+        { name: "Screenshot", icon: "\u{f0100}" },
         { name: "Recording",  icon: "\u{f0567}" },
         { name: "Music",      icon: "\u{f075a}" },
         { name: "Calendar",   icon: "\u{f00ed}" },
@@ -905,6 +928,52 @@ Item {
                                     visible: ("" + ShellSettings.value("wallpaper.wallhaven.apiKey", "")) !== ""
                                     onClicked: ShellSettings.setValue("wallpaper.wallhaven.apiKey", "")
                                 }
+                            }
+                        }
+                    }
+
+                    // Screenshot
+                    Page {
+                        title: "Screenshot"
+                        Row {
+                            label: "Capture on release"
+                            glyph: "\u{f0100}"
+                            desc: "Take the shot as soon as the drag ends instead of a second click"
+                            Toggle {
+                                checked: ShellSettings.value("screenshot.captureOnRelease", false) === true
+                                onToggled: v => ShellSettings.setValue("screenshot.captureOnRelease", v)
+                            }
+                        }
+                        Row {
+                            label: "Text recognition languages"
+                            glyph: "\u{f113d}"
+                            desc: !window.ocrProbed ? "Looking for installed packs"
+                                : window.ocrLangs.length === 0
+                                ? "tesseract is not installed; packs are tesseract-data-<lang>"
+                                : "Installed tesseract packs; tesseract-data-<lang> adds more"
+                            ToggleChips {
+                                options: window.ocrLangOptions
+                                current: window.ocrLangsCurrent
+                                onChanged: v => { if (v.length > 0) ShellSettings.setValue("screenshot.ocr.langs", v.join("+")) }
+                            }
+                        }
+                        Row {
+                            label: "Upscale before recognising"
+                            glyph: "\u{f0a93}"
+                            desc: "2x makes UI-sized text readable"
+                            Chips {
+                                options: ["1", "2", "3"]
+                                current: "" + ShellSettings.value("screenshot.ocr.upscale", 2)
+                                onPicked: v => ShellSettings.setValue("screenshot.ocr.upscale", Number(v))
+                            }
+                        }
+                        Row {
+                            label: "Copy text automatically"
+                            glyph: "\u{f018f}"
+                            desc: "Recognised text lands on the clipboard as soon as it arrives"
+                            Toggle {
+                                checked: ShellSettings.value("screenshot.ocr.autoCopy", true) !== false
+                                onToggled: v => ShellSettings.setValue("screenshot.ocr.autoCopy", v)
                             }
                         }
                     }

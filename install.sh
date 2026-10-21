@@ -74,6 +74,8 @@ OPTIONAL=(
     "dbus-monitor:dbus:waiting on MPRIS instead of polling"
     "swappy:swappy:annotating a screenshot before saving"
     "zbarimg:zbar:the QR scanner in the screenshot overlay"
+    # One tesseract-data-<lang> per language; eng is the minimum, heb for Hebrew.
+    "tesseract:tesseract-data-eng:text recognition in the screenshot overlay"
     "xdg-user-dir:xdg-user-dirs:the Screenshots folder, ~/Pictures otherwise"
     "ffmpeg:ffmpeg:video wallpaper frames, recording thumbnails"
     "gpu-screen-recorder:gpu-screen-recorder:screen recording from the screenshot overlay"
@@ -153,6 +155,8 @@ check_deps() {   # check_deps [--offer] — --offer installs what is missing
     if [ ${#MISSING_OPT[@]} -gt 0 ]; then
         skip "missing, each costs one feature and nothing else:"
         printf '      %s\n' "${why_opt[@]}"
+        command -v tesseract >/dev/null 2>&1 \
+            || skip "tesseract needs one tesseract-data-<lang> pack per language (eng is the minimum, heb for Hebrew)"
     fi
     [ "$offer" = 1 ] || return 0
 
