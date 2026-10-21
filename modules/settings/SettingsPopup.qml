@@ -289,8 +289,9 @@ Item {
         { name: "Dock",       icon: "\u{f10a9}" },
         { name: "On-Screen Display", icon: "\u{f057e}" },
         { name: "Wallpaper",  icon: "\u{f05e2}" },
-        { name: "Screenshot", icon: "\u{f0100}" },
-        { name: "Recording",  icon: "\u{f0567}" },
+        { name: "Capture",    icon: "\u{f0100}" },
+        { name: "Text recognition", icon: "\u{f113d}", under: "Capture" },
+        { name: "Recording",  icon: "\u{f0567}", under: "Capture" },
         { name: "Music",      icon: "\u{f075a}" },
         { name: "Calendar",   icon: "\u{f00ed}" },
         { name: "Weather",    icon: "\u{f0590}" },
@@ -932,9 +933,9 @@ Item {
                         }
                     }
 
-                    // Screenshot
+                    // Capture
                     Page {
-                        title: "Screenshot"
+                        title: "Capture"
                         Row {
                             label: "Capture on release"
                             glyph: "\u{f0100}"
@@ -944,8 +945,20 @@ Item {
                                 onToggled: v => ShellSettings.setValue("screenshot.captureOnRelease", v)
                             }
                         }
+                        SettingsHeading { host: window; text: "Overlay keys" }
+                        Row { label: "Tab, Left, Right"; glyph: "\u{f030c}"; desc: "Switch between screenshot and recording" }
+                        Row { label: "Space, Return"; glyph: "\u{f030c}"; desc: "Take the shot, or start and stop the recording" }
+                        Row { label: "F"; glyph: "\u{f030c}"; desc: "Whole screen; in video mode it records right away" }
+                        Row { label: "T"; glyph: "\u{f030c}"; desc: "Recognise the text in the selection" }
+                        Row { label: "F11"; glyph: "\u{f030c}"; desc: "Maximise the selection" }
+                        Row { label: "Escape"; glyph: "\u{f030c}"; desc: "Close a result card, then the overlay" }
+                    }
+
+                    // Text recognition
+                    Page {
+                        title: "Text recognition"
                         Row {
-                            label: "Text recognition languages"
+                            label: "Languages"
                             glyph: "\u{f113d}"
                             desc: !window.ocrProbed ? "Looking for installed packs"
                                 : window.ocrLangs.length === 0
