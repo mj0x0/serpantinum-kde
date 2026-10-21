@@ -105,7 +105,9 @@ Item {
     function tabShown(i) {
         var t = window.tabs[i];
         if (!t || !t.under) return true;
-        return window.currentTab === i || window.currentTab === window.tabIndexOf(t.under);
+        var cur = window.tabs[window.currentTab];
+        // The whole group stays open while the parent or any sibling is current.
+        return !!cur && (cur.name === t.under || cur.under === t.under);
     }
     function shownBefore(i) {
         var n = 0;
@@ -259,7 +261,7 @@ Item {
         { name: "Appearance", icon: "\u{f0765}" },
         { name: "Bar",        icon: "\u{f0309}" },
         { name: "Modules",     icon: "\u{f12a8}", under: "Bar" },
-        { name: "Tray",       icon: "\u{f0f1d}" },
+        { name: "Tray",       icon: "\u{f0f1d}", under: "Bar" },
         { name: "Notifications", icon: "\u{f009a}" },
         { name: "Launcher",   icon: "\u{f0349}" },
         { name: "Dock",       icon: "\u{f10a9}" },
