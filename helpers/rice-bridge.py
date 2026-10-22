@@ -6,6 +6,8 @@ stdout, one record per line, a tab after the tag:
   wm     <json array>   the window list, as wm-bridge prints it
   power  <json object>  power-watch's snapshot
   kb     us | il | …    keyboard layout code, on start and on every layoutChanged
+  osd    <json object>  {"m": member, "a": [args]} per org.kde.osdService method call
+  bri    <json object>  primary display brightness {display, label, value, max, percent}
 ws prints nothing; it keeps writing $XDG_RUNTIME_DIR/quickshell/workspaces/workspaces.json
 and $XDG_RUNTIME_DIR/quickshell/fullscreen.
 
@@ -61,6 +63,7 @@ def main():
         _load("ws_bridge", "ws-bridge.py"),
         _load("power_watch", "power-watch.py"),
         _load("kb_layout", "kb_layout.py"),
+        _load("osd_watch", "osd_watch.py"),
     ]
     handles = [m.start(bus, loop, ns, _emit) for m in modules]  # noqa: F841  BusNames live here
     loop.run()

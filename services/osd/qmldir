@@ -1,1 +1,2 @@
 singleton OsdState 1.0 OsdState.qml
+singleton KbLocks 1.0 KbLocks.qml

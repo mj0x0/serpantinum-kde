@@ -16,6 +16,9 @@ Singleton {
     property var power: ({})
     // KDE keyboard layout short code (us / il / ...); "" until the daemon reports
     property string kbLayout: ""
+    // one per org.kde.osdService method call Plasma would have drawn
+    signal osdCall(string member, var args)
+    property var brightness: ({})
 
     readonly property string shellPath: ("" + Quickshell.shellDir).replace(/^file:\/\//, "")
 
@@ -43,6 +46,10 @@ Singleton {
                     if (Array.isArray(parsed)) root.windows = parsed;
                 } else if (tag === "power") {
                     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) root.power = parsed;
+                } else if (tag === "osd") {
+                    if (parsed && typeof parsed.m === "string" && Array.isArray(parsed.a)) root.osdCall(parsed.m, parsed.a);
+                } else if (tag === "bri") {
+                    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) root.brightness = parsed;
                 }
             }
         }
