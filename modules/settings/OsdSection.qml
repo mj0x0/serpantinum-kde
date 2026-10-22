@@ -12,10 +12,11 @@ ColumnLayout {
 
     SettingsRow {
         host: root.host
-        label: "Volume OSD"
+        label: "On-screen display"
         glyph: "\u{f057e}"
-        desc: "Shows volume and mic changes near the bar. Turn Plasma's own volume OSD "
-            + "off in System Settings -> Sound, or the two will stack"
+        desc: "Volume, mic, brightness, keyboard layout, caps and num lock and airplane mode "
+            + "near the bar. Plasma's own OSD must be off: plasmarc [OSD] Enabled=false, "
+            + "and System Settings -> Sound for volume"
         SettingsToggle {
             host: root.host
             checked: ShellSettings.value("osd.enabled", true) !== false
@@ -46,6 +47,54 @@ ColumnLayout {
             options: ["horizontal", "vertical"]
             current: "" + ShellSettings.value("osd.orientation", "horizontal")
             onPicked: v => ShellSettings.setValue("osd.orientation", v)
+        }
+    }
+
+    SettingsRow {
+        host: root.host
+        label: "Caps lock OSD"
+        glyph: "\u{f0b08}"
+        desc: "Caps Lock on/off; never shown in the vertical layout"
+        SettingsToggle {
+            host: root.host
+            checked: ShellSettings.value("osd.showCapsLock", true) !== false
+            onToggled: v => ShellSettings.setValue("osd.showCapsLock", v)
+        }
+    }
+
+    SettingsRow {
+        host: root.host
+        label: "Num lock OSD"
+        glyph: "\u{f03a0}"
+        desc: "Num Lock on/off; never shown in the vertical layout"
+        SettingsToggle {
+            host: root.host
+            checked: ShellSettings.value("osd.showNumLock", true) !== false
+            onToggled: v => ShellSettings.setValue("osd.showNumLock", v)
+        }
+    }
+
+    SettingsRow {
+        host: root.host
+        label: "Airplane mode OSD"
+        glyph: "\u{f001d}"
+        desc: "When the airplane toggle switches the radios; never shown in the vertical layout"
+        SettingsToggle {
+            host: root.host
+            checked: ShellSettings.value("osd.showAirplane", true) !== false
+            onToggled: v => ShellSettings.setValue("osd.showAirplane", v)
+        }
+    }
+
+    SettingsRow {
+        host: root.host
+        label: "Keyboard layout OSD"
+        glyph: "\u{f030c}"
+        desc: "The layout name when it switches; never shown in the vertical layout"
+        SettingsToggle {
+            host: root.host
+            checked: ShellSettings.value("osd.showKeyboardLayout", true) !== false
+            onToggled: v => ShellSettings.setValue("osd.showKeyboardLayout", v)
         }
     }
 

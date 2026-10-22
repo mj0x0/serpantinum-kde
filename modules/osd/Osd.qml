@@ -38,11 +38,51 @@ PanelWindow {
     MatugenColors { id: mocha }
     function s(val) { return scaler.s(val) }
 
+    readonly property color briColor: Qt.lighter(mocha.mauve, 1.1)
     readonly property color volColor: Qt.lighter(mocha.sapphire, 1.5)
     readonly property color micColor: Qt.lighter(mocha.mauve, 1.3)
+    readonly property color capsColor: Qt.lighter(mocha.peach, 1.2)
+    readonly property color numColor: Qt.lighter(mocha.sapphire, 1.4)
+    readonly property color airColor: Qt.lighter(mocha.red, 1.2)
+    readonly property color kbColor: Qt.lighter(mocha.green, 1.2)
 
     property string kind: OsdState.kind
-    property bool isVisible: OsdState.isVisible
+    property int briVal: OsdState.briVal
+    property string stateVal: OsdState.stateVal
+
+    readonly property bool isToggleKind: kind === "capslock" || kind === "numlock" || kind === "airplane" || kind === "keyboard"
+    readonly property bool isToggleActive: kind === "keyboard" || stateVal === "on" || stateVal === "true" || stateVal === "1"
+
+    readonly property bool isToggleAllowed: {
+        if (!isToggleKind) return true;
+        if (isVerticalLayout) return false;
+        if (kind === "capslock") return showCapsLock;
+        if (kind === "numlock") return showNumLock;
+        if (kind === "airplane") return showAirplane;
+        if (kind === "keyboard") return showKeyboardLayout;
+        return true;
+    }
+
+    property bool isVisible: OsdState.isVisible && isToggleAllowed
+
+    readonly property color toggleActiveColor: {
+        if (kind === "capslock") return capsColor;
+        if (kind === "numlock") return numColor;
+        if (kind === "airplane") return airColor;
+        if (kind === "keyboard") return kbColor;
+        return mocha.mauve;
+    }
+
+    readonly property string toggleTitle: {
+        if (kind === "capslock") return "Caps Lock";
+        if (kind === "numlock") return "Num Lock";
+        if (kind === "airplane") return "Airplane Mode";
+        if (kind === "keyboard") return "Keyboard Layout";
+        return "";
+    }
+
+    // The layout kind reuses the toggle chassis with the layout name as its status.
+    readonly property string toggleStatus: kind === "keyboard" ? stateVal : (isToggleActive ? "ON" : "OFF")
 
     readonly property PwNode activeSink: Audio.defaultSink || (Audio.outputs && Audio.outputs.length > 0 ? Audio.outputs[0] : null)
     readonly property int volVal: activeSink && activeSink.audio ? Math.round(activeSink.audio.volume * 100) : 0
@@ -52,8 +92,17 @@ PanelWindow {
     readonly property int micVal: activeSource && activeSource.audio ? Math.round(activeSource.audio.volume * 100) : 0
     readonly property bool isMicMuted: activeSource && activeSource.audio ? activeSource.audio.muted : false
 
-    readonly property bool isMutedState: kind === "mic" ? isMicMuted : isMuted
-    readonly property int currentVal: kind === "mic" ? micVal : volVal
+    readonly property bool isMutedState: {
+        if (kind === "volume") return isMuted;
+        if (kind === "mic") return isMicMuted;
+        return false;
+    }
+
+    readonly property int currentVal: {
+        if (kind === "volume") return volVal;
+        if (kind === "mic") return micVal;
+        return briVal;
+    }
 
     // --- osd.* settings ---
     readonly property string orientation: "" + ShellSettings.value("osd.orientation", "horizontal")
@@ -61,6 +110,10 @@ PanelWindow {
     readonly property bool attachToBar: ShellSettings.value("osd.attachToBar", true) !== false
     readonly property real horizontalPosition: Math.max(0, Math.min(100, Number(ShellSettings.value("osd.horizontalPosition", 50))))
     readonly property real verticalPosition: Math.max(0, Math.min(100, Number(ShellSettings.value("osd.verticalPosition", 90))))
+    readonly property bool showCapsLock: ShellSettings.value("osd.showCapsLock", true) !== false
+    readonly property bool showNumLock: ShellSettings.value("osd.showNumLock", true) !== false
+    readonly property bool showAirplane: ShellSettings.value("osd.showAirplane", true) !== false
+    readonly property bool showKeyboardLayout: ShellSettings.value("osd.showKeyboardLayout", true) !== false
 
     onAttachToBarChanged: OsdState.hide()
 
@@ -89,7 +142,7 @@ PanelWindow {
     property bool isRightBar: barPosition === "right"
     property bool isBottomBar: barPosition === "bottom"
     property bool isSolid: (barStyle === "solid" || barStyle === "fill") && Math.round(barOpacity * 100) >= 100
-    readonly property bool isAttached: attachToBar && isSolid && !isBarEffectivelyHidden && (isSideBar ? isVertical : !isVertical)
+    readonly property bool isAttached: attachToBar && isSolid && !isBarEffectivelyHidden && (!isSideBar || !isToggleKind) && (isSideBar ? isVertical : !isVertical)
     readonly property bool isVerticalLayout: isAttached ? isSideBar : isVertical
 
     // The bar's own height, no popup padding, so the pill sits flush against it.
@@ -139,6 +192,83 @@ PanelWindow {
         }
     }
 
+    function iconFor(): string {
+        if (kind === "volume") return isMuted || volVal === 0 ? "󰖁" : (volVal > 50 ? "󰕾" : "󰖀");
+        if (kind === "mic") return isMicMuted || micVal === 0 ? "󰍭" : "󰍬";
+        if (kind === "capslock") return "󰬈";
+        if (kind === "numlock") return "󰎠";
+        if (kind === "airplane") return "󰀝";
+        if (kind === "keyboard") return "󰌌";
+        return briVal > 66 ? "󰃠" : (briVal > 33 ? "󰃟" : "󰃞");
+    }
+
+    function iconColorFor(hovered: bool): color {
+        if (hovered) return mocha.text;
+        if (kind === "volume") return isMuted ? mocha.overlay0 : volColor;
+        if (kind === "mic") return isMicMuted ? mocha.overlay0 : micColor;
+        if (isToggleKind) return isToggleActive ? toggleActiveColor : mocha.overlay0;
+        return briColor;
+    }
+
+    function iconOffset(): int {
+        if (kind === "airplane" || kind === "capslock" || kind === "volume") return -1;
+        if (kind === "mic" || kind === "keyboard") return 0;
+        return -3;
+    }
+
+    function activeColorFor(): color {
+        if (kind === "volume") return isMuted ? mocha.surface2 : volColor;
+        if (kind === "mic") return isMicMuted ? mocha.surface2 : micColor;
+        return briColor;
+    }
+
+    function iconClicked() {
+        OsdState.restartTimer();
+        if (kind === "volume") {
+            if (activeSink) Audio.toggleMute(activeSink);
+        } else if (kind === "mic") {
+            if (activeSource) Audio.toggleMute(activeSource);
+        } else if (kind === "keyboard") {
+            nextLayout();
+        } else if (kind === "brightness") {
+            briCmdThrottle.stop();
+            briCmdThrottle.targetPct = -1;
+            let target = briVal > 0 ? 0 : 100;
+            OsdState.briVal = target;
+            OsdState.setBrightness(target);
+        }
+    }
+
+    function sliderMoved(val: real, dragging: bool) {
+        OsdState.restartTimer();
+        let pct = Math.max(0, Math.min(100, Math.round(val)));
+        if (kind === "brightness") {
+            OsdState.briVal = pct;
+            briCmdThrottle.targetPct = pct;
+            if (!dragging) briCmdThrottle.restart();
+        } else if (kind === "volume") {
+            cmdThrottle.targetPct = pct;
+            if (!cmdThrottle.running) cmdThrottle.start();
+        } else if (kind === "mic") {
+            micThrottle.targetPct = pct;
+            if (!micThrottle.running) micThrottle.start();
+        }
+    }
+
+    function sliderReleased() {
+        OsdState.restartTimer();
+        if (kind === "brightness" && briCmdThrottle.targetPct >= 0) {
+            briCmdThrottle.stop();
+            OsdState.setBrightness(briCmdThrottle.targetPct);
+            briCmdThrottle.targetPct = -1;
+        }
+    }
+
+    function nextLayout() {
+        Quickshell.execDetached(["gdbus", "call", "--session", "-d", "org.kde.KWin", "-o", "/Layouts",
+                                 "-m", "org.kde.KeyboardLayouts.switchToNextLayout"]);
+    }
+
     // Read-only: qs -p <checkout> ipc call osd state
     IpcHandler {
         target: "osd"
@@ -165,15 +295,28 @@ PanelWindow {
                 containerSize: Math.round(osdContainer.width) + "x" + Math.round(osdContainer.height),
                 kind: osdWindow.kind,
                 value: osdWindow.currentVal,
+                stateVal: osdWindow.stateVal,
+                toggleAllowed: osdWindow.isToggleAllowed,
                 muted: osdWindow.isMutedState,
                 sink: osdWindow.activeSink ? osdWindow.activeSink.name : null,
                 source: osdWindow.activeSource ? osdWindow.activeSource.name : null,
                 sourceBound: !!(osdWindow.activeSource && osdWindow.activeSource.audio),
+                brightness: OsdState.brightness,
+                caps: KbLocks.caps,
+                num: KbLocks.num,
+                locksAvailable: KbLocks.available,
+                initialized: OsdState.isInitialized,
                 visible: osdWindow.isVisible
             }, null, 1);
         }
         // Not `show`: that name collides with a qs ipc subcommand.
-        function peek(kind: string): void { OsdState.show(kind === "mic" ? "mic" : "volume") }
+        function peek(kind: string): void {
+            if (kind === "mic") OsdState.show("mic");
+            else if (kind === "brightness") OsdState.show("brightness", OsdState.sysBrightness);
+            else if (kind === "capslock" || kind === "numlock" || kind === "airplane") OsdState.show(kind, "on");
+            else if (kind === "keyboard") OsdState.show("keyboard", "Hebrew");
+            else OsdState.show("volume");
+        }
     }
 
     Timer {
@@ -209,6 +352,18 @@ PanelWindow {
                 if (osdWindow.activeSource) {
                     Audio.setVolume(osdWindow.activeSource, targetPct);
                 }
+                targetPct = -1;
+            }
+        }
+    }
+
+    Timer {
+        id: briCmdThrottle
+        interval: 400
+        property int targetPct: -1
+        onTriggered: {
+            if (targetPct >= 0) {
+                OsdState.setBrightness(targetPct);
                 targetPct = -1;
             }
         }
@@ -442,37 +597,38 @@ PanelWindow {
                 V2.IconButton {
                     Layout.alignment: Qt.AlignHCenter
                     size: osdWindow.s(26)
-                    iconOffsetX: osdWindow.kind === "mic" ? 0 : -1
+                    iconOffsetX: osdWindow.iconOffset()
                     cornerRadius: osdWindow.s(8)
-                    buttonIcon: {
-                        if (osdWindow.kind === "mic") {
-                            return osdWindow.isMicMuted || osdWindow.micVal === 0 ? "󰍭" : "󰍬";
-                        }
-                        return osdWindow.isMuted || osdWindow.volVal === 0 ? "󰖁" : (osdWindow.volVal > 50 ? "󰕾" : "󰖀");
-                    }
+                    buttonIcon: osdWindow.iconFor()
                     iconFontSize: osdWindow.s(15)
                     accentColor: mocha.surface1
-                    textColor: {
-                        if (isHoveredOrHighlighted) return mocha.text;
-                        if (osdWindow.kind === "mic") {
-                            return osdWindow.isMicMuted ? mocha.overlay0 : osdWindow.micColor;
-                        }
-                        return osdWindow.isMuted ? mocha.overlay0 : osdWindow.volColor;
-                    }
-                    onClicked: {
-                        OsdState.restartTimer();
-                        if (osdWindow.kind === "mic") {
-                            if (osdWindow.activeSource) {
-                                Audio.toggleMute(osdWindow.activeSource);
-                            }
-                        } else if (osdWindow.activeSink) {
-                            Audio.toggleMute(osdWindow.activeSink);
-                        }
+                    textColor: osdWindow.iconColorFor(isHoveredOrHighlighted)
+                    onClicked: osdWindow.iconClicked()
+                }
+
+                Rectangle {
+                    visible: osdWindow.isToggleKind
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: osdWindow.s(28)
+                    Layout.preferredHeight: osdWindow.s(22)
+                    radius: osdWindow.s(6)
+                    color: osdWindow.isToggleActive ? Qt.rgba(osdWindow.toggleActiveColor.r, osdWindow.toggleActiveColor.g, osdWindow.toggleActiveColor.b, 0.2) : mocha.surface1
+                    border.width: 1
+                    border.color: osdWindow.isToggleActive ? osdWindow.toggleActiveColor : "transparent"
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: osdWindow.toggleStatus
+                        font.family: Fonts.ui
+                        font.pixelSize: osdWindow.s(10)
+                        font.bold: true
+                        color: osdWindow.isToggleActive ? osdWindow.toggleActiveColor : mocha.overlay0
                     }
                 }
 
                 V2.Draggable {
                     id: verticalSlider
+                    visible: !osdWindow.isToggleKind
                     vertical: true
                     Layout.fillHeight: true
                     Layout.preferredWidth: osdWindow.s(16)
@@ -482,12 +638,7 @@ PanelWindow {
                     value: osdWindow.currentVal
                     backgroundColor: mocha.surface1
 
-                    readonly property color activeColor: {
-                        if (osdWindow.kind === "mic") {
-                            return osdWindow.isMicMuted ? mocha.surface2 : osdWindow.micColor;
-                        }
-                        return osdWindow.isMuted ? mocha.surface2 : osdWindow.volColor;
-                    }
+                    readonly property color activeColor: osdWindow.activeColorFor()
 
                     accentColor: activeColor
                     gradColor1: activeColor
@@ -503,22 +654,13 @@ PanelWindow {
                     handleBorderColor: Qt.rgba(0, 0, 0, 0.2)
 
                     onDragStarted: OsdState.cancelHide()
-                    onDragFinished: OsdState.restartTimer()
-                    onMoved: val => {
-                        OsdState.restartTimer();
-                        let pct = Math.max(0, Math.min(100, Math.round(val)));
-                        if (osdWindow.kind === "mic") {
-                            micThrottle.targetPct = pct;
-                            if (!micThrottle.running) micThrottle.start();
-                        } else {
-                            cmdThrottle.targetPct = pct;
-                            if (!cmdThrottle.running) cmdThrottle.start();
-                        }
-                    }
+                    onDragFinished: osdWindow.sliderReleased()
+                    onMoved: val => osdWindow.sliderMoved(val, verticalSlider.isDragging)
                 }
 
                 Item {
                     id: verticalValueContainer
+                    visible: !osdWindow.isToggleKind
                     Layout.alignment: Qt.AlignHCenter
                     Layout.preferredWidth: osdWindow.s(26)
                     Layout.preferredHeight: osdWindow.s(26)
@@ -548,31 +690,51 @@ PanelWindow {
                         anchors.centerIn: parent
                         size: osdWindow.s(30)
                         cornerRadius: osdWindow.s(8)
-                        iconOffsetX: osdWindow.kind === "mic" ? 0 : -1
-                        buttonIcon: {
-                            if (osdWindow.kind === "mic") {
-                                return osdWindow.isMicMuted || osdWindow.micVal === 0 ? "󰍭" : "󰍬";
-                            }
-                            return osdWindow.isMuted || osdWindow.volVal === 0 ? "󰖁" : (osdWindow.volVal > 50 ? "󰕾" : "󰖀");
-                        }
+                        iconOffsetX: osdWindow.iconOffset()
+                        buttonIcon: osdWindow.iconFor()
                         iconFontSize: osdWindow.s(15)
                         accentColor: mocha.surface1
-                        textColor: {
-                            if (isHoveredOrHighlighted) return mocha.text;
-                            if (osdWindow.kind === "mic") {
-                                return osdWindow.isMicMuted ? mocha.overlay0 : osdWindow.micColor;
-                            }
-                            return osdWindow.isMuted ? mocha.overlay0 : osdWindow.volColor;
-                        }
+                        textColor: osdWindow.iconColorFor(isHoveredOrHighlighted)
+                        onClicked: osdWindow.iconClicked()
+                    }
+                }
+
+                RowLayout {
+                    visible: osdWindow.isToggleKind
+                    anchors.left: parent.left
+                    anchors.leftMargin: osdWindow.s(58)
+                    anchors.right: parent.right
+                    anchors.rightMargin: osdWindow.s(16)
+                    anchors.verticalCenter: parent.verticalCenter
+                    opacity: Math.max(0.0, Math.min(1.0, (osdContainer.animProgress - 0.2) / 0.8))
+                    spacing: osdWindow.s(8)
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: osdWindow.toggleTitle
+                        font.family: Fonts.ui
+                        font.pixelSize: osdWindow.s(14)
+                        font.bold: true
+                        color: mocha.text
+                        elide: Text.ElideRight
+                    }
+
+                    V2.ClickButton {
+                        id: toggleBtn
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.preferredHeight: osdWindow.s(24)
+                        Layout.preferredWidth: implicitWidth
+                        height: osdWindow.s(24)
+                        cornerRadius: osdWindow.s(6)
+                        horizontalPadding: osdWindow.s(10)
+                        buttonText: osdWindow.toggleStatus
+                        textFontSize: osdWindow.s(11)
+                        accentColor: osdWindow.isToggleActive ? osdWindow.toggleActiveColor : mocha.surface1
+                        textColor: osdWindow.isToggleActive ? mocha.base : mocha.subtext0
+
                         onClicked: {
                             OsdState.restartTimer();
-                            if (osdWindow.kind === "mic") {
-                                if (osdWindow.activeSource) {
-                                    Audio.toggleMute(osdWindow.activeSource);
-                                }
-                            } else if (osdWindow.activeSink) {
-                                Audio.toggleMute(osdWindow.activeSink);
-                            }
+                            if (osdWindow.kind === "keyboard") osdWindow.nextLayout();
                         }
                     }
                 }
@@ -587,7 +749,7 @@ PanelWindow {
                     anchors.rightMargin: osdWindow.s(58)
                     anchors.verticalCenter: parent.verticalCenter
                     opacity: Math.max(0.0, Math.min(1.0, (osdContainer.animProgress - 0.2) / 0.8))
-                    visible: opacity > 0.01
+                    visible: !osdWindow.isToggleKind && opacity > 0.01
                     showValueBubble: false
 
                     from: 0.0
@@ -595,12 +757,7 @@ PanelWindow {
                     value: osdWindow.currentVal
                     backgroundColor: mocha.surface1
 
-                    readonly property color activeColor: {
-                        if (osdWindow.kind === "mic") {
-                            return osdWindow.isMicMuted ? mocha.surface2 : osdWindow.micColor;
-                        }
-                        return osdWindow.isMuted ? mocha.surface2 : osdWindow.volColor;
-                    }
+                    readonly property color activeColor: osdWindow.activeColorFor()
 
                     accentColor: activeColor
                     gradColor1: activeColor
@@ -615,18 +772,8 @@ PanelWindow {
                     handleBorderColor: Qt.rgba(0, 0, 0, 0.2)
 
                     onDragStarted: OsdState.cancelHide()
-                    onDragFinished: OsdState.restartTimer()
-                    onMoved: val => {
-                        OsdState.restartTimer();
-                        let pct = Math.max(0, Math.min(100, Math.round(val)));
-                        if (osdWindow.kind === "mic") {
-                            micThrottle.targetPct = pct;
-                            if (!micThrottle.running) micThrottle.start();
-                        } else {
-                            cmdThrottle.targetPct = pct;
-                            if (!cmdThrottle.running) cmdThrottle.start();
-                        }
-                    }
+                    onDragFinished: osdWindow.sliderReleased()
+                    onMoved: val => osdWindow.sliderMoved(val, horizontalSlider.isDragging)
                 }
 
                 Item {
@@ -636,7 +783,7 @@ PanelWindow {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     opacity: Math.max(0.0, Math.min(1.0, (osdContainer.animProgress - 0.2) / 0.8))
-                    visible: opacity > 0.01
+                    visible: !osdWindow.isToggleKind && opacity > 0.01
 
                     Text {
                         anchors.centerIn: parent
