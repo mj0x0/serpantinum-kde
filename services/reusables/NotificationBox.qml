@@ -40,11 +40,19 @@ Item {
     // Keyboard selection over the top-level rows (a card, or an app's group), driven by the System Panel.
     property bool keyActive: false
     property int keyIndex: -1
-    readonly property Item keyItem: keyIndex >= 0 ? notifList.itemAtIndex(keyIndex) : null
+    // itemAtIndex() is a call, not a property read, so a binding on it only re-runs when
+    // keyIndex changes — stale after a dismissal that leaves the index where it was.
+    function keyItem() {
+        if (keyIndex < 0 || keyIndex >= notifList.count) return null;
+        return notifList.itemAtIndex(keyIndex);
+    }
     onKeyActiveChanged: if (keyActive) selectFirst()
 
     function selectFirst() {
-        if (keyIndex < 0 && notifList.count > 0) { keyIndex = 0; notifList.positionViewAtIndex(0, ListView.Contain); }
+        if (notifList.count > 0 && (keyIndex < 0 || keyIndex >= notifList.count)) {
+            keyIndex = 0;
+            notifList.positionViewAtIndex(0, ListView.Contain);
+        }
     }
     function moveSelection(step) {
         let n = notifList.count;
@@ -53,20 +61,20 @@ Item {
         notifList.positionViewAtIndex(keyIndex, ListView.Contain);
     }
     function setSelectedExpanded(open) {
-        let it = keyItem;
+        let it = root.keyItem();
         if (!it || it.isSingle) return;
         it.isExpanded = open;
         if (open) NotificationManager.markGroupRead(it.gKey);
     }
     function activateSelected() {
-        let it = keyItem;
+        let it = root.keyItem();
         if (!it) { selectFirst(); return; }
         if (it.isSingle) it.invokeDefault();
         else setSelectedExpanded(!it.isExpanded);
     }
     // Never deletes blind: with nothing selected yet, the first press only selects.
     function dismissSelected() {
-        let it = keyItem;
+        let it = root.keyItem();
         if (!it) { selectFirst(); return; }
         if (it.isSingle) it.dismissSingle();
         else NotificationManager.dismissGroup(it.gKey);
