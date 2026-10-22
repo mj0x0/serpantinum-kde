@@ -29,7 +29,7 @@ Singleton {
 
     function anyOn(paths: var): bool {
         for (const p of paths) {
-            if (root.readPath(p) === "1")
+            if (parseInt(root.readPath(p)) > 0)
                 return true;
         }
         return false;

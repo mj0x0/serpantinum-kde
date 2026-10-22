@@ -69,7 +69,7 @@ Singleton {
             controller.lastMicVolume = controller.sysMicVolume;
             controller.lastMicMuted = controller.sysMicMuted;
             controller.lastAirplane = controller.sysAirplane;
-            controller.lastBrightness = controller.sysBrightness;
+            controller.lastBrightness = controller.hasBrightness ? controller.sysBrightness : -1;
             controller.briVal = controller.sysBrightness;
             controller.lastCapsLock = KbLocks.caps ? 1 : 0;
             controller.lastNumLock = KbLocks.num ? 1 : 0;
@@ -120,8 +120,14 @@ Singleton {
         }
     }
 
+    // -1 until a display has reported, so the first report and a lost display never show.
     onSysBrightnessChanged: {
-        if (!controller.isInitialized) { controller.briVal = controller.sysBrightness; return; }
+        if (!controller.brightness.display) { controller.lastBrightness = -1; return; }
+        controller.briVal = controller.sysBrightness;
+        if (!controller.isInitialized || controller.lastBrightness < 0) {
+            controller.lastBrightness = controller.sysBrightness;
+            return;
+        }
         if (controller.lastBrightness !== controller.sysBrightness) {
             controller.lastBrightness = controller.sysBrightness;
             controller.show("brightness", controller.sysBrightness);
@@ -148,6 +154,9 @@ Singleton {
         function onOsdCall(member, args) {
             if (!controller.isInitialized) return;
             if (member === "screenBrightnessChanged" || member === "brightnessChanged") {
+                // Other displays' calls are not ours: the slider only drives the primary.
+                if (member === "screenBrightnessChanged" && controller.brightness.label
+                        && ("" + args[2]) !== controller.brightness.label) return;
                 controller.lastBrightness = Number(args[0]) || 0;
                 controller.show("brightness", controller.lastBrightness);
             } else if (member === "kbdLayoutChanged") {

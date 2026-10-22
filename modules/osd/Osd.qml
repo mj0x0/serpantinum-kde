@@ -710,6 +710,7 @@ PanelWindow {
                     spacing: osdWindow.s(8)
 
                     Text {
+                        id: toggleLabel
                         Layout.fillWidth: true
                         text: osdWindow.toggleTitle
                         font.family: Fonts.ui
@@ -729,6 +730,8 @@ PanelWindow {
                         horizontalPadding: osdWindow.s(10)
                         buttonText: osdWindow.toggleStatus
                         textFontSize: osdWindow.s(11)
+                        // Layout names can be long; keep the title whole and elide the name.
+                        maxWidth: osdWindow.kind === "keyboard" ? Math.max(osdWindow.s(80), parent.width - toggleLabel.implicitWidth - parent.spacing) : 0
                         accentColor: osdWindow.isToggleActive ? osdWindow.toggleActiveColor : mocha.surface1
                         textColor: osdWindow.isToggleActive ? mocha.base : mocha.subtext0
 

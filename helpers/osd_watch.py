@@ -28,7 +28,7 @@ def plain(v):
         return [plain(x) for x in v]
     if isinstance(v, (dbus.Dictionary, dict)):
         return {str(k): plain(x) for k, x in v.items()}
-    if isinstance(v, bool):
+    if isinstance(v, (dbus.Boolean, bool)):
         return bool(v)
     if isinstance(v, (dbus.Double, float)):
         return float(v)
