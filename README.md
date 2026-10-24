@@ -47,6 +47,49 @@ all of it.
 | `plasma/` | lock screen package and the wallpaper plugin — see [plasma/](plasma/) |
 | `extra/` | everything installed outside the shell — see [extra/](extra/) |
 
+## IPC
+
+Every panel and action is reachable over Quickshell's IPC, which is how the KDE global shortcuts
+drive the shell:
+
+```
+qs ipc -p ~/.config/quickshell/serpantinum-kde/shell.qml call <target> <function> [args]
+```
+
+`qs ipc show` lists the live targets. **`show` is a `qs ipc` subcommand, so `call <target> show`
+prints the interface instead of invoking it** — use `toggle` from the CLI.
+
+| target | functions |
+|---|---|
+| `launcher`, `wallpaper`, `bluetooth`, `power`, `tray`, `cheatsheet`, `clipboard`, `themes`, `calendar`, `music`, `focustime` | `toggle` `show` `hide` |
+| `notifcenter` | `toggle` `show` `hide` `clearAll` `list` |
+| `network` | `toggle` `show` `hide` `vpn` `wifi` `ethernet` `servers` `openTab <tab>` |
+| `volume` | `toggle` `show` `hide` `openTab <tab>` |
+| `settings` | `toggle` `show` `hide` `open <page>` |
+| `screenshot` | `toggle` `show` `hide` `edit` `state` |
+| `record` | `toggle` `stop` `pause` `status` |
+| `keepawake` | `toggle` `on` `off` |
+| `dnd` | `toggle` `on` `off` `forMinutes <m>` |
+| `osd` | `peek <kind>` `state` |
+| `floating` | `toggle` `show` `hide` `openTab <i>` `setIndex <i>` `forceReload` |
+| `redactor` (alias `widget-redactor`) | `activate` `open <mon> <id>` `toggle` `close` |
+| `widgets-<monitor>` | `add` `remove` `move` `resize` `rotate` `opacity` `variant` `imagePath` `geometry` `bringToFront` `list` `save` `reload` `clear` `setRedactMode` |
+| `topbar` | `forceReload` |
+| `main` | `handleCommand <cmd> <target> <arg>` `hide` `current` |
+| `memprobe` | `dump` — only with `debug.memProbe` set |
+
+`widgets-<monitor>` is one target per screen, named after the output with non-alphanumerics
+replaced by `_` (`widgets-HDMI-A-1`). Every function takes strings and returns a string.
+
+Handy ones:
+
+```
+qs ipc -p <shell.qml> call record status          # recording state as JSON
+qs ipc -p <shell.qml> call notifcenter list       # notification history as JSON
+qs ipc -p <shell.qml> call dnd forMinutes 30
+qs ipc -p <shell.qml> call network openTab vpn
+```
+
 ## Licence
 
 AGPL-3.0-or-later. See [LICENSE](LICENSE), and [NOTICE](NOTICE) for what is borrowed and
