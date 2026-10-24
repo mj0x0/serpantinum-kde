@@ -20,6 +20,7 @@ These are ours, with no upstream counterpart:
 | Wallpaper plugin | a real Plasma wallpaper plugin, 47 shader transitions, video wallpapers |
 | Lock screen | our own Plasma greeter, Classic or Dashboard, picked at install time |
 | Application themes | matugen themes the apps you tick in Settings, nothing you do not |
+| Theme picker | 94 palettes previewed live across the whole shell as the selection moves; Enter applies, Escape puts it back |
 | Dock previews | live window thumbnails over KWin's screencast protocol |
 | Wallhaven browser | search, preview and set wallpapers without leaving the shell |
 | Lyrics | local `.lrc`, lrclib or netease; word- or line-synced, with a per-track offset |

@@ -732,6 +732,16 @@ Item {
                                 onPicked: v => ShellSettings.setValue("clipboard.position", v)
                             }
                         }
+                        Row {
+                            label: "Theme picker position"
+                            glyph: "\u{f03d8}"
+                            desc: "center floats; an edge attaches the strip there"
+                            Chips {
+                                options: ["center", "top", "bottom", "left", "right"]
+                                current: "" + ShellSettings.value("themes.position", "center")
+                                onPicked: v => ShellSettings.setValue("themes.position", v)
+                            }
+                        }
                     }
 
                     // Dock

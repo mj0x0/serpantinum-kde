@@ -18,6 +18,7 @@ import "modules/miniplayer"
 import "modules/music"
 import "modules/network"
 import "modules/settings"
+import "modules/themes"
 import "modules/traydrawer"
 import "modules/traymenu"
 import "modules/notifcenter"
@@ -251,6 +252,15 @@ ShellRoot {
         function toggle(): void { ClipboardState.toggle() }
         function show(): void { ClipboardState.show() }
         function hide(): void { ClipboardState.hide() }
+    }
+
+    // qs -p <this file> ipc call themes toggle
+    ThemePicker {}
+    IpcHandler {
+        target: "themes"
+        function toggle(): void { ThemePickerState.toggle() }
+        function show(): void { ThemePickerState.show() }
+        function hide(): void { ThemePickerState.hide() }
     }
 
     // qs -p <this file> ipc call screenshot toggle

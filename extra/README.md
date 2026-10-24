@@ -8,7 +8,7 @@ this is touched.
 | | |
 |---|---|
 | `matugen/` | app catalog, templates, themes, Plasma hook → `~/.config/matugen` |
-| `kde/shortcuts.kksrc` | 27 commands, registered unbound; keys are yours to assign |
+| `kde/shortcuts.kksrc` | 30 commands, registered unbound; keys are yours to assign |
 | `spicetify/` | Text theme → `~/.config/spicetify/Themes/Text` |
 | `obsidian/` | Dashboard.md + snippets → your vault |
 | `default-colors.json` | seed palette, or the shell renders transparent |

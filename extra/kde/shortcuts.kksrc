@@ -100,6 +100,10 @@ Name=Servers Panel
 Exec=qs -c @SHELL_NAME@ ipc call settings toggle
 Name=Settings Toggle
 
+[Custom Commands][serpantinum-kde.themes.desktop]
+Exec=qs -c @SHELL_NAME@ ipc call themes toggle
+Name=Theme Picker
+
 [Custom Commands][serpantinum-kde.tray.desktop]
 Exec=qs -c @SHELL_NAME@ ipc call tray toggle
 Name=Quickshell Tray
@@ -191,6 +195,9 @@ _launch=Meta+Shift+H
 
 [serpantinum-kde.settings.desktop][Global Shortcuts]
 _launch=Meta+Shift+I
+
+[serpantinum-kde.themes.desktop][Global Shortcuts]
+_launch=Meta+Alt+W
 
 [serpantinum-kde.tray.desktop][Global Shortcuts]
 _launch=Meta+Shift+T
