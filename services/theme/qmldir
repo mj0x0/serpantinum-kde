@@ -1,3 +1,4 @@
 singleton Colors 1.0 Colors.qml
 MatugenColors 1.0 MatugenColors.qml
 singleton Fonts 1.0 Fonts.qml
+singleton ThemePreview 1.0 ThemePreview.qml

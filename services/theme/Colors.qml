@@ -1,5 +1,6 @@
 // Live colours (matugen or a static theme) from ~/.local/state/quickshell/generated/colors.json,
 // watched so the shell re-themes live. Typed `color`, not `string`, so Qt.rgba() tinting works.
+// While `previewing`, the preview* objects shadow the file for every reader (ThemePreview fills them).
 
 pragma Singleton
 
@@ -8,18 +9,31 @@ import Quickshell
 import Quickshell.Io
 
 Singleton {
-    property alias md3: jsonAdapter.md3
-    property alias base16: jsonAdapter.base16
-    property alias palette: jsonAdapter.palette
-    property alias named: jsonAdapter.named
-    property alias theme: jsonAdapter.theme
+    id: root
+
+    property bool previewing: false
+    readonly property Md3 md3: previewing ? previewMd3 : jsonAdapter.md3
+    readonly property Base16 base16: previewing ? previewBase16 : jsonAdapter.base16
+    readonly property Palette palette: previewing ? previewPalette : jsonAdapter.palette
+    readonly property Named named: previewing ? previewNamed : jsonAdapter.named
+    readonly property Theme theme: previewing ? previewTheme : jsonAdapter.theme
     // A static theme ships its own 22 roles in `named`; under matugen it is empty.
     readonly property bool isStatic: theme.name !== "matugen"
+    readonly property Theme fileTheme: jsonAdapter.theme
+
+    readonly property Md3 previewMd3: Md3 {}
+    readonly property Base16 previewBase16: Base16 {}
+    readonly property Palette previewPalette: Palette {}
+    readonly property Named previewNamed: Named {}
+    readonly property Theme previewTheme: Theme {}
+
+    signal fileLoaded()
 
     FileView {
         path: Quickshell.env("HOME") + "/.local/state/quickshell/generated/colors.json"
         watchChanges: true
         onFileChanged: reload()
+        onLoaded: root.fileLoaded()
 
         JsonAdapter {
             id: jsonAdapter
