@@ -23,7 +23,7 @@ var INFO = {
     vol:        { label: "Volume",     icon: "\u{f057e}" },
     notif:      { label: "Bell",       icon: "\u{f009a}" },
     focus:      { label: "Focus",      icon: "\u{f0208}" },
-    info:       { label: "Recording",  icon: "\u{f0c4c}" },
+    info:       { label: "Recording & timer", icon: "\u{f0c4c}" },
     vis:        { label: "Visualiser", icon: "\u{f075a}" },
     sysmon:     { label: "System",     icon: "\u{f035b}" },
     bat:        { label: "Battery",    icon: "\u{f0079}" },
