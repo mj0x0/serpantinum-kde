@@ -13,26 +13,26 @@ dependency and offers to install what is missing, then starts it with `qs -n -c 
 ## Not a 1:1 port
 
 The look is [serpantinum](https://github.com/ilyamiro/serpantinum)'s, rebuilt for KDE.
-These are ours, with no upstream counterpart:
+These have no upstream counterpart, or exist there only in a form KDE cannot use:
 
 | | |
 |---|---|
 | Wallpaper plugin | a real Plasma wallpaper plugin, 47 shader transitions, video wallpapers |
-| Lock screen | our own Plasma greeter, Classic or Dashboard, picked at install time |
+| Lock screen | a real Plasma greeter package, Classic or Dashboard, picked at install time |
 | Application themes | matugen themes the apps you tick in Settings, nothing you do not |
-| Theme picker | 94 palettes previewed live across the whole shell as the selection moves; Enter applies, Escape puts it back |
+| Theme picker | 94 palettes previewed live across the whole running shell as the selection moves; Enter applies, Escape puts it back |
 | Dock previews | live window thumbnails over KWin's screencast protocol |
 | Wallhaven browser | search, preview and set wallpapers without leaving the shell |
-| Lyrics | local `.lrc`, lrclib or netease; word- or line-synced, with a per-track offset |
 | KDE Connect | phone battery and signal in the battery panel, with actions |
 | Power panel | the profile at the core, every app holding the machine awake orbiting it — revoke any of them |
 | Servers | containers and systemd units you self-host, the ports they listen on, stopped from the panel |
-| Screenshot | region overlay on a frozen screen; a small helper takes the frame straight from KWin |
-| Polkit agent | optional; replaces KDE's when enabled |
 
 Plus a Bluetooth panel, a VPN/Wi-Fi network panel, a calendar with KDE's holidays, a
 clipboard panel, a cheat sheet built from your own KDE shortcuts, and a Settings app for
 all of it.
+
+Upstream has its own lyrics, screenshot overlay, polkit agent, dock and lock screen; ours
+are rebuilt on KDE's backends rather than ported, so they behave differently.
 
 ## Layout
 
