@@ -376,8 +376,16 @@ install_shortcuts() {
     head1 "Shortcuts"
     local scheme="$RICE/extra/kde/shortcuts.conf"
     local file="$KGA/org.serpantinum.shell.desktop"
+    local twin="$APPS/org.serpantinum.shell.desktop"
     [ -r "$scheme" ] || { warn "$scheme is missing — no global shortcuts"; return 0; }
-    mkdir -p "$KGA" 2>/dev/null || { warn "cannot create $KGA — skipping global shortcuts"; return 0; }
+    mkdir -p "$KGA" "$APPS" 2>/dev/null || { warn "cannot create $KGA — skipping global shortcuts"; return 0; }
+
+    local icons="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/scalable/apps"
+    if mkdir -p "$icons" 2>/dev/null && cp "$RICE/extra/kde/serpantinum.svg" "$icons/" 2>/dev/null; then
+        chmod 644 "$icons/serpantinum.svg"
+    else
+        warn "could not install the icon — the entry falls back to a generic one"
+    fi
 
     local rc="${XDG_CONFIG_HOME:-$HOME/.config}/kglobalshortcutsrc" dest="" f
     if [ -f "$rc" ]; then
@@ -416,14 +424,19 @@ actions = [(slug, cp[slug].get("Name", slug), subst(cp[slug].get("Exec", "")),
 out = ["[Desktop Entry]",
        "Type=Application",
        "Name=Serpantinum",
-       "Icon=preferences-desktop-theme-global",
+       "Icon=serpantinum",
        "Exec=" + subst("qs -c @SHELL_NAME@ ipc call settings toggle"),
        "StartupNotify=false",
        "Actions=" + "".join(slug + ";" for slug, _, _, _ in actions)]
 for slug, name, exe, _ in actions:
     out += ["", "[Desktop Action %s]" % slug, "Name=" + name, "Exec=" + exe]
-with open(os.path.join(kga, "org.serpantinum.shell.desktop"), "w", encoding="utf-8") as fh:
-    fh.write("\n".join(out) + "\n")
+body = "\n".join(out) + "\n"
+for d, text, mode in ((kga, "#!/usr/bin/env xdg-open\n" + body, 0o755),
+                      (apps, body, 0o644)):
+    path = os.path.join(d, "org.serpantinum.shell.desktop")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    os.chmod(path, mode)
 
 for _, name, _, key in sorted(actions, key=lambda a: a[1]):
     if key:
@@ -476,6 +489,8 @@ rows, srows, matched = [], [], []
 for fname in (sorted(os.listdir(apps)) if os.path.isdir(apps) else []):
     if not fname.endswith(".desktop"):
         continue
+    if fname == "org.serpantinum.shell.desktop":   # our own copy, not a hand-made entry
+        continue
     lines = read_lines(os.path.join(apps, fname))
     # that name plus that flag is the old installer's output and nothing else
     stale = fname.startswith("serpantinum-kde.") and \
@@ -524,7 +539,8 @@ PY
     done <<< "$raw"
 
     [ -f "$file" ] || { warn "$file was not written — no global shortcuts"; return 0; }
-    chmod 644 "$file"
+    [ -f "$twin" ] || warn "$twin is missing — KDE will file the group under System Services"
+    command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 >/dev/null 2>&1 || true
     local n
     n="$(grep -c '^\[Desktop Action ' "$file" || true)"
     if [ "$n" -lt 2 ] || ! grep -q '^Type=Application$' "$file" \
