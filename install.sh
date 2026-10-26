@@ -9,6 +9,7 @@ RICE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SHELL_NAME="serpantinum-kde"
 SHELL_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/$SHELL_NAME"
 APPS="$HOME/.local/share/applications"
+KGA="${XDG_DATA_HOME:-$HOME/.local/share}/kglobalaccel"
 AUTOSTART="$HOME/.config/autostart"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 ASSUME_YES=0
@@ -24,6 +25,7 @@ ok()   { printf '  %s✓%s %s\n' "$GRN" "$O" "$*"; }
 skip() { printf '  %s·%s %s\n' "$DIM" "$O" "$*"; }
 warn() { printf '  %s!%s %s\n' "$YLW" "$O" "$*"; }
 die()  { printf '%serror:%s %s\n' "$RED" "$O" "$*" >&2; exit 1; }
+tilde() { case "$1" in "$HOME"/*) printf '~/%s\n' "${1#"$HOME"/}" ;; *) printf '%s\n' "$1" ;; esac; }
 
 ask() {   # ask <prompt> <default y|n>
     [ "$ASSUME_YES" = 1 ] && return 0
@@ -302,8 +304,8 @@ copy_shell() {
     find "$SHELL_DIR" -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
 }
 
-# Replace the installed shell with this checkout. Touches nothing else: no autostart,
-# no shortcuts, no matugen, no settings.
+# Replace the installed shell with this checkout and everything derived from it.
+# Leaves autostart, settings and the extras alone.
 update_shell() {
     head1 "Update"
     [ -d "$SHELL_DIR" ] || { warn "nothing installed at $SHELL_DIR — run ./install.sh first"; return 1; }
@@ -312,6 +314,7 @@ update_shell() {
     install_wallpaper
     build_binaries
     install_matugen
+    install_shortcuts
     head1 "Restart it"
     say "  qs -c $SHELL_NAME kill; qs -n -d -c $SHELL_NAME"
     say "  $DIM""Popup QML is loaded by URL, so a running shell will not pick this up on its own.""$O"
@@ -365,6 +368,203 @@ NoDisplay=true
 X-KDE-autostart-after=plasma-workspace
 X-GNOME-Autostart-enabled=true
 EOF
+}
+
+# One application with an action per command, all unbound. That desktop file is the whole
+# component, so this never goes near kglobalshortcutsrc and cannot clobber a bound key.
+install_shortcuts() {
+    head1 "Shortcuts"
+    local scheme="$RICE/extra/kde/shortcuts.conf"
+    local file="$KGA/org.serpantinum.shell.desktop"
+    [ -r "$scheme" ] || { warn "$scheme is missing — no global shortcuts"; return 0; }
+    mkdir -p "$KGA" 2>/dev/null || { warn "cannot create $KGA — skipping global shortcuts"; return 0; }
+
+    local rc="${XDG_CONFIG_HOME:-$HOME/.config}/kglobalshortcutsrc" dest="" f
+    if [ -f "$rc" ]; then
+        dest="$HOME/.local/state/serpantinum-shortcuts-backup-$STAMP"
+        # Copied, never backup()'d: moving kglobalshortcutsrc aside strips the live session.
+        if mkdir -p "$dest/applications" 2>/dev/null && cp -a "$rc" "$dest/" 2>/dev/null; then
+            for f in "$APPS"/net.local.*.desktop "$APPS"/serpantinum-kde.*.desktop; do
+                [ -e "$f" ] || continue
+                cp -a "$f" "$dest/applications/" 2>/dev/null || true
+            done
+            rmdir "$dest/applications" 2>/dev/null || true
+            skip "kept a copy of your shortcuts in $(tilde "$dest")"
+        else
+            dest=""
+            warn "could not back up your shortcuts — nothing of yours will be removed"
+        fi
+    fi
+
+    local raw
+    raw="$(python3 - "$scheme" "$SHELL_NAME" "$SHELL_DIR" "$RICE" "$APPS" "$KGA" <<'PY'
+import configparser, os, shlex, sys
+
+scheme, shell_name, shell_dir, rice, apps, kga = sys.argv[1:7]
+
+def subst(s):
+    return s.replace("@SHELL_NAME@", shell_name).replace("@SHELL_DIR@", shell_dir)
+
+cp = configparser.RawConfigParser(strict=False)
+cp.optionxform = str
+cp.read(scheme, encoding="utf-8")
+actions = [(slug, cp[slug].get("Name", slug), subst(cp[slug].get("Exec", "")),
+            cp[slug].get("Suggested", "")) for slug in sorted(cp.sections())]
+
+# NoDisplay, X-KDE-Shortcuts and X-KDE-GlobalShortcutType are all absent on purpose: each
+# one either misfiles the group out of Applications or ships an action already bound.
+out = ["[Desktop Entry]",
+       "Type=Application",
+       "Name=Serpantinum",
+       "Icon=preferences-desktop-theme-global",
+       "Exec=" + subst("qs -c @SHELL_NAME@ ipc call settings toggle"),
+       "StartupNotify=false",
+       "Actions=" + "".join(slug + ";" for slug, _, _, _ in actions)]
+for slug, name, exe, _ in actions:
+    out += ["", "[Desktop Action %s]" % slug, "Name=" + name, "Exec=" + exe]
+with open(os.path.join(kga, "org.serpantinum.shell.desktop"), "w", encoding="utf-8") as fh:
+    fh.write("\n".join(out) + "\n")
+
+for _, name, _, key in sorted(actions, key=lambda a: a[1]):
+    if key:
+        print("key\t%s\t%s" % (name, key))
+
+# What an Exec line does, with the shell it was aimed at discarded, so a hand-made entry
+# and our action compare equal. Both sides go through this one.
+def norm(line):
+    try:
+        argv = shlex.split(line)
+    except ValueError:
+        return ""
+    if not argv:
+        return ""
+    cmd = os.path.basename(argv[0])
+    if cmd in ("qs", "quickshell"):
+        if "call" not in argv:
+            return ""
+        i = argv.index("call")
+        if i < 1 or argv[i - 1] != "ipc" or len(argv) < i + 3:
+            return ""
+        if "-p" in argv[1:i]:
+            j = argv.index("-p") + 1
+            if j >= i:
+                return ""
+            p = os.path.realpath(os.path.expanduser(argv[j]))
+            if not (p.startswith(shell_dir + os.sep) or p.startswith(rice + os.sep)):
+                return ""
+        return "%s %s" % (argv[i + 1], argv[i + 2])
+    if cmd == "player_control.sh" and len(argv) > 1:
+        return "player_control.sh " + argv[1]
+    if cmd == "screenshot.sh":
+        return "screenshot.sh " + " ".join(sorted(a for a in argv[1:] if a.startswith("-")))
+    return ""
+
+by_exec = {}
+for _, name, exe, _ in actions:
+    key = norm(exe)
+    if key:
+        by_exec.setdefault(key, name)
+
+def read_lines(path):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            return [line.rstrip("\n") for line in fh]
+    except OSError:
+        return []
+
+rows, srows, matched = [], [], []
+for fname in (sorted(os.listdir(apps)) if os.path.isdir(apps) else []):
+    if not fname.endswith(".desktop"):
+        continue
+    lines = read_lines(os.path.join(apps, fname))
+    # that name plus that flag is the old installer's output and nothing else
+    stale = fname.startswith("serpantinum-kde.") and \
+        "X-KDE-GlobalAccel-CommandShortcut=true" in lines
+    if stale:
+        print("stale\t%s" % os.path.join(apps, fname))
+    exe = next((l.split("=", 1)[1].strip() for l in lines if l.startswith("Exec=")), "")
+    label = by_exec.get(norm(exe))
+    if label:
+        matched.append((label, fname, stale))
+
+rc = configparser.RawConfigParser(strict=False)
+rc.optionxform = str
+try:
+    rc.read(os.path.join(os.environ.get("XDG_CONFIG_HOME")
+                         or os.path.expanduser("~/.config"), "kglobalshortcutsrc"),
+            encoding="utf-8")
+except configparser.Error:
+    sys.exit(0)
+
+bound = 0
+for label, fname, stale in sorted(matched):
+    key = rc.get("services][" + fname, "_launch", fallback="").split(",")[0].strip()
+    if not key or key == "none":
+        key = "(unbound)"
+    elif not stale:
+        bound += 1
+    tag = "smap" if stale else "map"
+    (srows if stale else rows).append("%s\t%s\t%s\t%s" % (tag, fname, key, label))
+if rows:
+    print("bound\t%d" % bound)
+if rows or srows:
+    print("\n".join(rows + srows))
+PY
+)" || { warn "could not build the shortcut actions"; return 0; }
+
+    local keys=() maps=() smaps=() stale=() bound=0 tag a b c
+    while IFS=$'\t' read -r tag a b c; do
+        case "$tag" in
+            key)   keys+=("$(printf '      %-34s %s' "$a" "$b")") ;;
+            map)   maps+=("$(printf '      %-34s %-21s -> %s' "$a" "$b" "$c")") ;;
+            smap)  smaps+=("$(printf '      %-34s %-21s -> %s' "$a" "$b" "$c")") ;;
+            bound) bound="$a" ;;
+            stale) stale+=("$a") ;;
+        esac
+    done <<< "$raw"
+
+    [ -f "$file" ] || { warn "$file was not written — no global shortcuts"; return 0; }
+    chmod 644 "$file"
+    local n
+    n="$(grep -c '^\[Desktop Action ' "$file" || true)"
+    if [ "$n" -lt 2 ] || ! grep -q '^Type=Application$' "$file" \
+       || grep -qE '^(NoDisplay|X-KDE-Shortcuts|X-KDE-GlobalAccel-CommandShortcut|X-KDE-GlobalShortcutType)=' "$file"; then
+        warn "$file looks wrong — KDE would file it under the wrong section"
+    fi
+    ok "$n actions -> $(tilde "$file"), none of them bound"
+    say "      $DIM""System Settings -> Shortcuts, under Applications, in one group called Serpantinum.""$O"
+    say "      $DIM""kglobalacceld scans that directory once at login — log out and back in before it appears.""$O"
+
+    if [ "${#stale[@]}" -gt 0 ]; then
+        local ent="entries"
+        if [ "${#stale[@]}" -eq 1 ]; then ent="entry"; fi
+        if [ -n "$dest" ]; then
+            rm -f "${stale[@]}"
+            command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 >/dev/null 2>&1 || true
+            skip "dropped ${#stale[@]} single-command $ent an older install left in $(tilde "$APPS")"
+        else
+            warn "left ${#stale[@]} $ent from an older install in $(tilde "$APPS") — no backup to fall back on"
+        fi
+        if [ "${#smaps[@]}" -gt 0 ]; then
+            say "      $DIM""The keys they held, and the action that replaces each:""$O"
+            printf '%s\n' "${smaps[@]}"
+        fi
+    fi
+
+    if [ "${#keys[@]}" -gt 0 ]; then
+        say ""
+        say "  $DIM""The keys the rice was built around:""$O"
+        printf '%s\n' "${keys[@]}"
+        say "      $DIM""Super alone is KDE's application menu — clear that before binding the launcher to it.""$O"
+    fi
+
+    if [ "${#maps[@]}" -gt 0 ]; then
+        say ""
+        say "  $DIM""Your own shortcuts, and the new action each one matches:""$O"
+        printf '%s\n' "${maps[@]}"
+        skip "$bound keys left exactly where they are — your own entries were not touched"
+        say "      $DIM""Bind the Serpantinum actions in System Settings, then delete the old entries there.""$O"
+    fi
 }
 
 install_matugen() {
@@ -494,62 +694,6 @@ for (var i = 0; i < ds.length; i++) {
     say "      $DIM""A black desktop means plasmashell has not seen the new package: log out and back in.""$O"
 }
 
-extra_shortcuts() {
-    head1 "KDE shortcuts"
-    local scheme="$RICE/extra/kde/shortcuts.kksrc"
-    [ -r "$scheme" ] || { warn "$scheme is missing"; return 0; }
-
-    mkdir -p "$APPS"
-    local suggested
-    # A desktop file alone is inert: kglobalaccel only learns about a command from
-    # kglobalshortcutsrc, so each one is registered there as "none" — listed, no key taken.
-    suggested="$(python3 - "$scheme" "$SHELL_NAME" "$SHELL_DIR" "$APPS" <<'PY'
-import configparser, os, subprocess, sys
-
-scheme, shell_name, shell_dir, apps = sys.argv[1:5]
-cp = configparser.RawConfigParser(strict=False)
-cp.optionxform = str
-cp.read(scheme, encoding="utf-8")
-
-commands, keys = {}, {}
-for section in cp.sections():
-    if section.startswith("Custom Commands]["):
-        commands[section.split("][", 1)[1]] = dict(cp[section])
-    elif section.endswith("][Global Shortcuts"):
-        keys[section.split("][", 1)[0]] = dict(cp[section])
-
-for ident, body in sorted(commands.items()):
-    name = body.get("Name", ident)
-    exec_line = body.get("Exec", "")
-    exec_line = exec_line.replace("@SHELL_NAME@", shell_name).replace("@SHELL_DIR@", shell_dir)
-    with open(os.path.join(apps, ident), "w", encoding="utf-8") as fh:
-        fh.write("[Desktop Entry]\n")
-        fh.write("Exec=%s\n" % exec_line)
-        fh.write("Name=%s\n" % name)
-        fh.write("NoDisplay=true\nStartupNotify=false\nType=Application\n")
-        fh.write("X-KDE-GlobalAccel-CommandShortcut=true\n")
-    # active,default,friendly name — "none" for both keys leaves it unbound but registered.
-    subprocess.run(["kwriteconfig6", "--file", "kglobalshortcutsrc",
-                    "--group", "services", "--group", ident,
-                    "--key", "_launch", "none,none,%s" % name], check=False)
-
-for ident, body in sorted(commands.items(), key=lambda kv: kv[1].get("Name", "")):
-    key = keys.get(ident, {}).get("_launch", "")
-    if key:
-        print("      %-34s %s" % (body.get("Name", ident), key))
-PY
-)"
-    command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 >/dev/null 2>&1 || true
-    ok "commands registered, no keys bound — they are yours to assign"
-    say "      $DIM""System Settings -> Shortcuts, where they show up by name.""$O"
-    say "      $DIM""kglobalaccel reads that file at login, so log out first if they are absent.""$O"
-    say "      $DIM""Super alone (the launcher) is KDE's application menu; clear that first.""$O"
-    say "      $DIM""Every Print key is Spectacle's; clear those too, or give the overlay others.""$O"
-    say ""
-    say "  $DIM""The keys the rice was built around:""$O"
-    printf '%s\n' "$suggested"
-}
-
 extra_spicetify() {
     head1 "Spicetify theme"
     command -v spicetify >/dev/null 2>&1 || { warn "spicetify is not installed"; return 0; }
@@ -628,16 +772,14 @@ run_extras_menu() {
     while :; do
         head1 "Extras"
         say "  1  Plasma lock screen        our greeter, rebuilt on the installed plasma-desktop"
-        say "  2  KDE shortcuts             29 custom commands, keys optional"
-        say "  3  Spicetify theme           the matugen-coloured Text theme"
-        say "  4  Obsidian dashboard        Dashboard.md and its CSS snippets"
+        say "  2  Spicetify theme           the matugen-coloured Text theme"
+        say "  3  Obsidian dashboard        Dashboard.md and its CSS snippets"
         say "  q  done"
         read -r -p $'\n  Pick one: ' choice || break
         case "$choice" in
             1) extra_lockscreen ;;
-            2) extra_shortcuts ;;
-            3) extra_spicetify ;;
-            4) extra_obsidian ;;
+            2) extra_spicetify ;;
+            3) extra_obsidian ;;
             q|Q|"") break ;;
             *) warn "no such entry" ;;
         esac
@@ -654,10 +796,10 @@ serpantinum-KDE installer
   ./install.sh core             deps, build and install the shell, no extras
   ./install.sh wallpaper        reinstall the Plasma wallpaper plugin (core installs it)
   ./install.sh matugen          reinstall the templates and the Plasma hook (core installs them)
+  ./install.sh shortcuts        reinstall the KDE shortcut actions (core installs them)
   ./install.sh update           replace the installed shell with this checkout, nothing else
   ./install.sh extras           the extras menu on its own
-  ./install.sh <extra> [arg]    one extra: lockscreen | shortcuts | spicetify |
-                                obsidian [vault]
+  ./install.sh <extra> [arg]    one extra: lockscreen | spicetify | obsidian [vault]
   -y                            take the default answer to every question
 EOF
 }
@@ -675,18 +817,18 @@ main() {
     case "${args[0]:-}" in
         check)      check_deps ;;
         deps)       check_deps --offer ;;
-        core)       check_deps --offer; install_core; install_wallpaper; select_wallpaper_plugin
-                    build_binaries; install_matugen ;;
+        core)       check_deps --offer; install_core; install_shortcuts; install_wallpaper
+                    select_wallpaper_plugin; build_binaries; install_matugen ;;
         update)     update_shell ;;
         extras)     run_extras_menu ;;
         lockscreen) extra_lockscreen ;;
         wallpaper)  install_wallpaper; select_wallpaper_plugin ;;
-        shortcuts)  extra_shortcuts ;;
+        shortcuts)  install_shortcuts ;;
         spicetify)  extra_spicetify ;;
         obsidian)   extra_obsidian "${args[1]:-}" ;;
         matugen)    install_matugen ;;
-        "")         check_deps --offer; install_core; install_wallpaper; select_wallpaper_plugin
-                    build_binaries; install_matugen; run_extras_menu
+        "")         check_deps --offer; install_core; install_shortcuts; install_wallpaper
+                    select_wallpaper_plugin; build_binaries; install_matugen; run_extras_menu
                     head1 "Done"
                     say "  Start it now:  qs -n -c $SHELL_NAME"
                     say "  $DIM""It also starts with the session from now on.""$O" ;;

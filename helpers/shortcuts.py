@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Dump the user's global shortcuts as JSON for the cheat sheet.
 
-Reads ~/.config/kglobalshortcutsrc, which stores two different shapes:
+Reads ~/.config/kglobalshortcutsrc, which stores three different shapes:
 
   [kwin]
   Window Quick Tile Left=Meta+Left,Meta+Left,Quick Tile Window to the Left
@@ -11,8 +11,13 @@ Reads ~/.config/kglobalshortcutsrc, which stores two different shapes:
   _launch=Meta+F
       no description — the label comes from the .desktop file's Name=
 
+  [services][org.serpantinum.shell.desktop]
+  bluetooth=Meta+B
+      no description — the key IS an action id, so the label and the command come
+      from that file's [Desktop Action bluetooth] block
+
 Entries bound to "none" are skipped: an unbound action is noise on a cheat sheet.
-Output: [{"group": str, "keys": str, "label": str}, ...]
+Output: [{"group": str, "chords": [str], "label": str}, ...]
 """
 
 import configparser
@@ -26,7 +31,10 @@ RC = os.path.expanduser("~/.config/kglobalshortcutsrc")
 KWINRC = os.path.expanduser("~/.config/kwinrc")
 APP_DIRS = [
     os.path.expanduser("~/.local/share/applications"),
+    os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share"),
+                 "kglobalaccel"),
     "/usr/share/applications",
+    "/usr/share/kglobalaccel",
 ]
 
 # Only the user's own custom shortcuts and window management reach the cheat sheet.
@@ -70,17 +78,23 @@ def disabled_scripts():
     return off
 
 
-SHELL_CMDS = {"qs", "quickshell", "skwd"}
+SHELL_CMDS = {"qs", "quickshell", "skwd", "screenshot.sh"}
 MEDIA_CMDS = {"playerctl", "playerctld", "mpc", "cmus-remote", "player_control.sh"}
+
+
+def _desktop_path(desktop_id):
+    for d in APP_DIRS:
+        p = os.path.join(d, desktop_id)
+        if os.path.exists(p):
+            return p
+    return ""
 
 
 def desktop_entry(desktop_id):
     """Name= and Exec= from a .desktop file; Name falls back to the filename."""
     name = exe = ""
-    for d in APP_DIRS:
-        p = os.path.join(d, desktop_id)
-        if not os.path.exists(p):
-            continue
+    p = _desktop_path(desktop_id)
+    if p:
         try:
             with open(p, "r", encoding="utf-8", errors="replace") as fh:
                 for line in fh:
@@ -90,9 +104,42 @@ def desktop_entry(desktop_id):
                         exe = line.split("=", 1)[1].strip()
         except OSError:
             pass
-        break
     if not name:
         name = re.sub(r"\.desktop$", "", desktop_id).replace("_", " ")
+    return name, exe
+
+
+def desktop_action(desktop_id, action):
+    """Name= and Exec= from one [Desktop Action <action>] block, or ("", "").
+
+    A grouped component binds one key per action id, so the rc key is the action
+    name and the only place its label and command live is that block. No filename
+    fallback: an empty name is how the caller learns the block is missing and the
+    row has to degrade.
+    """
+    p = _desktop_path(desktop_id)
+    if not p:
+        return "", ""
+    want = "[Desktop Action %s]" % action
+    name = exe = ""
+    try:
+        with open(p, "r", encoding="utf-8", errors="replace") as fh:
+            inside = False
+            for line in fh:
+                line = line.rstrip("\n")
+                if line.startswith("["):
+                    if inside:
+                        break
+                    inside = line.strip() == want
+                    continue
+                if not inside:
+                    continue
+                if line.startswith("Name=") and not name:
+                    name = line.split("=", 1)[1].strip()
+                elif line.startswith("Exec=") and not exe:
+                    exe = line.split("=", 1)[1].strip()
+    except OSError:
+        return "", ""
     return name, exe
 
 
@@ -122,9 +169,10 @@ def pretty_keys(seq):
     Alternates are separated by a LITERAL backslash-t in the file (not a real tab),
     e.g. `Alt+Tab\\tMeta+Tab`. Showing only the first hides the user's own binding
     behind KDE's default — Close Window is stored `Alt+F4\\tMeta+Q`, and Super+Q is
-    the one actually used. Incomplete chords (trailing "+") and lone modifiers are
-    skipped; names containing spaces are kept, since media keys are legitimately
-    called "Volume Down" / "Launch (C)".
+    the one actually used. Incomplete chords (trailing "+") are skipped; a lone
+    modifier is kept, since bare Meta is a real binding here; names containing
+    spaces are kept too, since media keys are legitimately called "Volume Down"
+    / "Launch (C)".
     """
     raw = seq.replace("\\t", "\t")
     raw = re.sub(r"\\{2,}", "\\\\", raw)      # kglobalshortcutsrc doubles backslashes
@@ -135,8 +183,6 @@ def pretty_keys(seq):
             continue
         parts = [p.strip() for p in alt.split("+") if p.strip()]
         if not parts:
-            continue
-        if len(parts) == 1 and parts[0] in ("Meta", "Ctrl", "Alt", "Shift"):
             continue
         chord = " + ".join({"Meta": "Super"}.get(p, p) for p in parts)
         if chord not in out:
@@ -248,7 +294,7 @@ def main():
         svc = re.match(r"^services\]\[(.+)$", section) or re.match(r"^services$", section)
         is_service = section.startswith("services][") or section == "services"
         group_key = "services" if is_service else section
-        group = GROUP_NAMES.get(group_key, group_key)
+        group_default = GROUP_NAMES.get(group_key, group_key)
 
         for name, raw in cp.items(section):
             if name.startswith("_k_"):
@@ -258,14 +304,22 @@ def main():
             if not active or active.lower() == "none":
                 continue
 
-            if name == "_launch":
-                did = section.split("][", 1)[1] if "][" in section else section
+            group = group_default          # per key: one component can hold 30 actions
+            did = section.split("][", 1)[1] if "][" in section else section
+            if is_service and name == "_launch":
                 label, exe = desktop_entry(did)
                 group = classify_service(exe)
-                if group == "Shell":
-                    label = re.sub(r"^Quickshell\s+", "", label)
+            elif is_service:
+                label, exe = desktop_action(did, name)
+                if label:
+                    group = classify_service(exe)
+                else:
+                    label = fields[2].strip() if len(fields) > 2 and fields[2].strip() else name
             else:
                 label = fields[2].strip() if len(fields) > 2 and fields[2].strip() else name
+
+            if group == "Shell":
+                label = re.sub(r"^Quickshell\s+", "", label)
 
             # KWin's section is a dumping ground; split tiling scripts out so it stays readable.
             g = group

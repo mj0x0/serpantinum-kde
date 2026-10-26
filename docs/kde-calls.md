@@ -81,12 +81,18 @@ change instead of parsing signals.
 | `kreadconfig6 --file kdeglobals --group General --key ColorScheme` | which colour scheme is live (the matugen hook) |
 | `kreadconfig6 --file kwinrc --group NightColor --key NightTemperature` | the Night Light temperature slider's starting value |
 | `kwriteconfig6 --file kwinrc` | Night Light temperature |
-| `kwriteconfig6 --file kglobalshortcutsrc` | register our commands unbound (`_launch=none,none,<Name>`) so they appear in System Settings |
 | `kwriteconfig6 --file plasmashellrc --group Shell --key ShellPackage` | select our lock-screen package |
 | `kwriteconfig6 --file kscreenlockerrc` | the lock-screen wallpaper |
 | `kbuildsycoca6` | rebuild the desktop-file cache after we install one |
 | `kpackagetool6 --type Plasma/Wallpaper` | install our wallpaper plugin; no `Version` in metadata, so it is remove-then-install, never `--upgrade` |
 | `plasma-apply-colorscheme` | apply the scheme matugen just rendered |
+| `~/.local/share/kglobalaccel/org.serpantinum.shell.desktop` | not a call: the desktop file that *is* our global-shortcut component, one `[Desktop Action]` per shell command |
 
-`kglobalaccel` only reads `kglobalshortcutsrc` at login — a `.desktop` file alone is
-inert, and a new entry will not appear until the next session.
+Our shortcuts are not in `kglobalshortcutsrc` at all. The whole component is that one
+desktop file: `Type=Application`, `Name=Serpantinum`, and an action per command, none of
+them carrying `X-KDE-Shortcuts`, so every one registers unbound under Applications in
+System Settings. `kglobalacceld` scans that directory once at startup and has no watcher on
+it, so a new action needs a logout; `kbuildsycoca6` does nothing for it either, because
+ksycoca does not index that directory. The keys the user then assigns are the daemon's to
+write, into `[services][org.serpantinum.shell.desktop]` keyed by action id — we never touch
+that file, which is also why re-running the installer cannot clobber a binding.
