@@ -578,7 +578,9 @@ PY
         say ""
         say "  $DIM""Your own shortcuts, and the new action each one matches:""$O"
         printf '%s\n' "${maps[@]}"
-        skip "$bound keys left exactly where they are — your own entries were not touched"
+        local kept="$bound keys left exactly where they are"
+        if [ "$bound" -eq 1 ]; then kept="1 key left exactly where it is"; fi
+        skip "$kept — your own entries were not touched"
         say "      $DIM""Bind the Serpantinum actions in System Settings, then delete the old entries there.""$O"
     fi
 }
