@@ -554,17 +554,12 @@ PY
     if [ "${#stale[@]}" -gt 0 ]; then
         local ent="entries"
         if [ "${#stale[@]}" -eq 1 ]; then ent="entry"; fi
-        if [ -n "$dest" ]; then
-            rm -f "${stale[@]}"
-            command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 >/dev/null 2>&1 || true
-            skip "dropped ${#stale[@]} single-command $ent an older install left in $(tilde "$APPS")"
-        else
-            warn "left ${#stale[@]} $ent from an older install in $(tilde "$APPS") — no backup to fall back on"
-        fi
+        skip "${#stale[@]} single-command $ent from an older install are still in $(tilde "$APPS")"
         if [ "${#smaps[@]}" -gt 0 ]; then
-            say "      $DIM""The keys they held, and the action that replaces each:""$O"
+            say "      $DIM""The keys they hold, and the action that replaces each:""$O"
             printf '%s\n' "${smaps[@]}"
         fi
+        say "      $DIM""Nothing was removed — delete them in System Settings when you are ready.""$O"
     fi
 
     if [ "${#keys[@]}" -gt 0 ]; then
