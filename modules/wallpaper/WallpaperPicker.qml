@@ -1315,47 +1315,6 @@ Item {
                 }
             }
 
-            Item {
-                id: handMoveChip
-                readonly property var moves: ["random", "cycle", "cascade", "corkscrew", "shuffle", "spiral"]
-                visible: window.pickerStyle === "hand"
-                width: handMoveText.contentWidth + window.s(24)
-                height: window.s(36)
-                anchors.verticalCenter: parent.verticalCenter
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: Radius.outer(window.s(10))
-                    color: "transparent"
-                    border.color: _theme.surface1
-                    border.width: 1
-                    scale: handMoveMouse.containsMouse ? 1.08 : 1.0
-
-                    Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
-
-                    Text {
-                        id: handMoveText
-                        text: ShellSettings.handMove
-                        anchors.centerIn: parent
-                        color: Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
-                        font.family: Fonts.ui
-                        font.pixelSize: window.s(14)
-                    }
-                }
-
-                MouseArea {
-                    id: handMoveMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    enabled: !window.isApplying
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        const i = handMoveChip.moves.indexOf(ShellSettings.handMove);
-                        ShellSettings.setValue("wallpaper.handMove", handMoveChip.moves[(i + 1) % handMoveChip.moves.length]);
-                    }
-                }
-            }
-
         }
     }
 

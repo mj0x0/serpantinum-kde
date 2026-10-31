@@ -30,10 +30,10 @@ Item {
     readonly property real arch: root.picker.s(5) * root.sizeScale
     readonly property real c: (root.count - 1) / 2
     // What the popup should give us: the fan at the requested size, uncapped, plus margins.
-    readonly property real wantedHeight: (root.picker.s(345) * 1.18 + 4 * root.picker.s(5)) * (ShellSettings.handCardSize / 100) + root.picker.s(48)
+    readonly property real wantedHeight: (root.picker.s(345) * 1.18 + 4 * root.picker.s(5)) * (ShellSettings.handCardSize / 100) + root.picker.s(96)
     // Capped so the selected card (1.18x) and the fan's width stay inside the stage at any knob value.
     readonly property real sizeScale: Math.min(ShellSettings.handCardSize / 100,
-                                               (stage.height - root.picker.s(24)) / (root.picker.s(345) * 1.18 + 4 * root.picker.s(5)),
+                                               (stage.height - root.picker.s(48)) / (root.picker.s(345) * 1.18 + 4 * root.picker.s(5)),
                                                (stage.width - root.picker.s(48)) / (4 * root.picker.s(200) + root.picker.s(230) * 1.18))
     readonly property bool animate: !root.dealing && !root.snapping && root.picker.initialFocusSet
 
