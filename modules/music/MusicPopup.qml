@@ -2200,18 +2200,14 @@ Item {
                                     opacity: root.eqData.mono === true ? 0.45 : 1.0
                                     Behavior on opacity { NumberAnimation { duration: 150 } }
 
-                                    Repeater {
-                                        model: 9
-                                        Rectangle {
-                                            required property int index
-                                            x: index * (balanceControl.width - width) / 8
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            width: root.s(index === 4 ? 3 : 2)
-                                            height: root.s(index === 4 ? 33 : (index % 2 === 0 ? 25 : 18))
-                                            radius: width / 2
-                                            color: root.subtext1
-                                            opacity: index === 4 ? 0.7 : 0.32
-                                        }
+                                    // Centre notch only; upstream's nine-post ruler read as clutter here.
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: root.s(2)
+                                        height: root.s(20)
+                                        radius: width / 2
+                                        color: root.subtext1
+                                        opacity: 0.35
                                     }
 
                                     Slider {
@@ -2223,7 +2219,7 @@ Item {
                                         value: Number(root.eqData.balance || 0)
                                         hoverEnabled: true
                                         enabled: root.eqData.mono !== true
-                                        readonly property real trackHeight: root.s(14)
+                                        readonly property real trackHeight: root.s(10)
                                         readonly property real handleSize: root.s(22)
 
                                         Connections {
@@ -2244,7 +2240,7 @@ Item {
                                             width: balanceSlider.availableWidth
                                             height: balanceSlider.trackHeight
                                             radius: height / 2
-                                            color: root.surface2
+                                            color: Qt.alpha(root.surface0, 0.7)
                                             clip: true
 
                                             Item {
