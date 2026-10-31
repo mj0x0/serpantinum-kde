@@ -72,7 +72,8 @@ Item {
     property var eqData: {
         "b1": 0, "b2": 0, "b3": 0, "b4": 0, "b5": 0,
         "b6": 0, "b7": 0, "b8": 0, "b9": 0, "b10": 0,
-        "preset": "Flat", "pending": false
+        "preset": "Flat", "pending": false,
+        "balance": 0, "mono": false, "swap": false, "dynamics": "off"
     }
 
     // --- Audio visualizer styles (click the cover art to cycle) ---
@@ -281,10 +282,14 @@ Item {
         eqLightningAnim.restart();
     }
 
-    // 0 = equalizer, 1 = lyrics. They share the region below the separator. The popup is
-    // rebuilt on every open, so the last choice is read back from a state file.
+    // 0 = equalizer, 1 = audio, 2 = lyrics. They share the region below the separator. The
+    // popup is rebuilt on every open, so the last choice is read back from a state file.
     property int section: 0
-    onSectionChanged: sectionFile.setText("" + section)
+    onSectionChanged: {
+        sectionFile.setText("" + section);
+        if (section === 1) playAudioIntro();
+        else if (audioTestRunning) toggleAudioTest();
+    }
 
     FileView {
         id: sectionFile
@@ -292,7 +297,10 @@ Item {
         blockLoading: true
         atomicWrites: true
         printErrors: false
-        Component.onCompleted: { if (parseInt(("" + text()).trim(), 10) === 1) root.section = 1; }
+        Component.onCompleted: {
+            var saved = parseInt(("" + text()).trim(), 10);
+            if (saved === 1 || saved === 2) root.section = saved;
+        }
     }
 
     // Every shortcut below is a bare key. Without this they would eat each
@@ -334,6 +342,33 @@ Item {
     property real introEqHeader: 0
     property real introEqSliders: 0
     property real introPresets: 0
+    property real introAudioBalance: 0
+    property real introAudioFlags: 0
+    property real introAudioDynamics: 0
+
+    SequentialAnimation {
+        id: audioIntroAnim
+        // Falls in step with the EQ header when the popup opens straight onto this section.
+        PauseAnimation { duration: root.introMain < 0.99 ? 370 : 0 }
+        ParallelAnimation {
+            NumberAnimation { target: root; property: "introAudioBalance"; from: 0; to: 1.0; duration: 560; easing.type: Easing.OutQuart }
+            SequentialAnimation {
+                PauseAnimation { duration: 70 }
+                NumberAnimation { target: root; property: "introAudioFlags"; from: 0; to: 1.0; duration: 560; easing.type: Easing.OutQuart }
+            }
+            SequentialAnimation {
+                PauseAnimation { duration: 150 }
+                NumberAnimation { target: root; property: "introAudioDynamics"; from: 0; to: 1.0; duration: 560; easing.type: Easing.OutQuart }
+            }
+        }
+    }
+
+    function playAudioIntro() {
+        introAudioBalance = 0;
+        introAudioFlags = 0;
+        introAudioDynamics = 0;
+        audioIntroAnim.restart();
+    }
 
     ParallelAnimation {
         running: true
@@ -479,14 +514,24 @@ Item {
     Shortcut { sequence: "0"; enabled: !root.typing; onActivated: root.applyPresetOptimistically("Flat") }
 
     // Section switching. Digits stay with the presets, so letters here.
-    Shortcut { sequence: "Tab"; enabled: !root.typing; onActivated: root.section = (root.section + 1) % 2 }
+    Shortcut { sequence: "Tab"; enabled: !root.typing; onActivated: root.section = (root.section + 1) % 3 }
+    Shortcut { sequences: ["Backtab", "Shift+Tab"]; enabled: !root.typing; onActivated: root.section = (root.section + 2) % 3 }
     Shortcut { sequence: "Shift+1"; enabled: !root.typing; onActivated: root.section = 0 }
     Shortcut { sequence: "Shift+2"; enabled: !root.typing; onActivated: root.section = 1 }
+    Shortcut { sequence: "Shift+3"; enabled: !root.typing; onActivated: root.section = 2 }
     Shortcut { sequence: "E"; enabled: !root.typing; onActivated: root.section = 0 }
-    Shortcut { sequence: "L"; enabled: !root.typing; onActivated: root.section = 1 }
-    Shortcut { sequence: ","; enabled: root.section === 1 && !root.typing; onActivated: Lyrics.nudge(-0.1) }
-    Shortcut { sequence: "."; enabled: root.section === 1 && !root.typing; onActivated: Lyrics.nudge(0.1) }
-    Shortcut { sequence: "R"; enabled: root.section === 1 && !root.typing; onActivated: Lyrics.refresh() }
+    Shortcut { sequence: "A"; enabled: !root.typing; onActivated: root.section = 1 }
+    Shortcut { sequence: "L"; enabled: !root.typing; onActivated: root.section = 2 }
+    Shortcut { sequence: ","; enabled: root.section === 2 && !root.typing; onActivated: Lyrics.nudge(-0.1) }
+    Shortcut { sequence: "."; enabled: root.section === 2 && !root.typing; onActivated: Lyrics.nudge(0.1) }
+    Shortcut { sequence: "R"; enabled: root.section === 2 && !root.typing; onActivated: Lyrics.refresh() }
+    Shortcut { sequence: "Left";  enabled: root.section === 1 && !root.typing; onActivated: root.setBalance(Number(root.eqData.balance || 0) - 0.05) }
+    Shortcut { sequence: "Right"; enabled: root.section === 1 && !root.typing; onActivated: root.setBalance(Number(root.eqData.balance || 0) + 0.05) }
+    Shortcut { sequence: "M"; enabled: root.section === 1 && !root.typing; onActivated: root.setAudioFlag("mono", root.eqData.mono !== true) }
+    Shortcut { sequence: "S"; enabled: root.section === 1 && !root.typing; onActivated: root.setAudioFlag("swap", root.eqData.swap !== true) }
+    Shortcut { sequence: "D"; enabled: root.section === 1 && !root.typing; onActivated: root.cycleDynamics() }
+    Shortcut { sequence: "T"; enabled: root.section === 1 && !root.typing; onActivated: root.toggleAudioTest() }
+    Shortcut { sequence: "R"; enabled: root.section === 1 && !root.typing; onActivated: root.resetAudio() }
 
     function applyPresetOptimistically(presetName) {
         var presets = {
@@ -514,6 +559,52 @@ Item {
             root.triggerEqLightning();
             execCmd(`${root.scriptsDir}/equalizer.sh preset ${presetName}`);
         }
+    }
+
+    // --- Audio section (balance / channel flags / dynamics), same optimistic path.
+    function pushAudio(patch, cmd) {
+        root.eqData = Object.assign({}, root.eqData, patch);
+        root.lastEqUpdate = Date.now();
+        execCmd(`${root.scriptsDir}/equalizer.sh ${cmd}`);
+    }
+    function setBalance(value) {
+        var v = Math.round(Math.max(-1, Math.min(1, Number(value) || 0)) * 100) / 100;
+        pushAudio({ balance: v }, "set_balance " + v);
+    }
+    function setAudioFlag(name, value) {
+        if (name !== "mono" && name !== "swap") return;
+        var patch = {};
+        patch[name] = !!value;
+        pushAudio(patch, "set_" + name + " " + (!!value));
+    }
+    function setDynamics(value) {
+        if (["off", "balanced", "night"].indexOf(value) < 0) return;
+        pushAudio({ dynamics: value }, "set_dynamics " + value);
+    }
+    function cycleDynamics() {
+        var order = ["off", "balanced", "night"];
+        setDynamics(order[(order.indexOf(root.eqData.dynamics || "off") + 1) % 3]);
+    }
+    function resetAudio() {
+        if (audioTestRunning) toggleAudioTest();
+        pushAudio({ balance: 0, mono: false, swap: false, dynamics: "off" }, "reset_audio");
+    }
+    function balanceLabel(v) {
+        var a = Math.abs(v);
+        if (a >= 0.995) return v < 0 ? "Left only" : "Right only";
+        if (a < 0.005) return "Centered";
+        return (v < 0 ? "Left" : "Right") + (a < 0.25 ? " slightly favored" : " favored");
+    }
+    readonly property bool audioDirty: Math.abs(Number(root.eqData.balance || 0)) >= 0.005
+        || root.eqData.mono === true || root.eqData.swap === true
+        || (root.eqData.dynamics || "off") !== "off"
+
+    property bool audioTestRunning: false
+    Timer { id: audioTestTimer; interval: 3200; onTriggered: root.audioTestRunning = false }
+    function toggleAudioTest() {
+        audioTestRunning = !audioTestRunning;
+        if (audioTestRunning) audioTestTimer.restart(); else audioTestTimer.stop();
+        execCmd(`${root.scriptsDir}/equalizer.sh ${audioTestRunning ? "test" : "stop_test"}`);
     }
 
     // --- DATA POLLING ---
@@ -1477,7 +1568,8 @@ Item {
                                 spacing: root.s(4)
 
                                 SectionTab { idx: 0; glyph: "\u{f062e}"; label: "Equalizer"; tint: root.mauve }
-                                SectionTab { idx: 1; glyph: "\u{f0bc2}"; label: "Lyrics";    tint: root.blue }
+                                SectionTab { idx: 1; glyph: "\u{f04c3}"; label: "Audio";     tint: root.pink }
+                                SectionTab { idx: 2; glyph: "\u{f0bc2}"; label: "Lyrics";    tint: root.blue }
                             }
                         }
 
@@ -1485,7 +1577,7 @@ Item {
 
                         // --- Lyrics-only header controls ---
                         Rectangle {
-                            visible: root.section === 1
+                            visible: root.section === 2
                             Layout.preferredHeight: root.s(34)
                             Layout.preferredWidth: offsetRow.implicitWidth + root.s(16)
                             radius: Radius.outer(root.s(11))
@@ -1541,6 +1633,34 @@ Item {
                             }
                         }
                         
+                        // --- Audio-only header controls: channel test tone + reset ---
+                        Rectangle {
+                            visible: root.section === 1
+                            Layout.preferredHeight: root.s(34)
+                            Layout.preferredWidth: audioHeaderRow.implicitWidth + root.s(16)
+                            radius: Radius.outer(root.s(11))
+                            color: Qt.alpha(root.surface0, 0.6)
+
+                            Row {
+                                id: audioHeaderRow
+                                anchors.centerIn: parent
+                                spacing: root.s(6)
+
+                                HeaderPill {
+                                    glyph: root.audioTestRunning ? "\u{f04db}" : "\u{f02cb}"
+                                    label: root.audioTestRunning ? "Stop" : "Test"
+                                    lit: root.audioTestRunning
+                                    onClicked: root.toggleAudioTest()
+                                }
+                                HeaderPill {
+                                    glyph: "\u{f0450}"
+                                    label: "Reset"
+                                    dim: !root.audioDirty
+                                    onClicked: root.resetAudio()
+                                }
+                            }
+                        }
+
                         // Current preset and the button that commits it, on the
                         // same chassis as the tabs and the lyric offset cluster.
                         Rectangle {
@@ -2052,10 +2172,196 @@ Item {
                         }
                     }
 
+                    // --- Audio --- balance, channel flags, dynamics; same footprint as the EQ.
+                    ColumnLayout {
+                        visible: root.section === 1
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: root.s(267)
+                        spacing: root.s(12)
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            radius: Radius.outer(root.s(11))
+                            color: Qt.alpha(root.surface0, 0.6)
+
+                            opacity: root.introAudioBalance
+                            transform: Translate { y: root.s(14) * (1 - root.introAudioBalance) }
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: root.s(14)
+                                anchors.topMargin: root.s(10)
+                                anchors.bottomMargin: root.s(10)
+                                spacing: root.s(2)
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Text {
+                                        text: "Balance"
+                                        color: root.text
+                                        font.family: Fonts.ui
+                                        font.pixelSize: root.s(12)
+                                        font.bold: true
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                    Text {
+                                        text: root.eqData.mono === true ? "Mono" : root.balanceLabel(balanceSlider.value)
+                                        color: root.subtext0
+                                        font.family: Fonts.ui
+                                        font.pixelSize: root.s(11)
+                                    }
+                                }
+
+                                Item {
+                                    id: balanceControl
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    opacity: root.eqData.mono === true ? 0.45 : 1.0
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
+
+                                    Repeater {
+                                        model: 9
+                                        Rectangle {
+                                            required property int index
+                                            // Ticks sit where the handle centre lands, not at the raw edges.
+                                            x: balanceSlider.handleSize / 2 + index * (balanceControl.width - balanceSlider.handleSize) / 8 - width / 2
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: root.s(index === 4 ? 3 : 2)
+                                            height: root.s(index === 4 ? 30 : (index % 2 === 0 ? 22 : 16))
+                                            radius: width / 2
+                                            color: root.subtext1
+                                            opacity: index === 4 ? 0.7 : 0.3
+                                        }
+                                    }
+
+                                    Slider {
+                                        id: balanceSlider
+                                        anchors.fill: parent
+                                        from: -1.0
+                                        to: 1.0
+                                        stepSize: 0.01
+                                        value: Number(root.eqData.balance || 0)
+                                        hoverEnabled: true
+                                        enabled: root.eqData.mono !== true
+                                        readonly property real trackHeight: root.s(12)
+                                        readonly property real handleSize: root.s(20)
+
+                                        // Dragging breaks the value binding; follow the state again once released.
+                                        Connections {
+                                            target: root
+                                            function onEqDataChanged() {
+                                                if (!balanceSlider.pressed) {
+                                                    var v = Number(root.eqData.balance || 0);
+                                                    if (!isNaN(v)) balanceSlider.value = v;
+                                                }
+                                            }
+                                        }
+                                        onPressedChanged: if (!pressed) root.setBalance(value)
+
+                                        background: Rectangle {
+                                            x: balanceSlider.leftPadding
+                                            y: balanceSlider.topPadding + balanceSlider.availableHeight / 2 - height / 2
+                                            width: balanceSlider.availableWidth
+                                            height: balanceSlider.trackHeight
+                                            radius: height / 2
+                                            color: Qt.alpha(root.surface2, 0.7)
+                                            clip: true
+
+                                            Rectangle {
+                                                property real handleCenter: balanceSlider.handleSize / 2 + balanceSlider.visualPosition * (parent.width - balanceSlider.handleSize)
+                                                x: Math.min(parent.width / 2, handleCenter)
+                                                width: Math.abs(handleCenter - parent.width / 2)
+                                                height: parent.height
+                                                color: root.mauve
+                                                opacity: width > 0.5 ? 1.0 : 0.0
+                                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                                            }
+                                        }
+
+                                        handle: Rectangle {
+                                            x: balanceSlider.leftPadding + balanceSlider.visualPosition * (balanceSlider.availableWidth - width)
+                                            y: balanceSlider.topPadding + balanceSlider.availableHeight / 2 - height / 2
+                                            width: balanceSlider.handleSize
+                                            height: width
+                                            radius: width / 2
+                                            color: root.text
+                                            border.width: root.s(2)
+                                            border.color: root.mauve
+                                            scale: balanceSlider.pressed ? 1.12 : (balanceSlider.hovered ? 1.06 : 1.0)
+                                            Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+                                        }
+                                    }
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Text {
+                                        text: "L " + Math.round((balanceSlider.value > 0 ? 1 - balanceSlider.value : 1) * 100) + "%"
+                                        color: root.subtext0
+                                        font.family: Fonts.ui
+                                        font.pixelSize: root.s(10)
+                                        font.bold: true
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                    Text {
+                                        text: Math.round((balanceSlider.value < 0 ? 1 + balanceSlider.value : 1) * 100) + "% R"
+                                        color: root.subtext0
+                                        font.family: Fonts.ui
+                                        font.pixelSize: root.s(10)
+                                        font.bold: true
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: root.s(44)
+                            spacing: root.s(10)
+
+                            opacity: root.introAudioFlags
+                            transform: Translate { y: root.s(14) * (1 - root.introAudioFlags) }
+
+                            AudioSwitch { label: "Mono audio"; checked: root.eqData.mono === true; onToggled: v => root.setAudioFlag("mono", v) }
+                            AudioSwitch { label: "Swap L/R";   checked: root.eqData.swap === true; onToggled: v => root.setAudioFlag("swap", v) }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: root.s(44)
+                            radius: Radius.outer(root.s(11))
+                            color: Qt.alpha(root.surface0, 0.6)
+
+                            opacity: root.introAudioDynamics
+                            transform: Translate { y: root.s(14) * (1 - root.introAudioDynamics) }
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: root.s(14)
+                                anchors.rightMargin: root.s(8)
+                                spacing: root.s(4)
+
+                                Text {
+                                    text: "Dynamic range"
+                                    color: root.text
+                                    font.family: Fonts.ui
+                                    font.pixelSize: root.s(12)
+                                    font.bold: true
+                                }
+                                Item { Layout.fillWidth: true }
+                                Repeater {
+                                    model: [{ "key": "off", "label": "Off" }, { "key": "balanced", "label": "Balanced" }, { "key": "night", "label": "Night" }]
+                                    delegate: DynChip {}
+                                }
+                            }
+                        }
+                    }
+
                     // --- Lyrics --- exactly the height the sliders + presets occupy
                     // (180 + 15 + 72), so switching sections leaves the outline untouched.
                     Item {
-                        visible: root.section === 1
+                        visible: root.section === 2
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.s(267)
 
@@ -2424,6 +2730,8 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     text: root.section === 0
                           ? "1\u20138 presets   [ ] cycle   0 flat   \u21e5 section"
+                          : root.section === 1
+                          ? "\u2190 \u2192 balance   M mono   S swap   D range   T test   R reset   \u21e5 section"
                           : (Lyrics.hasLyrics
                              ? ", . offset   R refetch   Ctrl \u00b1 size   \u21e5 section   click a line to seek"
                              : "edit the query \u2192 Find   click a result to use it   \u21e5 section")
@@ -2577,6 +2885,145 @@ Item {
     }
 
     // --- HELPER COMPONENT FOR PRESETS ---
+    // --- Audio section pieces ---
+    component HeaderPill : Rectangle {
+        id: pill
+        property string glyph: ""
+        property string label: ""
+        property bool lit: false
+        property bool dim: false
+        signal clicked()
+
+        anchors.verticalCenter: parent.verticalCenter
+        implicitHeight: root.s(22)
+        implicitWidth: pillRow.implicitWidth + root.s(14)
+        radius: Radius.outer(root.s(8))
+        color: lit ? root.mauve : (pillMa.containsMouse && !dim ? root.surface1 : "transparent")
+        opacity: dim ? 0.45 : 1.0
+
+        Behavior on color { ColorAnimation { duration: 200 } }
+        Behavior on opacity { NumberAnimation { duration: 160 } }
+
+        Row {
+            id: pillRow
+            anchors.centerIn: parent
+            spacing: root.s(5)
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: pill.glyph
+                font.family: "Iosevka Nerd Font"
+                font.pixelSize: root.s(13)
+                color: pill.lit ? root.base : root.subtext0
+                Behavior on color { ColorAnimation { duration: 200 } }
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: pill.label
+                font.family: Fonts.ui
+                font.pixelSize: root.s(11)
+                font.bold: true
+                color: pill.lit ? root.base : root.subtext0
+                Behavior on color { ColorAnimation { duration: 200 } }
+            }
+        }
+
+        MouseArea {
+            id: pillMa
+            anchors.fill: parent
+            hoverEnabled: true
+            enabled: !pill.dim
+            cursorShape: Qt.PointingHandCursor
+            onClicked: pill.clicked()
+        }
+    }
+
+    component AudioSwitch : Rectangle {
+        id: sw
+        property string label: ""
+        property bool checked: false
+        signal toggled(bool value)
+
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        radius: Radius.outer(root.s(11))
+        color: swMa.containsMouse ? Qt.alpha(root.surface1, 0.8) : Qt.alpha(root.surface0, 0.6)
+        Behavior on color { ColorAnimation { duration: 180 } }
+
+        Text {
+            anchors.left: parent.left
+            anchors.leftMargin: root.s(14)
+            anchors.verticalCenter: parent.verticalCenter
+            text: sw.label
+            color: sw.checked ? root.text : root.subtext0
+            font.family: Fonts.ui
+            font.pixelSize: root.s(12)
+            font.bold: true
+            Behavior on color { ColorAnimation { duration: 180 } }
+        }
+
+        Rectangle {
+            anchors.right: parent.right
+            anchors.rightMargin: root.s(12)
+            anchors.verticalCenter: parent.verticalCenter
+            width: root.s(34)
+            height: root.s(18)
+            radius: height / 2
+            color: sw.checked ? root.mauve : root.surface2
+            Behavior on color { ColorAnimation { duration: 200 } }
+
+            Rectangle {
+                width: root.s(14)
+                height: width
+                radius: width / 2
+                anchors.verticalCenter: parent.verticalCenter
+                x: sw.checked ? parent.width - width - root.s(2) : root.s(2)
+                color: sw.checked ? root.base : root.text
+                Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                Behavior on color { ColorAnimation { duration: 200 } }
+            }
+        }
+
+        MouseArea {
+            id: swMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: sw.toggled(!sw.checked)
+        }
+    }
+
+    component DynChip : Rectangle {
+        id: chip
+        required property var modelData
+        readonly property bool lit: (root.eqData.dynamics || "off") === modelData.key
+
+        implicitWidth: chipTxt.implicitWidth + root.s(18)
+        implicitHeight: root.s(26)
+        radius: Radius.outer(root.s(9))
+        color: lit ? root.mauve : (chipMa.containsMouse ? root.surface1 : "transparent")
+        Behavior on color { ColorAnimation { duration: 180 } }
+
+        Text {
+            id: chipTxt
+            anchors.centerIn: parent
+            text: chip.modelData.label
+            color: chip.lit ? root.base : root.subtext0
+            font.family: Fonts.ui
+            font.pixelSize: root.s(11)
+            font.bold: true
+            Behavior on color { ColorAnimation { duration: 180 } }
+        }
+
+        MouseArea {
+            id: chipMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.setDynamics(chip.modelData.key)
+        }
+    }
+
     component PresetButton : Rectangle {
         property string name: ""
         Layout.fillWidth: true
