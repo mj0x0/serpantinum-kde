@@ -3,6 +3,7 @@ import "../../services/cava"
 import "../../services/layout"
 import "../../services/lyrics"
 import "../../services/reusables"
+import "../../services/reusables" as V2
 import "../../services/settings"
 import "../../services/theme"
 import QtQuick
@@ -588,12 +589,6 @@ Item {
     function resetAudio() {
         if (audioTestRunning) toggleAudioTest();
         pushAudio({ balance: 0, mono: false, swap: false, dynamics: "off" }, "reset_audio");
-    }
-    function balanceLabel(v) {
-        var a = Math.abs(v);
-        if (a >= 0.995) return v < 0 ? "Left only" : "Right only";
-        if (a < 0.005) return "Centered";
-        return (v < 0 ? "Left" : "Right") + (a < 0.25 ? " slightly favored" : " favored");
     }
     readonly property bool audioDirty: Math.abs(Number(root.eqData.balance || 0)) >= 0.005
         || root.eqData.mono === true || root.eqData.swap === true
@@ -2172,51 +2167,36 @@ Item {
                         }
                     }
 
-                    // --- Audio --- balance, channel flags, dynamics; same footprint as the EQ.
-                    ColumnLayout {
+                    // --- Audio --- upstream MusicAudioView, verbatim minus GlassFill; same footprint as the EQ.
+                    Item {
                         visible: root.section === 1
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.s(267)
-                        spacing: root.s(12)
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            radius: Radius.outer(root.s(11))
-                            color: Qt.alpha(root.surface0, 0.6)
+                        ColumnLayout {
+                            anchors.top: parent.top
+                            anchors.topMargin: root.s(6)
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            spacing: root.s(8)
 
-                            opacity: root.introAudioBalance
-                            transform: Translate { y: root.s(14) * (1 - root.introAudioBalance) }
-
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.margins: root.s(14)
-                                anchors.topMargin: root.s(10)
-                                anchors.bottomMargin: root.s(10)
-                                spacing: root.s(2)
-
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    Text {
-                                        text: "Balance"
-                                        color: root.text
-                                        font.family: Fonts.ui
-                                        font.pixelSize: root.s(12)
-                                        font.bold: true
-                                    }
-                                    Item { Layout.fillWidth: true }
-                                    Text {
-                                        text: root.eqData.mono === true ? "Mono" : root.balanceLabel(balanceSlider.value)
-                                        color: root.subtext0
-                                        font.family: Fonts.ui
-                                        font.pixelSize: root.s(11)
-                                    }
-                                }
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: root.s(82)
+                                opacity: root.introAudioBalance
+                                transform: Translate { y: root.s(14) * (1 - root.introAudioBalance) }
+                                radius: Radius.outer(root.s(8))
+                                color: root.surface0
 
                                 Item {
                                     id: balanceControl
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.leftMargin: root.s(14)
+                                    anchors.rightMargin: root.s(14)
+                                    anchors.topMargin: root.s(5)
+                                    height: root.s(45)
                                     opacity: root.eqData.mono === true ? 0.45 : 1.0
                                     Behavior on opacity { NumberAnimation { duration: 150 } }
 
@@ -2224,14 +2204,13 @@ Item {
                                         model: 9
                                         Rectangle {
                                             required property int index
-                                            // Ticks sit where the handle centre lands, not at the raw edges.
-                                            x: balanceSlider.handleSize / 2 + index * (balanceControl.width - balanceSlider.handleSize) / 8 - width / 2
+                                            x: index * (balanceControl.width - width) / 8
                                             anchors.verticalCenter: parent.verticalCenter
                                             width: root.s(index === 4 ? 3 : 2)
-                                            height: root.s(index === 4 ? 30 : (index % 2 === 0 ? 22 : 16))
+                                            height: root.s(index === 4 ? 33 : (index % 2 === 0 ? 25 : 18))
                                             radius: width / 2
                                             color: root.subtext1
-                                            opacity: index === 4 ? 0.7 : 0.3
+                                            opacity: index === 4 ? 0.7 : 0.32
                                         }
                                     }
 
@@ -2244,19 +2223,19 @@ Item {
                                         value: Number(root.eqData.balance || 0)
                                         hoverEnabled: true
                                         enabled: root.eqData.mono !== true
-                                        readonly property real trackHeight: root.s(12)
-                                        readonly property real handleSize: root.s(20)
+                                        readonly property real trackHeight: root.s(14)
+                                        readonly property real handleSize: root.s(22)
 
-                                        // Dragging breaks the value binding; follow the state again once released.
                                         Connections {
                                             target: root
                                             function onEqDataChanged() {
                                                 if (!balanceSlider.pressed) {
-                                                    var v = Number(root.eqData.balance || 0);
-                                                    if (!isNaN(v)) balanceSlider.value = v;
+                                                    var nextBalance = Number(root.eqData.balance || 0);
+                                                    if (!isNaN(nextBalance)) balanceSlider.value = nextBalance;
                                                 }
                                             }
                                         }
+
                                         onPressedChanged: if (!pressed) root.setBalance(value)
 
                                         background: Rectangle {
@@ -2265,17 +2244,31 @@ Item {
                                             width: balanceSlider.availableWidth
                                             height: balanceSlider.trackHeight
                                             radius: height / 2
-                                            color: Qt.alpha(root.surface2, 0.7)
+                                            color: root.surface2
                                             clip: true
 
-                                            Rectangle {
+                                            Item {
                                                 property real handleCenter: balanceSlider.handleSize / 2 + balanceSlider.visualPosition * (parent.width - balanceSlider.handleSize)
                                                 x: Math.min(parent.width / 2, handleCenter)
                                                 width: Math.abs(handleCenter - parent.width / 2)
                                                 height: parent.height
-                                                color: root.mauve
+                                                clip: true
                                                 opacity: width > 0.5 ? 1.0 : 0.0
-                                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                                                Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+
+                                                Rectangle {
+                                                    x: balanceSlider.value < 0 ? 0 : -height / 2
+                                                    width: parent.width + height / 2
+                                                    height: parent.height
+                                                    radius: height / 2
+
+                                                    gradient: Gradient {
+                                                        orientation: Gradient.Horizontal
+                                                        GradientStop { position: 0.0; color: balanceSlider.value < 0 ? Qt.lighter(root.mauve, 1.10) : root.mauve }
+                                                        GradientStop { position: 0.5; color: Qt.lighter(root.mauve, 1.05) }
+                                                        GradientStop { position: 1.0; color: balanceSlider.value < 0 ? root.mauve : Qt.lighter(root.mauve, 1.10) }
+                                                    }
+                                                }
                                             }
                                         }
 
@@ -2283,76 +2276,134 @@ Item {
                                             x: balanceSlider.leftPadding + balanceSlider.visualPosition * (balanceSlider.availableWidth - width)
                                             y: balanceSlider.topPadding + balanceSlider.availableHeight / 2 - height / 2
                                             width: balanceSlider.handleSize
-                                            height: width
-                                            radius: width / 2
-                                            color: root.text
-                                            border.width: root.s(2)
-                                            border.color: root.mauve
-                                            scale: balanceSlider.pressed ? 1.12 : (balanceSlider.hovered ? 1.06 : 1.0)
-                                            Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+                                            height: balanceSlider.handleSize
+                                            radius: height / 2
+                                            color: balanceSlider.pressed ? Qt.lighter(root.mauve, 1.30)
+                                                 : (balanceSlider.hovered ? Qt.lighter(root.mauve, 1.15) : root.mauve)
+                                            scale: balanceSlider.pressed ? 1.25 : (balanceSlider.hovered ? 1.12 : 1.0)
+
+                                            Behavior on color { ColorAnimation { duration: 150 } }
+                                            Behavior on width { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                                            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
                                         }
                                     }
                                 }
 
                                 RowLayout {
-                                    Layout.fillWidth: true
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.bottom: parent.bottom
+                                    anchors.leftMargin: root.s(14)
+                                    anchors.rightMargin: root.s(14)
+                                    anchors.bottomMargin: root.s(9)
+
                                     Text {
-                                        text: "L " + Math.round((balanceSlider.value > 0 ? 1 - balanceSlider.value : 1) * 100) + "%"
+                                        text: "L  " + Math.round((balanceSlider.value > 0 ? 1 - balanceSlider.value : 1) * 100) + "%"
                                         color: root.subtext0
                                         font.family: Fonts.ui
-                                        font.pixelSize: root.s(10)
+                                        font.pixelSize: root.s(11.5)
                                         font.bold: true
                                     }
+
                                     Item { Layout.fillWidth: true }
+
                                     Text {
-                                        text: Math.round((balanceSlider.value < 0 ? 1 + balanceSlider.value : 1) * 100) + "% R"
+                                        text: Math.abs(balanceSlider.value) >= 0.995
+                                            ? (balanceSlider.value < 0 ? "Left only" : "Right only")
+                                            : (Math.abs(balanceSlider.value) < 0.005
+                                                ? "Centered"
+                                                : (Math.abs(balanceSlider.value) < 0.25
+                                                    ? (balanceSlider.value < 0 ? "Slightly left favored" : "Slightly right favored")
+                                                    : (balanceSlider.value < 0 ? "Left favored" : "Right favored")))
+                                        color: root.mauve
+                                        font.family: Fonts.ui
+                                        font.pixelSize: root.s(11.5)
+                                        font.bold: true
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    Text {
+                                        text: Math.round((balanceSlider.value < 0 ? 1 + balanceSlider.value : 1) * 100) + "%  R"
                                         color: root.subtext0
                                         font.family: Fonts.ui
-                                        font.pixelSize: root.s(10)
+                                        font.pixelSize: root.s(11.5)
                                         font.bold: true
                                     }
                                 }
                             }
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: root.s(44)
-                            spacing: root.s(10)
-
-                            opacity: root.introAudioFlags
-                            transform: Translate { y: root.s(14) * (1 - root.introAudioFlags) }
-
-                            AudioSwitch { label: "Mono audio"; checked: root.eqData.mono === true; onToggled: v => root.setAudioFlag("mono", v) }
-                            AudioSwitch { label: "Swap L/R";   checked: root.eqData.swap === true; onToggled: v => root.setAudioFlag("swap", v) }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: root.s(44)
-                            radius: Radius.outer(root.s(11))
-                            color: Qt.alpha(root.surface0, 0.6)
-
-                            opacity: root.introAudioDynamics
-                            transform: Translate { y: root.s(14) * (1 - root.introAudioDynamics) }
 
                             RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: root.s(14)
-                                anchors.rightMargin: root.s(8)
-                                spacing: root.s(4)
+                                Layout.fillWidth: true
+                                spacing: root.s(8)
+                                opacity: root.introAudioFlags
+                                transform: Translate { y: root.s(14) * (1 - root.introAudioFlags) }
 
-                                Text {
-                                    text: "Dynamic range"
-                                    color: root.text
-                                    font.family: Fonts.ui
-                                    font.pixelSize: root.s(12)
-                                    font.bold: true
-                                }
-                                Item { Layout.fillWidth: true }
                                 Repeater {
-                                    model: [{ "key": "off", "label": "Off" }, { "key": "balanced", "label": "Balanced" }, { "key": "night", "label": "Night" }]
-                                    delegate: DynChip {}
+                                    model: [{ "key": "mono", "label": "Mono audio" }, { "key": "swap", "label": "Swap L/R" }]
+
+                                    delegate: AudioRow {
+                                        id: flagRow
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        Layout.preferredWidth: 1
+                                        title: modelData.label
+
+                                        V2.Toggle {
+                                            id: audioFlagToggle
+                                            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                            Layout.preferredWidth: root.s(44)
+                                            Layout.preferredHeight: root.s(24)
+                                            horizontalPadding: 0
+                                            checked: root.eqData[flagRow.modelData.key] === true
+                                            accentColor: root.mauve
+                                            baseColor: root.surface2
+                                            handleColor: root.base
+                                            handleOffColor: root.text
+                                            onToggled: checked => root.setAudioFlag(flagRow.modelData.key, checked)
+
+                                            Connections {
+                                                target: root
+                                                function onEqDataChanged() {
+                                                    audioFlagToggle.checked = root.eqData[flagRow.modelData.key] === true;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            AudioRow {
+                                Layout.fillWidth: true
+                                opacity: root.introAudioDynamics
+                                transform: Translate { y: root.s(14) * (1 - root.introAudioDynamics) }
+                                title: "Dynamic range"
+
+                                V2.Switch {
+                                    id: dynamicsSwitch
+                                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                    Layout.preferredWidth: root.s(210)
+                                    Layout.preferredHeight: root.s(28)
+                                    options: ["Off", "Balanced", "Night"]
+                                    currentIndex: String(root.eqData.dynamics || "off") === "night" ? 2
+                                        : (String(root.eqData.dynamics || "off") === "balanced" ? 1 : 0)
+                                    accentColor: root.mauve
+                                    baseColor: root.surface2
+                                    textColor: root.subtext0
+                                    activeTextColor: root.base
+                                    cornerRadius: Radius.outer(root.s(8))
+                                    fontFamily: Fonts.ui
+                                    fontPixelSize: root.s(10.5)
+                                    minFontPixelSize: root.s(7)
+                                    onToggled: index => root.setDynamics(index === 2 ? "night" : (index === 1 ? "balanced" : "off"))
+
+                                    Connections {
+                                        target: root
+                                        function onEqDataChanged() {
+                                            var value = String(root.eqData.dynamics || "off");
+                                            dynamicsSwitch.currentIndex = value === "night" ? 2 : (value === "balanced" ? 1 : 0);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -2938,89 +2989,50 @@ Item {
         }
     }
 
-    component AudioSwitch : Rectangle {
-        id: sw
-        property string label: ""
-        property bool checked: false
-        signal toggled(bool value)
+    // Upstream's SettingsRow cut down to what the Audio view uses: a title and a
+    // right-hand control that drops under the title once the row is narrower than s(560).
+    component AudioRow : Rectangle {
+        id: arow
+        property string title: ""
+        readonly property bool stacked: arow.width < root.s(560)
+        default property alias content: arowControls.data
 
         Layout.fillWidth: true
-        Layout.fillHeight: true
-        radius: Radius.outer(root.s(11))
-        color: swMa.containsMouse ? Qt.alpha(root.surface1, 0.8) : Qt.alpha(root.surface0, 0.6)
-        Behavior on color { ColorAnimation { duration: 180 } }
+        radius: Radius.outer(root.s(8))
+        color: root.surface0
+        clip: true
+        implicitHeight: arowGrid.implicitHeight + root.s(9) * 2
 
-        Text {
+        GridLayout {
+            id: arowGrid
             anchors.left: parent.left
-            anchors.leftMargin: root.s(14)
-            anchors.verticalCenter: parent.verticalCenter
-            text: sw.label
-            color: sw.checked ? root.text : root.subtext0
-            font.family: Fonts.ui
-            font.pixelSize: root.s(12)
-            font.bold: true
-            Behavior on color { ColorAnimation { duration: 180 } }
-        }
-
-        Rectangle {
             anchors.right: parent.right
-            anchors.rightMargin: root.s(12)
+            anchors.leftMargin: root.s(14)
+            anchors.rightMargin: root.s(14)
             anchors.verticalCenter: parent.verticalCenter
-            width: root.s(34)
-            height: root.s(18)
-            radius: height / 2
-            color: sw.checked ? root.mauve : root.surface2
-            Behavior on color { ColorAnimation { duration: 200 } }
+            columnSpacing: root.s(12)
+            rowSpacing: root.s(8)
+            columns: arow.stacked ? 1 : 2
 
-            Rectangle {
-                width: root.s(14)
-                height: width
-                radius: width / 2
-                anchors.verticalCenter: parent.verticalCenter
-                x: sw.checked ? parent.width - width - root.s(2) : root.s(2)
-                color: sw.checked ? root.base : root.text
-                Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-                Behavior on color { ColorAnimation { duration: 200 } }
+            Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                Layout.alignment: Qt.AlignVCenter
+                text: arow.title
+                font.family: Fonts.ui
+                font.pixelSize: root.s(12)
+                font.bold: true
+                color: root.text
+                elide: Text.ElideRight
             }
-        }
 
-        MouseArea {
-            id: swMa
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: sw.toggled(!sw.checked)
-        }
-    }
-
-    component DynChip : Rectangle {
-        id: chip
-        required property var modelData
-        readonly property bool lit: (root.eqData.dynamics || "off") === modelData.key
-
-        implicitWidth: chipTxt.implicitWidth + root.s(18)
-        implicitHeight: root.s(26)
-        radius: Radius.outer(root.s(9))
-        color: lit ? root.mauve : (chipMa.containsMouse ? root.surface1 : "transparent")
-        Behavior on color { ColorAnimation { duration: 180 } }
-
-        Text {
-            id: chipTxt
-            anchors.centerIn: parent
-            text: chip.modelData.label
-            color: chip.lit ? root.base : root.subtext0
-            font.family: Fonts.ui
-            font.pixelSize: root.s(11)
-            font.bold: true
-            Behavior on color { ColorAnimation { duration: 180 } }
-        }
-
-        MouseArea {
-            id: chipMa
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.setDynamics(chip.modelData.key)
+            RowLayout {
+                id: arowControls
+                Layout.fillWidth: arow.stacked
+                Layout.columnSpan: arow.stacked ? arowGrid.columns : 1
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                spacing: root.s(8)
+            }
         }
     }
 
