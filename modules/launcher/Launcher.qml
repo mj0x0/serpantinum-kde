@@ -123,7 +123,7 @@ PanelWindow {
 
     ListModel { id: appModel }
 
-    // --- Emoji picker (type `emoji <query>`) --- KDE CLDR keywords, lazy-loaded, wl-copy.
+    // --- Emoji picker (type `emoji` or `emoji <query>`) --- KDE CLDR keywords, lazy-loaded, wl-copy.
     property var emojiData: null
     property bool emojiLoading: false
     readonly property string emojiJsonPath: ("" + Quickshell.shellDir).replace(/^file:\/\//, "") + "/helpers/emoji/emoji.json"
@@ -137,8 +137,8 @@ PanelWindow {
                 catch (e) { launcher.emojiData = []; }
                 launcher.emojiLoading = false;
                 // If the user is already mid-emoji-query, populate now that data's in.
-                var m = searchInput.text.match(/^emoji\s+(.+)$/i);
-                if (m) launcher.filterEmoji(m[1].trim());
+                var m = searchInput.text.match(/^emoji(?:\s+(.*))?$/i);
+                if (m) launcher.filterEmoji((m[1] || "").trim());
             }
         }
     }
@@ -155,10 +155,10 @@ PanelWindow {
             return;
         }
 
-        // "emoji <query>" → show matching emoji in the SAME list (no mode switch).
-        var em = query.match(/^emoji\s+(.*)$/i);
+        // "emoji" / "emoji <query>" → show emoji in the SAME list (no mode switch).
+        var em = query.match(/^emoji(?:\s+(.*))?$/i);
         if (em !== null) {
-            launcher.filterEmoji(em[1].trim());
+            launcher.filterEmoji((em[1] || "").trim());
             return;
         }
 
@@ -212,7 +212,7 @@ PanelWindow {
         LauncherState.hide();
     }
 
-    // Populate the list with emoji matches (or nothing for a bare "emoji ").
+    // Populate the list with emoji matches; a bare "emoji" lists every one in CLDR order.
     function filterEmoji(sub) {
         launcher.isKeyboardNav = false;
         if (keyboardNavTimer.running) keyboardNavTimer.stop();
@@ -220,20 +220,28 @@ PanelWindow {
         appList.positionViewAtBeginning();
 
         appModel.clear();
-        if (sub.length === 0) return;   // "emoji " alone → empty list, no flood
-
-        var results = launcher.emojiSearch(sub);
+        var results = sub.length === 0 ? launcher.emojiAll() : launcher.emojiSearch(sub);
+        var rows = [];
         for (var i = 0; i < results.length; i++)
-            appModel.append({ name: results[i].n, desc: "", icon: "", id: "", type: "emoji", emoji: results[i].e });
+            rows.push({ name: results[i].n, desc: "", icon: "", id: "", type: "emoji", emoji: results[i].e });
+        if (rows.length > 0) appModel.append(rows);   // one call; ~2000 single appends stutter
         if (appModel.count > 0) appList.currentIndex = 0;
+    }
+
+    // Kicks off the lazy load on first use; the loader re-filters once data lands.
+    function emojiReady() {
+        if (launcher.emojiData !== null) return true;
+        if (!launcher.emojiLoading) { launcher.emojiLoading = true; emojiLoader.running = true; }
+        return false;
+    }
+
+    function emojiAll() {
+        return launcher.emojiReady() ? launcher.emojiData : [];
     }
 
     // Rank: exact keyword > name-exact > prefix > substring; all tokens required.
     function emojiSearch(query) {
-        if (launcher.emojiData === null) {
-            if (!launcher.emojiLoading) { launcher.emojiLoading = true; emojiLoader.running = true; }
-            return [];
-        }
+        if (!launcher.emojiReady()) return [];
         var toks = query.toLowerCase().split(/\s+/).filter(function (t) { return t.length > 0; });
         if (toks.length === 0) return [];
         var joined = query.toLowerCase().replace(/\s+/g, "");
