@@ -2186,7 +2186,7 @@ Item {
                                 opacity: root.introAudioBalance
                                 transform: Translate { y: root.s(14) * (1 - root.introAudioBalance) }
                                 radius: Radius.outer(root.s(8))
-                                color: root.surface0
+                                color: Qt.alpha(root.surface0, 0.55)
 
                                 Item {
                                     id: balanceControl
@@ -2999,7 +2999,7 @@ Item {
 
         Layout.fillWidth: true
         radius: Radius.outer(root.s(8))
-        color: root.surface0
+        color: Qt.alpha(root.surface0, 0.55)
         clip: true
         implicitHeight: arowGrid.implicitHeight + root.s(9) * 2
 
