@@ -8,7 +8,7 @@ this is touched.
 | | |
 |---|---|
 | `matugen/` | app catalog, templates, themes, Plasma hook → `~/.config/matugen` |
-| `kde/shortcuts.conf` | one Serpantinum application, 30 actions registered unbound → `~/.local/share/kglobalaccel`; part of the core install, not an extra |
+| `kde/shortcuts.conf` | one Serpantinum application, every shell action registered unbound → `~/.local/share/kglobalaccel`; part of the core install, not an extra |
 | `spicetify/` | Text theme → `~/.config/spicetify/Themes/Text` |
 | `obsidian/` | Dashboard.md + snippets → your vault |
 | `default-colors.json` | seed palette, or the shell renders transparent |
