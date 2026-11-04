@@ -191,12 +191,19 @@ ShellRoot {
 
     // Do Not Disturb — bind `qs ipc call dnd toggle` to a KDE global shortcut.
     //   forMinutes(30) → timed DND that auto-clears; on()/off() are indefinite.
+    //   Presets mirror stock Plasma's menu; 06:00 morning, 20:00 evening.
     IpcHandler {
         target: "dnd"
         function toggle(): void { DndState.toggle() }
         function on(): void { DndState.enable() }
         function off(): void { DndState.disable() }
         function forMinutes(m: int): void { DndState.enableFor(m) }
+        function forOneHour(): void { DndState.enableFor(60) }
+        function forFourHours(): void { DndState.enableFor(240) }
+        function forSixHours(): void { DndState.enableFor(360) }
+        function untilEvening(): void { DndState.enableUntilHour(20) }
+        function untilMorning(): void { DndState.enableUntilHour(6) }
+        function untilMonday(): void { DndState.enableUntilWeekday(1, 6) }
     }
 
     // qs -p <this file> ipc call bluetooth toggle

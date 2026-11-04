@@ -13,8 +13,7 @@ Singleton {
     property bool enabled: false
     property double until: 0            // epoch ms; 0 = indefinite
 
-    // Ticks once a second only while a timed DND counts down, so any countdown UI
-    // stays live.
+    // Ticks while a timed DND counts down, so any countdown UI stays live.
     property double now: Date.now()
     readonly property int remainingSecs: (enabled && until > 0)
         ? Math.max(0, Math.round((until - now) / 1000)) : 0
@@ -44,7 +43,7 @@ Singleton {
     }
 
     Timer {
-        interval: 1000; repeat: true
+        interval: root.remainingSecs > 120 ? 60000 : 1000; repeat: true
         running: root.enabled && root.until > 0
         onTriggered: {
             root.now = Date.now();
@@ -57,4 +56,32 @@ Singleton {
     function enable()        { until = 0; enabled = true; _persist(); }            // indefinite
     function enableFor(mins) { now = Date.now(); until = now + mins * 60000; enabled = true; _persist(); }
     function disable()       { enabled = false; until = 0; _persist(); }
+
+    function enableUntil(epochMs) { if (epochMs <= Date.now()) return; now = Date.now(); until = epochMs; enabled = true; _persist(); }
+
+    // Next hour:00 — today if still ahead, otherwise tomorrow.
+    function enableUntilHour(hour) {
+        var d = new Date();
+        d.setHours(hour, 0, 0, 0);
+        if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+        enableUntil(d.getTime());
+    }
+
+    function enableUntilWeekday(day, hour) {   // day: 0 = Sunday
+        var d = new Date();
+        d.setHours(hour, 0, 0, 0);
+        d.setDate(d.getDate() + ((day - d.getDay() + 7) % 7));
+        if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 7);
+        enableUntil(d.getTime());
+    }
+
+    // Called from a binding, so it reads `remainingSecs` to stay live.
+    function remainingLabel() {
+        var m = Math.ceil(root.remainingSecs / 60);
+        if (m < 60) return m + " min";
+        var h = Math.floor(m / 60);
+        if (h < 24) return (m % 60) ? h + " h " + (m % 60) + " min" : h + " h";
+        var d = Math.floor(h / 24);
+        return (h % 24) ? d + " d " + (h % 24) + " h" : d + " d";
+    }
 }

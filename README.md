@@ -69,7 +69,7 @@ prints the interface instead of invoking it** — use `toggle` from the CLI.
 | `screenshot` | `toggle` `show` `hide` `edit` `state` |
 | `record` | `toggle` `stop` `pause` `status` |
 | `keepawake` | `toggle` `on` `off` |
-| `dnd` | `toggle` `on` `off` `forMinutes <m>` |
+| `dnd` | `toggle` `on` `off` `forMinutes <m>` `forOneHour` `forFourHours` `forSixHours` `untilEvening` `untilMorning` `untilMonday` |
 | `osd` | `peek <kind>` `state` |
 | `floating` | `toggle` `show` `hide` `openTab <i>` `setIndex <i>` `forceReload` |
 | `redactor` (alias `widget-redactor`) | `activate` `open <mon> <id>` `toggle` `close` |

@@ -648,7 +648,7 @@ Item {
                             label: "Do not disturb"
                             glyph: "\u{f009c}"
                             desc: DndState.enabled && DndState.until > 0
-                                ? "Silenced for " + Math.ceil(DndState.remainingSecs / 60) + " min more"
+                                ? "Silenced for " + DndState.remainingLabel() + " more"
                                 : "Toasts stay quiet, critical ones still show. Kept out of settings.json"
                             Toggle {
                                 checked: DndState.enabled
