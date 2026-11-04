@@ -1038,7 +1038,7 @@ Item {
 
         Rectangle {
             id: dndCard
-            width: root.s(196)
+            width: Math.max(root.s(196), dndMenuCol.implicitWidth + root.s(12))
             height: dndMenuCol.implicitHeight + root.s(12)
             radius: Radius.outer(root.s(14))
             color: ThemeBackend.surface0
@@ -1064,6 +1064,7 @@ Item {
                         readonly property bool sep: modelData.sep === true
 
                         Layout.fillWidth: true
+                        implicitWidth: sep ? 0 : presetContent.implicitWidth + root.s(20)
                         implicitHeight: sep ? root.s(9) : root.s(30)
 
                         Rectangle {
@@ -1083,6 +1084,7 @@ Item {
                         }
 
                         RowLayout {
+                            id: presetContent
                             visible: !presetRow.sep
                             anchors.fill: parent
                             anchors.leftMargin: root.s(10)
