@@ -189,20 +189,38 @@ Item {
                 }
             }
 
-            ClickButton {
-                id: dndBtn
-                Layout.preferredWidth: root.s(86)
-                Layout.preferredHeight: root.s(32)
-                horizontalPadding: root.s(10)
-                cornerRadius: Radius.inner(root.s(10), root.s(16))
-                buttonText: root.dndEnabled ? "Silent" : "Mute"
-                textFontSize: root.s(11)
-                buttonIcon: root.dndEnabled ? "󰂛" : "󰂚"
-                iconFontSize: root.s(14)
-                accentColor: root.dndEnabled ? ThemeBackend.blue : ThemeBackend.surface1
-                textColor: root.dndEnabled ? ThemeBackend.crust : ThemeBackend.text
+            RowLayout {
+                spacing: root.s(2)
 
-                onTriggered: DndState.toggle()
+                ClickButton {
+                    id: dndBtn
+                    Layout.preferredWidth: root.s(78)
+                    Layout.preferredHeight: root.s(32)
+                    horizontalPadding: root.s(10)
+                    cornerRadius: Radius.inner(root.s(10), root.s(16))
+                    buttonText: root.dndEnabled ? "Silent" : "Mute"
+                    textFontSize: root.s(11)
+                    buttonIcon: root.dndEnabled ? "󰂛" : "󰂚"
+                    iconFontSize: root.s(14)
+                    accentColor: root.dndEnabled ? ThemeBackend.blue : ThemeBackend.surface1
+                    textColor: root.dndEnabled ? ThemeBackend.crust : ThemeBackend.text
+
+                    onTriggered: DndState.toggle()
+                }
+
+                ClickButton {
+                    id: dndChevron
+                    Layout.preferredWidth: root.s(24)
+                    Layout.preferredHeight: root.s(32)
+                    horizontalPadding: root.s(4)
+                    cornerRadius: Radius.inner(root.s(10), root.s(16))
+                    buttonIcon: "\u{f0140}"
+                    iconFontSize: root.s(14)
+                    accentColor: root.dndEnabled ? ThemeBackend.blue : ThemeBackend.surface1
+                    textColor: root.dndEnabled ? ThemeBackend.crust : ThemeBackend.text
+
+                    onTriggered: dndMenu.open ? dndMenu.open = false : dndMenu.show()
+                }
             }
         }
 
@@ -953,6 +971,164 @@ Item {
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    readonly property var dndMenuRows: {
+        var rows = [
+            { id: "1h",      label: "For 1 hour" },
+            { id: "4h",      label: "For 4 hours" },
+            { id: "6h",      label: "For 6 hours" },
+            { id: "evening", label: "Until this evening" },
+            { id: "morning", label: "Until tomorrow morning" },
+            { id: "monday",  label: "Until Monday" },
+            { id: "always",  label: "Until manually disabled" }
+        ];
+        if (root.dndEnabled)
+            rows.push({ sep: true }, { id: "off", label: "Turn off" });
+        return rows;
+    }
+
+    function applyDndPreset(id) {
+        if (id === "1h") DndState.enableFor(60);
+        else if (id === "4h") DndState.enableFor(240);
+        else if (id === "6h") DndState.enableFor(360);
+        else if (id === "evening") DndState.enableUntilHour(20);
+        else if (id === "morning") DndState.enableUntilHour(6);
+        else if (id === "monday") DndState.enableUntilWeekday(1, 6);
+        else if (id === "always") DndState.enable();
+        else DndState.disable();
+    }
+
+    property var dndHints: ({})
+
+    // A clock preset rolls forward once its hour has passed, so each row shows where it lands.
+    function dndPresetHint(id) {
+        var t = 0;
+        if (id === "evening") t = DndState.hourDeadline(20);
+        else if (id === "morning") t = DndState.hourDeadline(6);
+        else if (id === "monday") t = DndState.weekdayDeadline(1, 6);
+        else return "";
+        var d = new Date(t);
+        return Qt.formatDateTime(d, d.toDateString() === new Date().toDateString() ? "HH:mm" : "ddd HH:mm");
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        z: 49
+        visible: dndMenu.open
+        onClicked: dndMenu.open = false
+    }
+
+    Item {
+        id: dndMenu
+        z: 50
+        width: dndCard.width
+        height: dndCard.height
+        visible: opacity > 0.001
+        opacity: open ? 1 : 0
+
+        property bool open: false
+
+        Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+
+        function show() {
+            var h = {};
+            for (var i = 0; i < root.dndMenuRows.length; i++) {
+                var r = root.dndMenuRows[i];
+                if (r.id) h[r.id] = root.dndPresetHint(r.id);
+            }
+            root.dndHints = h;
+            var p = dndChevron.mapToItem(root, 0, 0);
+            x = Math.max(root.s(8), Math.min(root.width - width - root.s(8), p.x + dndChevron.width - width));
+            y = p.y + dndChevron.height + root.s(6);
+            open = true;
+        }
+
+        Rectangle {
+            id: dndCard
+            width: root.s(196)
+            height: dndMenuCol.implicitHeight + root.s(12)
+            radius: Radius.outer(root.s(14))
+            color: ThemeBackend.base
+            border.width: 1
+            border.color: Qt.rgba(ThemeBackend.surface2.r, ThemeBackend.surface2.g, ThemeBackend.surface2.b, 0.9)
+            scale: 0.97 + 0.03 * dndMenu.opacity
+
+            MouseArea { anchors.fill: parent }
+
+            ColumnLayout {
+                id: dndMenuCol
+                x: root.s(6)
+                y: root.s(6)
+                width: dndCard.width - root.s(12)
+                spacing: 0
+
+                Repeater {
+                    model: root.dndMenuRows
+
+                    delegate: Item {
+                        id: presetRow
+                        required property var modelData
+                        readonly property bool sep: modelData.sep === true
+
+                        Layout.fillWidth: true
+                        implicitHeight: sep ? root.s(9) : root.s(30)
+
+                        Rectangle {
+                            visible: presetRow.sep
+                            anchors.centerIn: parent
+                            width: parent.width - root.s(12)
+                            height: 1
+                            color: Qt.rgba(ThemeBackend.text.r, ThemeBackend.text.g, ThemeBackend.text.b, 0.08)
+                        }
+
+                        Rectangle {
+                            visible: !presetRow.sep
+                            anchors.fill: parent
+                            radius: Radius.inner(root.s(9), root.s(12))
+                            color: presetMa.containsMouse ? ThemeBackend.surface1 : "transparent"
+                            Behavior on color { ColorAnimation { duration: 120 } }
+                        }
+
+                        RowLayout {
+                            visible: !presetRow.sep
+                            anchors.fill: parent
+                            anchors.leftMargin: root.s(10)
+                            anchors.rightMargin: root.s(10)
+                            spacing: root.s(10)
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: presetRow.modelData.label || ""
+                                elide: Text.ElideRight
+                                font.family: ThemeBackend.fontFamily
+                                font.pixelSize: root.s(12)
+                                color: ThemeBackend.text
+                            }
+
+                            Text {
+                                text: root.dndHints[presetRow.modelData.id] || ""
+                                font.family: ThemeBackend.fontFamily
+                                font.pixelSize: root.s(11)
+                                color: ThemeBackend.subtext0
+                            }
+                        }
+
+                        MouseArea {
+                            id: presetMa
+                            anchors.fill: parent
+                            enabled: !presetRow.sep
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.applyDndPreset(presetRow.modelData.id);
+                                dndMenu.open = false;
                             }
                         }
                     }

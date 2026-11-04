@@ -60,20 +60,23 @@ Singleton {
     function enableUntil(epochMs) { if (epochMs <= Date.now()) return; now = Date.now(); until = epochMs; enabled = true; _persist(); }
 
     // Next hour:00 — today if still ahead, otherwise tomorrow.
-    function enableUntilHour(hour) {
+    function hourDeadline(hour) {
         var d = new Date();
         d.setHours(hour, 0, 0, 0);
         if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
-        enableUntil(d.getTime());
+        return d.getTime();
     }
 
-    function enableUntilWeekday(day, hour) {   // day: 0 = Sunday
+    function weekdayDeadline(day, hour) {   // day: 0 = Sunday
         var d = new Date();
         d.setHours(hour, 0, 0, 0);
         d.setDate(d.getDate() + ((day - d.getDay() + 7) % 7));
         if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 7);
-        enableUntil(d.getTime());
+        return d.getTime();
     }
+
+    function enableUntilHour(hour)         { enableUntil(hourDeadline(hour)); }
+    function enableUntilWeekday(day, hour) { enableUntil(weekdayDeadline(day, hour)); }
 
     // Called from a binding, so it reads `remainingSecs` to stay live.
     function remainingLabel() {
