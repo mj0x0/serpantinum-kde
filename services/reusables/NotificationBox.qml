@@ -1019,6 +1019,11 @@ Item {
         opacity: open ? 1 : 0
 
         property bool open: false
+        property real anchorX: 0
+        property real anchorY: 0
+
+        x: Math.max(root.s(8), Math.min(root.width - width - root.s(8), anchorX + dndBtn.width - width))
+        y: anchorY + dndBtn.height + root.s(6)
 
         Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
@@ -1030,8 +1035,8 @@ Item {
             }
             root.dndHints = h;
             var p = dndBtn.mapToItem(root, 0, 0);
-            x = Math.max(root.s(8), Math.min(root.width - width - root.s(8), p.x + dndBtn.width - width));
-            y = p.y + dndBtn.height + root.s(6);
+            anchorX = p.x;
+            anchorY = p.y;
             open = true;
         }
 
