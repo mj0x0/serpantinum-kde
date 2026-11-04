@@ -191,7 +191,6 @@ Item {
 
             ClickButton {
                 id: dndBtn
-                Layout.preferredWidth: root.s(104)
                 Layout.preferredHeight: root.s(32)
                 horizontalPadding: root.s(10)
                 cornerRadius: Radius.inner(root.s(10), root.s(16))
