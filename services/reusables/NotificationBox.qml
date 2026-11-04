@@ -1038,7 +1038,7 @@ Item {
 
         Rectangle {
             id: dndCard
-            width: Math.max(root.s(196), dndMenuCol.implicitWidth + root.s(12))
+            width: dndMenuCol.width + root.s(12)
             height: dndMenuCol.implicitHeight + root.s(12)
             radius: Radius.outer(root.s(14))
             color: ThemeBackend.surface0
@@ -1052,7 +1052,7 @@ Item {
                 id: dndMenuCol
                 x: root.s(6)
                 y: root.s(6)
-                width: dndCard.width - root.s(12)
+                width: Math.min(root.s(360), Math.max(root.s(184), implicitWidth))
                 spacing: 0
 
                 Repeater {
