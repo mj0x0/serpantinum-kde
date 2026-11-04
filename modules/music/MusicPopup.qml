@@ -195,7 +195,9 @@ Item {
             var b = root.browserMark();
             return b ? b.label : "Browser";
         }
-        return "" + (root.musicData.source || "Offline");
+        // MPRIS Identity is the player's own name; the bus name is a hash for kdeconnect.
+        var id = Lyrics.player ? ("" + (Lyrics.player.identity || "")).trim() : "";
+        return id || ("" + (root.musicData.source || "Offline"));
     }
 
     // Ten sliders, ten frequency bands: cava can show what each one is acting on.
