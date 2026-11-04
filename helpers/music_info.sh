@@ -19,11 +19,14 @@ if [ ! -f "$PLACEHOLDER" ]; then
 fi
 
 # --- Dynamic player selection --- never hard-code names: first Playing player with
-# length > 0, else the first Paused one.
+# length > 0, else the first Paused one. A KDE Connect player usually mirrors this machine's
+# session (the phone acting as a Spotify Connect remote), so it only wins when nothing local has it.
 selected_player=""
 selected_status=""
 paused_player=""
 paused_status=""
+remote_playing=""
+remote_paused=""
 
 while IFS= read -r p; do
     [ -z "$p" ] && continue
@@ -38,6 +41,15 @@ while IFS= read -r p; do
         valid=0
     fi
 
+    if [ "$valid" -eq 1 ] && [[ "$p" == kdeconnect.mpris_* ]]; then
+        if [ "$st" = "Playing" ] && [ -z "$remote_playing" ]; then
+            remote_playing="$p"
+        elif [ "$st" = "Paused" ] && [ -z "$remote_paused" ]; then
+            remote_paused="$p"
+        fi
+        continue
+    fi
+
     if [ "$st" = "Playing" ] && [ "$valid" -eq 1 ]; then
         selected_player="$p"
         selected_status="Playing"
@@ -50,10 +62,18 @@ while IFS= read -r p; do
     fi
 done < <(timeout "$PT_TIMEOUT" playerctl -l 2>/dev/null || true)
 
-# Prefer Playing, but fall back to Paused.
-if [ -z "$selected_player" ] && [ -n "$paused_player" ]; then
-    selected_player="$paused_player"
-    selected_status="$paused_status"
+# Local Playing, then remote Playing, then local Paused, then remote Paused.
+if [ -z "$selected_player" ]; then
+    if [ -n "$remote_playing" ]; then
+        selected_player="$remote_playing"
+        selected_status="Playing"
+    elif [ -n "$paused_player" ]; then
+        selected_player="$paused_player"
+        selected_status="$paused_status"
+    elif [ -n "$remote_paused" ]; then
+        selected_player="$remote_paused"
+        selected_status="Paused"
+    fi
 fi
 
 # --- 3. STOPPED FALLBACK ---
