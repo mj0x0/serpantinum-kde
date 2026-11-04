@@ -189,38 +189,24 @@ Item {
                 }
             }
 
-            RowLayout {
-                spacing: root.s(2)
+            ClickButton {
+                id: dndBtn
+                Layout.preferredWidth: root.s(104)
+                Layout.preferredHeight: root.s(32)
+                horizontalPadding: root.s(10)
+                cornerRadius: Radius.inner(root.s(10), root.s(16))
+                contentAlignment: Qt.AlignLeft
+                trailingIcon: "\u{f0140}"
+                trailingIconSize: root.s(13)
+                buttonText: root.dndEnabled ? "Silent" : "Mute"
+                textFontSize: root.s(11)
+                buttonIcon: root.dndEnabled ? "󰂛" : "󰂚"
+                iconFontSize: root.s(14)
+                accentColor: root.dndEnabled ? ThemeBackend.blue : ThemeBackend.surface1
+                textColor: root.dndEnabled ? ThemeBackend.crust : ThemeBackend.text
 
-                ClickButton {
-                    id: dndBtn
-                    Layout.preferredWidth: root.s(78)
-                    Layout.preferredHeight: root.s(32)
-                    horizontalPadding: root.s(10)
-                    cornerRadius: Radius.inner(root.s(10), root.s(16))
-                    buttonText: root.dndEnabled ? "Silent" : "Mute"
-                    textFontSize: root.s(11)
-                    buttonIcon: root.dndEnabled ? "󰂛" : "󰂚"
-                    iconFontSize: root.s(14)
-                    accentColor: root.dndEnabled ? ThemeBackend.blue : ThemeBackend.surface1
-                    textColor: root.dndEnabled ? ThemeBackend.crust : ThemeBackend.text
-
-                    onTriggered: DndState.toggle()
-                }
-
-                ClickButton {
-                    id: dndChevron
-                    Layout.preferredWidth: root.s(24)
-                    Layout.preferredHeight: root.s(32)
-                    horizontalPadding: root.s(4)
-                    cornerRadius: Radius.inner(root.s(10), root.s(16))
-                    buttonIcon: "\u{f0140}"
-                    iconFontSize: root.s(14)
-                    accentColor: root.dndEnabled ? ThemeBackend.blue : ThemeBackend.surface1
-                    textColor: root.dndEnabled ? ThemeBackend.crust : ThemeBackend.text
-
-                    onTriggered: dndMenu.open ? dndMenu.open = false : dndMenu.show()
-                }
+                onTriggered: DndState.toggle()
+                onTrailingTriggered: dndMenu.open ? dndMenu.open = false : dndMenu.show()
             }
         }
 
@@ -1044,9 +1030,9 @@ Item {
                 if (r.id) h[r.id] = root.dndPresetHint(r.id);
             }
             root.dndHints = h;
-            var p = dndChevron.mapToItem(root, 0, 0);
-            x = Math.max(root.s(8), Math.min(root.width - width - root.s(8), p.x + dndChevron.width - width));
-            y = p.y + dndChevron.height + root.s(6);
+            var p = dndBtn.mapToItem(root, 0, 0);
+            x = Math.max(root.s(8), Math.min(root.width - width - root.s(8), p.x + dndBtn.width - width));
+            y = p.y + dndBtn.height + root.s(6);
             open = true;
         }
 
@@ -1055,7 +1041,7 @@ Item {
             width: root.s(196)
             height: dndMenuCol.implicitHeight + root.s(12)
             radius: Radius.outer(root.s(14))
-            color: ThemeBackend.base
+            color: ThemeBackend.surface0
             border.width: 1
             border.color: Qt.rgba(ThemeBackend.surface2.r, ThemeBackend.surface2.g, ThemeBackend.surface2.b, 0.9)
             scale: 0.97 + 0.03 * dndMenu.opacity

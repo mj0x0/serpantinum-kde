@@ -14,7 +14,9 @@ Item {
     property string buttonText: ""
     property string subText: ""
     property string buttonIcon: ""
+    property string trailingIcon: ""
     property int iconFontSize: 15
+    property int trailingIconSize: 13
     property int textFontSize: 12
     
     property int maxTextWidth: 0
@@ -27,12 +29,13 @@ Item {
     property real calculatedContentWidth: (iconLabel.visible ? iconLabel.implicitWidth : 0)
                                          + (iconLabel.visible && textCol.visible ? mainRow.spacing : 0)
                                          + (textCol.visible ? boundedTextWidth : 0)
+                                         + (trailingLabel.visible ? trailingLabel.implicitWidth + mainRow.spacing : 0)
 
     property real desiredWidth: calculatedContentWidth + horizontalPadding * 2
     implicitWidth: root.maxWidth > 0 ? Math.min(desiredWidth, root.maxWidth) : desiredWidth
     implicitHeight: 30
 
-    property real availableTextWidth: Math.max(0, root.width - (root.horizontalPadding * 2) - (iconLabel.visible ? (iconLabel.implicitWidth + mainRow.spacing) : 0))
+    property real availableTextWidth: Math.max(0, root.width - (root.horizontalPadding * 2) - (iconLabel.visible ? (iconLabel.implicitWidth + mainRow.spacing) : 0) - (trailingLabel.visible ? (trailingLabel.implicitWidth + mainRow.spacing) : 0))
 
     property color accentColor: "#313244"
     property color textColor: "#cdd6f4"
@@ -44,6 +47,7 @@ Item {
     property int acceptedButtons: Qt.LeftButton
 
     signal clicked()
+    signal trailingTriggered()
     signal rightClicked()
     signal triggered()
     signal wheel(var wheel)
@@ -123,6 +127,20 @@ Item {
                     Layout.maximumWidth: Math.ceil(root.maxTextWidth > 0 ? Math.min(root.maxTextWidth, root.availableTextWidth) : root.availableTextWidth) + 2
                 }
             }
+
+        }
+
+        Text {
+            id: trailingLabel
+            visible: root.trailingIcon !== ""
+            text: root.trailingIcon
+            font.family: "Iosevka Nerd Font"
+            font.pixelSize: root.trailingIconSize
+            color: root.iconColor
+            opacity: 0.75
+            anchors.right: parent.right
+            anchors.rightMargin: root.horizontalPadding
+            anchors.verticalCenter: parent.verticalCenter
         }
 
         Rectangle {
@@ -132,6 +150,19 @@ Item {
             opacity: root.flashOpacity
             PropertyAnimation on opacity { id: btnFlashAnim; to: 0; duration: 350; easing.type: Easing.OutExpo }
         }
+    }
+
+    MouseArea {
+        id: trailingMa
+        visible: root.trailingIcon !== ""
+        z: 1
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: trailingLabel.implicitWidth + root.horizontalPadding * 2
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.trailingTriggered()
     }
 
     MouseArea {
