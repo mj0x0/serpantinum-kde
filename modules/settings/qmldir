@@ -30,3 +30,6 @@ ThemeMatugenSection 1.0 ThemeMatugenSection.qml
 ThemeAppsSection 1.0 ThemeAppsSection.qml
 singleton SettingsState 1.0 SettingsState.qml
 SettingsHeading 1.0 SettingsHeading.qml
+SettingsPage 1.0 SettingsPage.qml
+SettingsTintPick 1.0 SettingsTintPick.qml
+SettingsSecretField 1.0 SettingsSecretField.qml
