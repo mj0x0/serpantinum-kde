@@ -33,3 +33,6 @@ SettingsHeading 1.0 SettingsHeading.qml
 SettingsPage 1.0 SettingsPage.qml
 SettingsTintPick 1.0 SettingsTintPick.qml
 SettingsSecretField 1.0 SettingsSecretField.qml
+SettingsSidebar 1.0 SettingsSidebar.qml
+SettingsContent 1.0 SettingsContent.qml
+SettingsSearchResults 1.0 SettingsSearchResults.qml
