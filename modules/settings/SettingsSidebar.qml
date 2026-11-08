@@ -25,8 +25,8 @@ Rectangle {
     width: popup.s(232)
     color: Qt.alpha(popup.surface0, 0.4)
 
-    topLeftRadius: Radius.eased(popup.s(18))
-    bottomLeftRadius: Radius.eased(popup.s(18))
+    topLeftRadius: popup.radiusTL
+    bottomLeftRadius: popup.radiusBL
 
     opacity: popup.introSidebar
     transform: Translate { x: popup.s(-30) * (1.0 - popup.introSidebar) }

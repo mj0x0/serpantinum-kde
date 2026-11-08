@@ -36,3 +36,4 @@ SettingsSecretField 1.0 SettingsSecretField.qml
 SettingsSidebar 1.0 SettingsSidebar.qml
 SettingsContent 1.0 SettingsContent.qml
 SettingsSearchResults 1.0 SettingsSearchResults.qml
+SettingsWindow 1.0 SettingsWindow.qml

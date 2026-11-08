@@ -1,19 +1,27 @@
 pragma Singleton
-import "../popups"
-
 import QtQuick
 import Quickshell
 
 Singleton {
-    readonly property bool open: Popups.current === "settings"
-    property string section: ""      // reserved: deep-link to a section later
+    property bool open: false
+    property string section: ""      // deep link: a tab or subtab name, read by the popup
 
-    function toggle() { Popups.toggle("settings") }
-    function hide()   { Popups.hideIf("settings") }
+    // Held shortcuts re-fire on some keyboards; a toggle settles briefly, as in LauncherState.
+    property double lastToggle: 0
+    readonly property int settleMs: 500
 
-    // show() or show("bar") - the popup maps the name onto its tab index.
+    function toggle() {
+        var now = Date.now();
+        if (now - lastToggle < settleMs) return;
+        lastToggle = now;
+        open = !open
+    }
+
+    // show() or show("bar") - the popup maps the name onto its tab.
     function show(name) {
         if (name !== undefined && name !== null && name !== "") section = "" + name;
-        Popups.show("settings");
+        lastToggle = Date.now();
+        open = true
     }
+    function hide() { lastToggle = 0; open = false }
 }

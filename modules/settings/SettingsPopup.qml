@@ -51,6 +51,15 @@ Item {
         return Math.round(dx * (px === undefined ? 1 : px / window.s(16)));
     }
 
+    // Set by SettingsWindow when the card sits flush on a screen edge: that side goes square.
+    property string attachEdge: ""
+    property real cardRadius: Radius.eased(s(18))
+    readonly property bool flush: attachEdge !== ""
+    readonly property real radiusTL: (attachEdge === "top"    || attachEdge === "left")  ? 0 : cardRadius
+    readonly property real radiusTR: (attachEdge === "top"    || attachEdge === "right") ? 0 : cardRadius
+    readonly property real radiusBL: (attachEdge === "bottom" || attachEdge === "left")  ? 0 : cardRadius
+    readonly property real radiusBR: (attachEdge === "bottom" || attachEdge === "right") ? 0 : cardRadius
+
     property int currentTab: 0
     property int currentSubTab: 0
     property int expandedTab: -1
@@ -725,14 +734,18 @@ Item {
     Item {
         anchors.fill: parent
         opacity: window.introBase
-        scale: 0.95 + 0.05 * window.introBase
+        scale: window.flush ? 1 : 0.95 + 0.05 * window.introBase
 
         Rectangle {
             anchors.fill: parent
             color: window.base
-            radius: Radius.eased(window.s(18))
+            radius: window.cardRadius
+            topLeftRadius: window.radiusTL
+            topRightRadius: window.radiusTR
+            bottomLeftRadius: window.radiusBL
+            bottomRightRadius: window.radiusBR
             border.color: window.surface0
-            border.width: 1
+            border.width: window.flush ? 0 : 1
 
             SettingsSidebar {
                 id: sidebar

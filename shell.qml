@@ -121,6 +121,7 @@ ShellRoot {
     }
 
     // qs -p <this file> ipc call settings toggle
+    SettingsWindow {}
     IpcHandler {
         target: "settings"
         function toggle(): void { SettingsState.toggle() }

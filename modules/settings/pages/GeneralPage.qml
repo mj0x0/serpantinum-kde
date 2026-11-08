@@ -41,4 +41,16 @@ SettingsPage {
             onPicked: v => ShellSettings.setValue("cheatsheet.superKey", v)
         }
     }
+    SettingsRow {
+        host: page.host
+        label: "Settings position"
+        glyph: "\u{f0463}"
+        desc: "center floats this card; an edge attaches it there, opposite is across from the bar"
+        SettingsChips {
+            host: page.host
+            options: ["center", "opposite", "top", "bottom", "left", "right"]
+            current: "" + ShellSettings.value("settings.position", "center")
+            onPicked: v => ShellSettings.setValue("settings.position", v)
+        }
+    }
 }

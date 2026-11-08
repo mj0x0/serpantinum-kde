@@ -15,7 +15,6 @@ var table = {
     // v2's System Panel: a full-height sheet on the right, or the left when the bar is there.
     notifcenter: { w: 500,  h: "fill", comp: "../notifcenter/SystemPanel.qml",
                    pos: { top: "right-edge", bottom: "right-edge", left: "right-edge", right: "left-edge" } },
-    settings:    { w: 1200, h: 750, comp: "../settings/SettingsPopup.qml",     pos: centered() },
     wallpaper:   { w: "fill", h: 650, comp: "../wallpaper/WallpaperPicker.qml", pos: centered() },
     cheatsheet:  { w: 1240, h: 700, comp: "../cheatsheet/CheatsheetPopup.qml", pos: centered() },
     focustime:   { w: 900,  h: 700, comp: "../focustime/FocusTimePopup.qml",   pos: centered() }

@@ -9,6 +9,7 @@ import "../../services/settings"
 import "../../services/theme"
 import "../launcher"
 import "../popups"
+import "../settings"
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
@@ -90,6 +91,10 @@ PanelWindow {
     Connections {
         target: Popups
         function onTargetChanged() { if (Popups.target !== "hidden") ClipboardState.hide() }
+    }
+    Connections {
+        target: SettingsState
+        function onOpenChanged() { if (SettingsState.open) ClipboardState.hide() }
     }
 
     // --- Views: one history, filtered; images browse as a grid ---------------

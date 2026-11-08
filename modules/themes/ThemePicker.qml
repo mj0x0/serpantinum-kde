@@ -9,6 +9,7 @@ import "../../services/theme"
 import "../clipboard"
 import "../launcher"
 import "../popups"
+import "../settings"
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Shapes
@@ -87,6 +88,10 @@ PanelWindow {
     Connections {
         target: Popups
         function onTargetChanged() { if (Popups.target !== "hidden") ThemePickerState.hide() }
+    }
+    Connections {
+        target: SettingsState
+        function onOpenChanged() { if (SettingsState.open) ThemePickerState.hide() }
     }
 
     // --- Geometry -----------------------------------------------------------
