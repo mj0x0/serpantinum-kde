@@ -1,0 +1,27 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "mj0x0"
+            }
+        ],
+        "Category": "Date and Time",
+        "Description": "serpantinum's clock faces",
+        "FormFactors": [
+            "desktop"
+        ],
+        "Icon": "clock",
+        "Id": "org.serpantinum.clock",
+        "License": "AGPL-3.0-or-later",
+        "Name": "Serpantinum Clock",
+        "Version": "0.1.0",
+        "Website": "https://github.com/mj0x0/quickshell-rice-mj0x0"
+    },
+    "X-KDE-ParentApp": "org.kde.plasmashell",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-Provides": [
+        "org.kde.plasma.time",
+        "org.kde.plasma.date"
+    ]
+}

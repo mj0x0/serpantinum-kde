@@ -1,0 +1,23 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "mj0x0"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "serpantinum's CPU, RAM, disk and temperature cards",
+        "FormFactors": [
+            "desktop"
+        ],
+        "Icon": "utilities-system-monitor",
+        "Id": "org.serpantinum.usage",
+        "License": "AGPL-3.0-or-later",
+        "Name": "Serpantinum Usage",
+        "Version": "0.1.0",
+        "Website": "https://github.com/mj0x0/quickshell-rice-mj0x0"
+    },
+    "X-KDE-ParentApp": "org.kde.plasmashell",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

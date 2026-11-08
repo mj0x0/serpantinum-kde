@@ -123,6 +123,7 @@ Item {
     property real wingsReveal: 0.0
     property real contentReveal: 0.0
     property real panelReveal: 0.0
+    readonly property real wallpaperReveal: isPlayingIntro ? 1.0 : panelReveal
     property real mainOpacity: 1.0
     property real foldScaleX: 1.0
     property real foldScaleY: 1.0
@@ -161,10 +162,10 @@ Item {
     SequentialAnimation {
         id: introSequence
         ParallelAnimation {
-            NumberAnimation { target: lockScreenUi; property: "panelReveal"; from: 0.0; to: 1.0; duration: 750; easing.type: Easing.OutCubic }
+            NumberAnimation { target: lockScreenUi; property: "panelReveal"; from: 0.0; to: 1.0; duration: 600; easing.type: Easing.Linear }
             SequentialAnimation {
-                PauseAnimation { duration: 200 }
-                NumberAnimation { target: lockScreenUi; property: "contentReveal"; from: 0.0; to: 1.0; duration: 200; easing.type: Easing.OutCubic }
+                PauseAnimation { duration: 460 }
+                NumberAnimation { target: lockScreenUi; property: "contentReveal"; from: 0.0; to: 1.0; duration: 140; easing.type: Easing.OutCubic }
             }
         }
         PropertyAction { target: lockScreenUi; property: "isPlayingIntro"; value: false }
@@ -198,7 +199,11 @@ Item {
         quitGuard.start();
     }
 
-    Component.onCompleted: introSequence.start()
+    // kscreenlocker flips viewVisible once the first frame is on screen; started any earlier, the intro plays to nobody.
+    function startIntro() { if (isPlayingIntro && !introSequence.running) introSequence.start(); }
+    Connections { target: root; function onViewVisibleChanged() { if (root.viewVisible) lockScreenUi.startIntro(); } }
+    Timer { interval: 1500; running: true; onTriggered: lockScreenUi.startIntro() }
+    Component.onCompleted: if (root.viewVisible) startIntro()
 
     // --- KDE's login plumbing, unchanged in substance -------------------------------------
     function handleMessage(msg) {
@@ -335,14 +340,14 @@ Item {
                 enabled: !lockScreenUi.isPlayingIntro && !lockScreenUi.isUnlocking
                 NumberAnimation { duration: 500; easing.type: Easing.OutCubic }
             }
-            opacity: lockScreenUi.contentReveal
+            opacity: lockScreenUi.wallpaperReveal
             visible: opacity > 0.01
         }
         Rectangle {
             id: dimmer
             anchors.fill: parent
             color: lockScreenUi.crust
-            opacity: (lockScreenUi.inputActive ? 0.72 : 0.32) * lockScreenUi.contentReveal
+            opacity: (lockScreenUi.inputActive ? 0.72 : 0.32) * lockScreenUi.wallpaperReveal
             Behavior on opacity {
                 enabled: !lockScreenUi.isPlayingIntro && !lockScreenUi.isUnlocking
                 NumberAnimation { duration: 600; easing.type: Easing.OutCubic }
@@ -1049,68 +1054,21 @@ Item {
             }
         }
 
-        // v2's intro: five colour bands wipe down, then lift to reveal the screen.
-        Canvas {
-            id: wipeCanvas
+        // Upstream's intro: layered waves sweep down over the wallpaper, then open like a curtain.
+        ShaderEffect {
+            id: wipe
             anchors.fill: parent
-            renderTarget: Canvas.FramebufferObject
-            renderStrategy: Canvas.Immediate
-            property real lastPaintedRev: -1
-            readonly property var wipeColors: [
-                lockScreenUi.crust.toString(),
-                lockScreenUi.surface1.toString(),
-                lockScreenUi.sapphire.toString(),
-                lockScreenUi.mauve.toString(),
-                lockScreenUi.surface0.toString()
-            ]
-            readonly property var wipeAmps: [1.5, 1.3, 1.1, 0.9, 0.6]
-            readonly property var wipeOffsets: [0.0, 0.5, 1.0, 1.5, 2.0]
-            opacity: lockScreenUi.isPlayingIntro ? (lockScreenUi.panelReveal < 0.8 ? 1.0 : Math.max(0.0, (1.0 - lockScreenUi.panelReveal) / 0.2)) : 0.0
-            visible: opacity > 0.001
-
-            Connections {
-                target: lockScreenUi
-                enabled: lockScreenUi.isPlayingIntro && wipeCanvas.visible
-                function onPanelRevealChanged() {
-                    if (Math.abs(lockScreenUi.panelReveal - wipeCanvas.lastPaintedRev) >= 0.005) wipeCanvas.requestPaint();
-                }
-            }
-
-            onPaint: {
-                var rev = lockScreenUi.panelReveal;
-                lastPaintedRev = rev;
-                if (rev <= 0.0) return;
-                var ctx = getContext("2d");
-                var w = width, h = height;
-                var lastFull = -1;
-                for (var k = 4; k >= 0; k--) {
-                    var p = (rev - (k === 0 ? 0.0 : k * 0.07)) * 1.55;
-                    if (p >= 1.0) { lastFull = k; break; }
-                }
-                if (lastFull >= 0) { ctx.fillStyle = wipeColors[lastFull]; ctx.fillRect(0, 0, w, h); }
-                else ctx.clearRect(0, 0, w, h);
-                var start = lastFull + 1;
-                if (start >= 5) return;
-                var phase = rev * 7.853981633974483;
-                var cp1x = w * 0.38, cp2x = w * 0.72, pi = Math.PI;
-                for (var i = start; i < 5; i++) {
-                    var prog = (rev - (i === 0 ? 0.0 : i * 0.07)) * 1.55;
-                    if (prog <= 0.0) continue;
-                    var smoothProg = Math.pow(prog, 1.4);
-                    var currentY = h * smoothProg;
-                    var waveAmp = lockScreenUi.s(28) * Math.sin(smoothProg * pi) * wipeAmps[i];
-                    var cp1y = currentY + Math.sin(phase + wipeOffsets[i]) * waveAmp;
-                    var cp2y = currentY + Math.cos(phase + wipeOffsets[i] + pi) * waveAmp;
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    ctx.lineTo(0, currentY);
-                    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, w, currentY);
-                    ctx.lineTo(w, 0);
-                    ctx.closePath();
-                    ctx.fillStyle = wipeColors[i];
-                    ctx.fill();
-                }
-            }
+            visible: lockScreenUi.isPlayingIntro
+            property vector2d itemSize: Qt.vector2d(width, height)
+            property real reveal: lockScreenUi.panelReveal
+            property real s28: lockScreenUi.s(28)
+            property color color0: lockScreenUi.crust
+            property color color1: lockScreenUi.surface1
+            property color color2: lockScreenUi.sapphire
+            property color color3: lockScreenUi.mauve
+            property color color4: lockScreenUi.pink
+            property var source: ShaderEffectSource { sourceItem: wallpaper; live: true; hideSource: false }
+            fragmentShader: Qt.resolvedUrl("curtain_wipe.frag.qsb")
         }
 
         Loader {

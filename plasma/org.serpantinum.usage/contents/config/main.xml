@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd" >
+  <kcfgfile name=""/>
+
+  <group name="General">
+    <entry name="face" type="String">
+      <label>Which card the applet shows; the ids are listed in ui/faces.js.</label>
+      <default>cpu</default>
+    </entry>
+    <entry name="animate" type="Bool">
+      <label>Animate the wave and ease value changes instead of drawing once per sensor update.</label>
+      <default>false</default>
+    </entry>
+    <entry name="tempSensor" type="String">
+      <label>The ksystemstats sensor id the Temperature card reads.</label>
+      <default>cpu/all/averageTemperature</default>
+    </entry>
+  </group>
+</kcfg>

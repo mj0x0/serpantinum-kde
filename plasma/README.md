@@ -12,8 +12,9 @@ kscreenlocker_greet --testing      # preview
 the picker points every desktop at it. `../install.sh wallpaper` reinstalls it alone.
 
 `serpantinum-kde.shell/` holds **only the files we wrote**: the Dashboard look
-(`LockScreenUi.qml`, its `Lock*.qml` cards, the small v2 reusables), `rpoly/` and
-`pushy.gif`. Everything else is copied from the installed `plasma-desktop` at install
+(`LockScreenUi.qml`, its `Lock*.qml` cards, the small v2 reusables), `rpoly/`,
+`pushy.gif` and upstream's `curtain_wipe.frag(.qsb)` intro shader (AGPL-3, as the
+rest of the vendored upstream work). Everything else is copied from the installed `plasma-desktop` at install
 time. `lockscreen-v1/` is the Classic look, laid over the same package as a rollback.
 
 The Dashboard is serpantinum v2's lock screen: an idle clock, then a three-column
