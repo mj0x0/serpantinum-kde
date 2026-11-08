@@ -112,6 +112,29 @@ def write_state(path):
         print("warning: could not write %s: %s" % (STATE_FILE, exc), file=sys.stderr)
 
 
+HISTORY_FILE = os.path.join(os.path.dirname(STATE_FILE), "history")
+HISTORY_MAX = 200
+
+
+def append_history(path):
+    """Most recent first, one absolute path per line, no duplicates. Feeds the
+    picker's Recently applied filter."""
+    entry = os.path.abspath(path)
+    try:
+        try:
+            with open(HISTORY_FILE, encoding="utf-8") as fh:
+                lines = [l.strip() for l in fh if l.strip()]
+        except FileNotFoundError:
+            lines = []
+        lines = [entry] + [l for l in lines if l != entry]
+        tmp = HISTORY_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(lines[:HISTORY_MAX]) + "\n")
+        os.replace(tmp, HISTORY_FILE)
+    except OSError as exc:
+        print("warning: could not write %s: %s" % (HISTORY_FILE, exc), file=sys.stderr)
+
+
 HOOK = os.path.expanduser("~/.config/matugen/matugen-plasma-hook.sh")
 
 
@@ -167,6 +190,7 @@ def main():
         print("failed: %s" % out, file=sys.stderr)
         return 1
     write_state(args.path)
+    append_history(args.path)
     if not args.no_theme:
         run_hook(args.path)
     print("set %s (%s)" % (args.path, "video" if is_video(args.path) else "image"))

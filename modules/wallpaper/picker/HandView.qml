@@ -297,6 +297,9 @@ Item {
         function onCurrentFilterChanged() {
             root.refreshOrder();
         }
+        function onModelReordered() {
+            root.refreshOrder();
+        }
     }
 
     Connections {

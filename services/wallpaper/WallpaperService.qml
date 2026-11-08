@@ -10,6 +10,7 @@ Singleton {
 
     readonly property string home: Quickshell.env("HOME")
     readonly property string stateFile: home + "/.local/state/quickshell/wallpaper/current"
+    readonly property string historyFile: home + "/.local/state/quickshell/wallpaper/history"
     readonly property string thumbDir: home + "/.cache/quickshell/wallpaper_picker/thumbs"
 
     readonly property var videoExts: ["mp4", "mkv", "mov", "webm"]
@@ -18,6 +19,8 @@ Singleton {
     // also the shape matugen/KMY's `file=` option reads, so the same file can
     // drive theming without a second source of truth.
     property string current: ""
+    // Absolute paths, most recent first; set-wallpaper.py maintains the file.
+    property var recent: []
     readonly property bool isVideo: root.extOf(root.current) !== ""
                                     && root.videoExts.indexOf(root.extOf(root.current)) >= 0
 
@@ -54,5 +57,18 @@ Singleton {
         watchChanges: true
         onLoaded: root.current = (stateView.text() || "").trim().replace(/^file:\/\//, "")
         onFileChanged: stateView.reload()
+    }
+
+    // The file may not exist until the first apply after this landed; the picker
+    // re-reads on open in case its creation went unwatched.
+    function refreshRecent() { historyView.reload(); }
+
+    FileView {
+        id: historyView
+        path: root.historyFile
+        watchChanges: true
+        printErrors: false
+        onLoaded: root.recent = (historyView.text() || "").split("\n").map(s => s.trim()).filter(s => s !== "")
+        onFileChanged: historyView.reload()
     }
 }

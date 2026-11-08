@@ -112,6 +112,7 @@ Item {
 
     readonly property var filterData: [
         { name: "All", hex: "", label: "All" },
+        { name: "History", hex: "", label: "" },
         { name: "Video", hex: "", label: "Vid" },
         { name: "Red", hex: "#FF4500", label: "" },
         { name: "Orange", hex: "#FFA500", label: "" },
@@ -226,6 +227,7 @@ Item {
     }
     
     onVisibleChanged: {
+        if (visible) WallpaperService.refreshRecent();
         if (!visible) {
             window.initialFocusSet = false;
             window.allowAddAnimation = false;
@@ -252,6 +254,7 @@ Item {
         if (window.visibleItemCount === 0) return "No wallpapers found";
         
         if (window.currentFilter === "All") return "";
+        if (window.currentFilter === "History") return "Recently applied";
         if (window.currentFilter === "Video") return "Videos";
         
         return window.currentFilter;
@@ -450,8 +453,60 @@ Item {
         return "Monochrome";
     }
 
+    // Recently applied, keyed by source basename: the current wallpaper first (it may
+    // predate the history file), then WallpaperService.recent newest first.
+    readonly property var historyRank: {
+        const m = {};
+        const list = [WallpaperService.current].concat(WallpaperService.recent || []);
+        for (let i = 0; i < list.length; i++) {
+            const b = WallpaperService.baseOf(list[i] || "");
+            if (b !== "" && m[b] === undefined) m[b] = i;
+        }
+        return m;
+    }
+    onHistoryRankChanged: {
+        if (window.currentFilter !== "History") return;
+        Qt.callLater(() => { window.reorderProxy(true); window.applyFilters(false); });
+    }
+
+    signal modelReordered()
+    property bool proxyInHistoryOrder: false
+
+    // History shows most-recently-applied first; every other filter keeps the folder's
+    // newest-added order. Moves rather than a rebuild, so delegates survive.
+    function reorderProxy(force) {
+        const wantHistory = window.currentFilter === "History";
+        if (!force && wantHistory === window.proxyInHistoryOrder) return;
+        const n = localProxyModel.count;
+        let names = [];
+        for (let i = 0; i < n; i++) names.push("" + localProxyModel.get(i).fileName);
+        let natural = [];
+        for (let i = 0; i < localFolderModel.count; i++) natural.push("" + localFolderModel.get(i, "fileName"));
+        let desired = natural;
+        if (wantHistory) {
+            const rank = window.historyRank;
+            const rankOf = x => rank[window.getCleanName(x)];
+            desired = natural.filter(x => rankOf(x) !== undefined).sort((a, b) => rankOf(a) - rankOf(b))
+                      .concat(natural.filter(x => rankOf(x) === undefined));
+        }
+        window.isModelChanging = true;
+        let moved = false;
+        for (let i = 0; i < desired.length && i < n; i++) {
+            if (names[i] === desired[i]) continue;
+            const j = names.indexOf(desired[i], i + 1);
+            if (j < 0) continue;
+            localProxyModel.move(j, i, 1);
+            names.splice(i, 0, names.splice(j, 1)[0]);
+            moved = true;
+        }
+        window.isModelChanging = false;
+        window.proxyInHistoryOrder = wantHistory;
+        if (moved) window.modelReordered();
+    }
+
     function checkItemMatchesFilter(fileName, isVid, cv, filter) {
         if (filter === "All") return true;
+        if (filter === "History") return window.historyRank[window.getCleanName(String(fileName))] !== undefined;
         if (filter === "Video") return isVid;
         
         let hexColor = window.colorMap[String(fileName)];
@@ -689,7 +744,10 @@ Item {
                 if (window.view) view.forceActiveFocus();
             }
 
-            if (!window.wallhavenMode) window.applyFilters(fromWallhaven);
+            if (!window.wallhavenMode) {
+                window.reorderProxy(false);
+                window.applyFilters(fromWallhaven);
+            }
             window.isModelChanging = false;
         });
     }
@@ -826,6 +884,7 @@ Item {
 
             if (batch.length > 0) {
                 localProxyModel.append(batch);
+                if (window.currentFilter === "History") window.reorderProxy(true);
             }
 
             window._localSyncedCount = folderCount;
@@ -1135,7 +1194,7 @@ Item {
                 model: window.filterData
 
                 delegate: Item {
-                    width: !visible ? 0 : ((modelData.name === "Video" || modelData.name === "All") ? window.s(44) : (modelData.hex === "" ? filterText.contentWidth + window.s(24) : window.s(36)))
+                    width: !visible ? 0 : ((modelData.name === "Video" || modelData.name === "All" || modelData.name === "History") ? window.s(44) : (modelData.hex === "" ? filterText.contentWidth + window.s(24) : window.s(36)))
                     height: !visible ? 0 : window.s(36)
                     anchors.verticalCenter: parent.verticalCenter
                     
@@ -1155,13 +1214,24 @@ Item {
 
                         Text {
                             id: filterText
-                            visible: modelData.hex === "" && modelData.name !== "Video" && modelData.name !== "All"
+                            visible: modelData.hex === "" && modelData.name !== "Video" && modelData.name !== "All" && modelData.name !== "History"
                             text: modelData.label
                             anchors.centerIn: parent
                             color: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
                             font.family: Fonts.ui
                             font.pixelSize: window.s(14)
                             font.bold: window.currentFilter === modelData.name
+                            Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                        }
+
+                        // md-history, the glyph upstream's picker uses for this tab.
+                        Text {
+                            visible: modelData.name === "History"
+                            anchors.centerIn: parent
+                            text: "\u{f099b}"
+                            font.family: Fonts.icons
+                            font.pixelSize: window.s(16)
+                            color: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
                             Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
                         }
 

@@ -64,6 +64,7 @@ Item {
         target: root.picker
         function onCurrentFilterChanged() { Qt.callLater(root.ensureVisible); }
         function onCacheVersionChanged() { Qt.callLater(root.ensureVisible); }
+        function onModelReordered() { Qt.callLater(root.ensureVisible); }
     }
 
     Flickable {
