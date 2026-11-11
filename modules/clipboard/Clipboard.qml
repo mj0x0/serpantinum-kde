@@ -328,6 +328,8 @@ PanelWindow {
     function filter(query) {
         pendingQuery = query;
         filterTimer.restart();
+        // A query searches all of history, not just the page already on screen.
+        if (("" + query).trim().length > 0) loadRest();
     }
     Timer { id: filterTimer; interval: 80; onTriggered: clipWin.applyFilter(clipWin.pendingQuery) }
 
@@ -365,7 +367,7 @@ PanelWindow {
                     clipWin.clipOffset = clipWin.allClips.length;
                     clipWin.applyFilter(searchInput.text);
                     // Filters see the whole history, not just the first page.
-                    if (clipWin.view !== "recent") clipWin.loadRest();
+                    if (clipWin.view !== "recent" || searchInput.text.trim().length > 0) clipWin.loadRest();
                 } catch (e) {
                     clipWin.hasMore = false;
                 }
