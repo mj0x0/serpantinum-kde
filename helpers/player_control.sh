@@ -14,21 +14,37 @@ arg=$2
 len_sec=$3
 player_name=$4
 
-# Same rule as music_info.sh, so a keybind drives whatever the TopBar pill shows:
-# prefer the player that is actually Playing, ignore media with no real length.
+# Mirrors the ranking in music_info.sh, so a keybind drives whatever the TopBar
+# pill shows -- change both together. Local Playing, then remote Playing, then
+# local Paused, then remote Paused; media with no real length is ignored.
+# A KDE Connect player is remote: it usually mirrors this machine's session and
+# transiently claims Playing with a frozen position, and it sorts FIRST in
+# `playerctl -l`, so it must never win on list order alone.
 # Never target playerctld - the proxy follows browser activity onto
 # plasma-browser-integration, which reports CanGoNext=false and silently no-ops.
 if [ -z "$player_name" ]; then
     paused_player=""
+    remote_playing=""
+    remote_paused=""
     while IFS= read -r p; do
         [ -z "$p" ] && continue
         st=$(timeout 1 playerctl -p "$p" status 2>/dev/null || true)
         len=$(timeout 1 playerctl -p "$p" metadata mpris:length 2>/dev/null || true)
         [[ "$len" =~ ^[0-9]+$ ]] && [ "$len" -gt 0 ] || continue
+
+        if [[ "$p" == kdeconnect.mpris_* ]]; then
+            if [ "$st" = "Playing" ] && [ -z "$remote_playing" ]; then remote_playing="$p"
+            elif [ "$st" = "Paused" ] && [ -z "$remote_paused" ]; then remote_paused="$p"; fi
+            continue
+        fi
+
         if [ "$st" = "Playing" ]; then player_name="$p"; break; fi
         [ "$st" = "Paused" ] && [ -z "$paused_player" ] && paused_player="$p"
     done < <(timeout 1 playerctl --ignore-player=playerctld -l 2>/dev/null || true)
-    [ -z "$player_name" ] && player_name="$paused_player"
+
+    if [ -z "$player_name" ]; then
+        player_name="${remote_playing:-${paused_player:-$remote_paused}}"
+    fi
 fi
 if [ -z "$player_name" ]; then exit 0; fi
 

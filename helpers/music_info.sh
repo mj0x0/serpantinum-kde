@@ -60,7 +60,7 @@ while IFS= read -r p; do
         paused_player="$p"
         paused_status="Paused"
     fi
-done < <(timeout "$PT_TIMEOUT" playerctl -l 2>/dev/null || true)
+done < <(timeout "$PT_TIMEOUT" playerctl --ignore-player=playerctld -l 2>/dev/null || true)
 
 # Local Playing, then remote Playing, then local Paused, then remote Paused.
 if [ -z "$selected_player" ]; then
