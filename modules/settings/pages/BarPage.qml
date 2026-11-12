@@ -6,11 +6,11 @@ import QtQuick.Layouts
 SettingsPage {
     id: page
 
-    BarPlacementSection {
+    BarStyleSection {
         Layout.fillWidth: true
         host: page.host
     }
-    BarStyleSection {
+    BarPlacementSection {
         Layout.fillWidth: true
         host: page.host
     }
