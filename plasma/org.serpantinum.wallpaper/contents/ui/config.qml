@@ -11,6 +11,10 @@ Kirigami.FormLayout {
     id: root
     twinFormLayouts: parentLayout
 
+    // The shell's config loader assigns both; org.kde.image declares them the same way.
+    property var configDialog
+    property var wallpaperConfiguration
+
     property string cfg_Image
     property string cfg_ImageDefault
     property int cfg_FillMode
