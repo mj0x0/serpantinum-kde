@@ -703,9 +703,24 @@ Item {
                 property real rBR: (root.attachEdge === "bottom" || root.attachEdge === "right") ? 0 : r
                 
                 // Mathematical perimeter
-                property real straightLines: 2 * (w - 2 * inset) + 2 * (h - 2 * inset) - 2 * (rTL + rTR + rBL + rBR)
+                // Attached to the bar, that side runs along the card edge and the wick skips it.
+                property real insL: root.attachEdge === "left" ? 0 : inset
+                property real insT: root.attachEdge === "top" ? 0 : inset
+                property real insR: root.attachEdge === "right" ? 0 : inset
+                property real insB: root.attachEdge === "bottom" ? 0 : inset
+                property real sideL: h - insT - insB - rBL - rTL
+                property real sideT: w - insL - insR - rTL - rTR
+                property real sideR: h - insT - insB - rTR - rBR
+                property real sideB: w - insL - insR - rBL - rBR
                 property real arcLines: Math.PI / 2 * (rTL + rTR + rBL + rBR)
-                property real perimeter: straightLines + arcLines
+                property real perimeter: sideL + sideT + sideR + sideB + arcLines
+                property real runStart: root.attachEdge === "left" ? sideL + Math.PI / 2 * rTL
+                                      : root.attachEdge === "top" ? sideL + Math.PI / 2 * rTL + sideT + Math.PI / 2 * rTR
+                                      : root.attachEdge === "right" ? sideL + Math.PI / 2 * rTL + sideT + Math.PI / 2 * rTR + sideR + Math.PI / 2 * rBR
+                                      : 0
+                property real runLength: perimeter - (root.attachEdge === "left" ? sideL : root.attachEdge === "top" ? sideT
+                                                    : root.attachEdge === "right" ? sideR : root.attachEdge === "bottom" ? sideB : 0)
+                property real dash: Math.max(0.01, Math.min(drawProgress, runLength))
 
                 property real drawProgress: 0
 
@@ -723,41 +738,42 @@ Item {
                     strokeColor: "black" 
                     fillColor: "transparent"
                     capStyle: ShapePath.FlatCap 
+                    strokeStyle: ShapePath.DashLine
 
                     // QML Shape dash patterns are measured in units of strokeWidth! 
-                    dashPattern: [maskRectOuter.perimeter / maskRectOuter.sw, maskRectOuter.perimeter / maskRectOuter.sw]
-                    dashOffset: (maskRectOuter.perimeter - maskRectOuter.drawProgress) / maskRectOuter.sw
+                    dashPattern: [maskRectOuter.dash / maskRectOuter.sw, 2 * maskRectOuter.perimeter / maskRectOuter.sw]
+                    dashOffset: (maskRectOuter.dash + 2 * maskRectOuter.perimeter - maskRectOuter.runStart) / maskRectOuter.sw
 
-                    // Start exactly at Bottom-Left corner, going UP clockwise
-                    startX: maskRectOuter.inset
-                    startY: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.rBL
+                    // Start at the bottom-left corner, going up clockwise
+                    startX: maskRectOuter.insL
+                    startY: maskRectOuter.h - maskRectOuter.insB - maskRectOuter.rBL
 
                     // 1. Up to top-left corner
-                    PathLine { x: maskRectOuter.inset; y: maskRectOuter.inset + maskRectOuter.rTL }
+                    PathLine { x: maskRectOuter.insL; y: maskRectOuter.insT + maskRectOuter.rTL }
                     // 2. Arc top-left
                     PathArc { 
-                        x: maskRectOuter.inset + maskRectOuter.rTL; y: maskRectOuter.inset 
+                        x: maskRectOuter.insL + maskRectOuter.rTL; y: maskRectOuter.insT 
                         radiusX: maskRectOuter.rTL; radiusY: maskRectOuter.rTL; direction: PathArc.Clockwise 
                     }
                     // 3. Right to top-right corner
-                    PathLine { x: maskRectOuter.w - maskRectOuter.inset - maskRectOuter.rTR; y: maskRectOuter.inset }
+                    PathLine { x: maskRectOuter.w - maskRectOuter.insR - maskRectOuter.rTR; y: maskRectOuter.insT }
                     // 4. Arc top-right
                     PathArc { 
-                        x: maskRectOuter.w - maskRectOuter.inset; y: maskRectOuter.inset + maskRectOuter.rTR 
+                        x: maskRectOuter.w - maskRectOuter.insR; y: maskRectOuter.insT + maskRectOuter.rTR 
                         radiusX: maskRectOuter.rTR; radiusY: maskRectOuter.rTR; direction: PathArc.Clockwise 
                     }
                     // 5. Down to bottom-right corner
-                    PathLine { x: maskRectOuter.w - maskRectOuter.inset; y: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.rBR }
+                    PathLine { x: maskRectOuter.w - maskRectOuter.insR; y: maskRectOuter.h - maskRectOuter.insB - maskRectOuter.rBR }
                     // 6. Arc bottom-right
                     PathArc { 
-                        x: maskRectOuter.w - maskRectOuter.inset - maskRectOuter.rBR; y: maskRectOuter.h - maskRectOuter.inset 
+                        x: maskRectOuter.w - maskRectOuter.insR - maskRectOuter.rBR; y: maskRectOuter.h - maskRectOuter.insB 
                         radiusX: maskRectOuter.rBR; radiusY: maskRectOuter.rBR; direction: PathArc.Clockwise 
                     }
                     // 7. Left to bottom-left corner
-                    PathLine { x: maskRectOuter.inset + maskRectOuter.rBL; y: maskRectOuter.h - maskRectOuter.inset }
+                    PathLine { x: maskRectOuter.insL + maskRectOuter.rBL; y: maskRectOuter.h - maskRectOuter.insB }
                     // 8. Arc bottom-left to finish
                     PathArc { 
-                        x: maskRectOuter.inset; y: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.rBL 
+                        x: maskRectOuter.insL; y: maskRectOuter.h - maskRectOuter.insB - maskRectOuter.rBL 
                         radiusX: maskRectOuter.rBL; radiusY: maskRectOuter.rBL; direction: PathArc.Clockwise 
                     }
                 }
