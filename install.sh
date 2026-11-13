@@ -699,6 +699,12 @@ for (var i = 0; i < ds.length; i++) {
     d.currentConfigGroup = ['Wallpaper', 'org.serpantinum.wallpaper', 'General'];
     if (img) d.writeConfig('Image', img);
 }"
+    # Setting the plugin a desktop already has is a no-op, and a reinstall is only picked up when
+    # the wallpaper is re-created. Bouncing within one script collapses too, so this is its own call.
+    qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "var ds = desktops();
+for (var i = 0; i < ds.length; i++)
+    if (ds[i].screen !== -1 && ds[i].wallpaperPlugin === 'org.serpantinum.wallpaper') ds[i].wallpaperPlugin = 'org.kde.image';" >/dev/null 2>&1
+    sleep 1
     if qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$script" >/dev/null 2>&1; then
         ok "every screen is on Serpantinum now"
     else
