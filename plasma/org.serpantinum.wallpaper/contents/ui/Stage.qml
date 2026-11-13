@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Effects
 import QtMultimedia
 import org.kde.taskmanager as TaskManager
 
@@ -226,6 +227,12 @@ Item {
         hideSource: true
     }
 
+    Rectangle {
+        id: backdrop
+        anchors.fill: parent
+        color: stage.config.BackdropColor
+    }
+
     ShaderEffect {
         id: fx
         anchors.fill: parent
@@ -245,5 +252,40 @@ Item {
             duration: stage.config.Duration
             onFinished: stage.finish()
         }
+    }
+
+    ShaderEffectSource {
+        id: fxSource
+        sourceItem: fx
+        hideSource: true
+    }
+
+    Rectangle {
+        id: maskShape
+        anchors.fill: parent
+        radius: stage.config.CornerRadius
+        color: "white"
+    }
+
+    ShaderEffectSource {
+        id: maskSource
+        sourceItem: maskShape
+        hideSource: true
+    }
+
+    // Grades the blended output, so a crossfade is graded once and the corners never move.
+    MultiEffect {
+        id: grade
+        anchors.fill: parent
+        source: fxSource
+        autoPaddingEnabled: false
+        brightness: stage.config.Brightness
+        contrast: stage.config.Contrast
+        saturation: stage.config.Saturation
+        maskEnabled: stage.config.CornerRadius > 0
+        maskSource: maskSource
+        // Default thresholds cut hard at alpha 0.0001; this pair makes the mask smoothstep(0, 1, alpha).
+        maskThresholdMin: 0.5
+        maskSpreadAtMin: 1
     }
 }
