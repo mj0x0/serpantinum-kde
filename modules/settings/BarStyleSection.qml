@@ -15,10 +15,10 @@ ColumnLayout {
         host: root.host
         label: "Style"
         glyph: "\u{f0831}"
-        desc: "modular is the segmented default; fill hugs the screen edge"
+        desc: "modular is the segmented default; fill hugs the screen edge; notched carves the gaps out of a flush bar"
         SettingsChips {
             host: root.host
-            options: ["modular", "solid", "fill"]
+            options: ["modular", "solid", "fill", "notched"]
             current: "" + ShellSettings.value("bar.style", "modular")
             onPicked: v => ShellSettings.setValue("bar.style", v)
         }
@@ -53,7 +53,7 @@ ColumnLayout {
         host: root.host
         label: "Distinct pills"
         glyph: "\u{f0409}"
-        desc: "Keep the segmented tint on solid and fill"
+        desc: "Keep the segmented tint on solid, fill and notched"
         SettingsToggle {
             host: root.host
             checked: ShellSettings.value("bar.distinctPills", false) === true

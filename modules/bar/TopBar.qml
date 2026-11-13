@@ -70,16 +70,24 @@ Variants {
             Binding { target: BarState; property: "solid"; value: barWindow.isSolid }
             Binding { target: BarState; property: "hidden"; value: barWindow.autohide || barWindow.fullscreenActive }
             Binding { target: BarState; property: "thickness"; value: barWindow.barHeight }
-            Binding { target: BarState; property: "slabThickness"; value: barWindow.barHeight + (barWindow.isFill ? 0 : barWindow.s(8)) }
-            Binding { target: BarState; property: "bandThickness"; value: barWindow.barHeight + (barWindow.isFill ? barWindow.s(14) : barWindow.s(8)) }
+            Binding { target: BarState; property: "slabThickness"; value: barWindow.barHeight + (barWindow.isFlush ? 0 : barWindow.s(8)) }
+            Binding { target: BarState; property: "bandThickness"; value: barWindow.barHeight + (barWindow.isFlush ? barWindow.edgeOverhang : barWindow.s(8)) }
 
             // --- bar.* settings (v2 schema; old topbar.* keys read as fallback) ---
             property string barStyle: "" + ShellSettings.value("bar.style", "modular")
             property string sysmonStyle: "" + ShellSettings.value("bar.sysmonStyle", "pill")
             property string batStyle: "" + ShellSettings.value("bar.batStyle", "classic")
             property string timeStyle: "" + ShellSettings.value("bar.timeStyle", "classic")
-            readonly property bool isSolid: barStyle === "solid" || barStyle === "fill"
+            readonly property bool isSolid: barStyle === "solid" || barStyle === "fill" || barStyle === "notched"
             readonly property bool isFill: barStyle === "fill"
+            readonly property bool isNotched: barStyle === "notched"
+            // Flush to the screen edge, full length: fill and notched share this geometry.
+            readonly property bool isFlush: isFill || isNotched
+            readonly property real notchLip: { var v = Number(ShellSettings.value("bar.notchLip", 7)); return s(isFinite(v) ? Math.max(0, v) : 7) }
+            readonly property real notchFillet: { var v = Number(ShellSettings.value("bar.notchFillet", 19)); return Math.max(0, Math.min(s(isFinite(v) ? v : 19), (barHeight - notchLip) / 2)) }
+            readonly property color slabColor: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, barOpacity)
+            // Room past the bar for the outer flares to fade out in.
+            readonly property real edgeOverhang: isNotched ? notchFillet : (isFill ? s(14) : 0)
             // Pill corners follow ui.radius; controls inside a pill sit 2px in, as upstream.
             readonly property real pillRadius: Radius.outer(s(14))
             readonly property real innerRadius: Radius.inset(s(10), s(2))
@@ -98,14 +106,14 @@ Variants {
                 : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, barOpacity)
             readonly property real pillBorderAlpha: isSolid ? 0 : 1
 
-            implicitHeight: isVertical ? 0 : barHeight + (isFill ? s(14) : 0)
-            implicitWidth: isVertical ? barHeight + (isFill ? s(14) : 0) : 0
+            implicitHeight: isVertical ? 0 : barHeight + edgeOverhang
+            implicitWidth: isVertical ? barHeight + edgeOverhang : 0
             // 8px off the bar's own edge, 4px along it; fill sits flush.
             margins {
-                top: barWindow.isFill ? 0 : (barWindow.barPosition === "top" ? s(8) : (barWindow.isVertical ? s(4) : 0))
-                bottom: barWindow.isFill ? 0 : (barWindow.barPosition === "bottom" ? s(8) : (barWindow.isVertical ? s(4) : 0))
-                left: barWindow.isFill ? 0 : (barWindow.barPosition === "left" ? s(8) : (barWindow.isVertical ? 0 : s(4)))
-                right: barWindow.isFill ? 0 : (barWindow.barPosition === "right" ? s(8) : (barWindow.isVertical ? 0 : s(4)))
+                top: barWindow.isFlush ? 0 : (barWindow.barPosition === "top" ? s(8) : (barWindow.isVertical ? s(4) : 0))
+                bottom: barWindow.isFlush ? 0 : (barWindow.barPosition === "bottom" ? s(8) : (barWindow.isVertical ? s(4) : 0))
+                left: barWindow.isFlush ? 0 : (barWindow.barPosition === "left" ? s(8) : (barWindow.isVertical ? 0 : s(4)))
+                right: barWindow.isFlush ? 0 : (barWindow.barPosition === "right" ? s(8) : (barWindow.isVertical ? 0 : s(4)))
             }
             exclusiveZone: autohide ? 0 : barHeight
             color: "transparent"
@@ -173,9 +181,16 @@ Variants {
                 item: solidBackground
                 radius: barWindow.isFill ? 0 : barWindow.pillRadius
             }
+            Region {
+                id: notchedRegion
+                item: lipRect
+                Region { item: islandL; intersection: Intersection.Combine }
+                Region { item: islandC; intersection: Intersection.Combine }
+                Region { item: islandR; intersection: Intersection.Combine }
+            }
             readonly property bool blurEnabled: ShellSettings.value("bar.blur", false) === true
             BackgroundEffect.blurRegion: (!blurEnabled || (autohide && !barRevealed)) ? null
-                                         : (isSolid ? solidRegion : pillsRegion)
+                                         : (isNotched ? notchedRegion : (isSolid ? solidRegion : pillsRegion))
 
             MatugenColors { id: mocha }
 
@@ -503,7 +518,6 @@ Variants {
                 readonly property real gap: barWindow.s(4)
                 readonly property real groupGap: barWindow.s(8)
                 readonly property real groupPad: barWindow.s(10)
-                readonly property real sectionGap: barWindow.s(10)
                 readonly property real inset: barWindow.isSolid ? barWindow.s(4) : 0
 
                 function sectionSize(arr, natural) {
@@ -547,6 +561,24 @@ Variants {
                 readonly property real rPos: rSize <= 0 ? maxEdge
                                            : (packLeft ? Math.min(maxEdge - rSize, rPacked) : maxEdge - rSize)
 
+                readonly property real notchPad: barWindow.s(10)
+                // Islands butt against the lip's inner face; overlapping it would stack the alpha.
+                readonly property real islandOff: (barWindow.barPosition === "top" || barWindow.barPosition === "left") ? barWindow.notchLip : 0
+                readonly property real islandThick: (vertical ? width : height) - barWindow.notchLip
+                // Islands extend notchPad past their widgets; a notch needs room for two fillets plus a flat run of lip.
+                readonly property real sectionGap: barWindow.isNotched ? barWindow.s(10) + 2 * (notchPad + barWindow.notchFillet) : barWindow.s(10)
+                // Island extents along the bar, -1 when the section is empty.
+                readonly property real lEnd: lSize > 0 ? lPos + lSize + notchPad : -1
+                readonly property real cStart: cSize > 0 ? Math.max(0, cPos - notchPad) : -1
+                readonly property real cEnd: cSize > 0 ? cPos + cSize + notchPad : -1
+                readonly property real rStart: rSize > 0 ? Math.max(0, rPos - notchPad) : -1
+                function filletFor(gap) { return Math.max(0, Math.min(barWindow.notchFillet, gap / 2)) }
+                // Effective radius at each of the four inward island ends; shrinks when a notch gets too narrow for two arcs.
+                readonly property real rL:  lEnd < 0   ? 0 : filletFor((cStart >= 0 ? cStart : (rStart >= 0 ? rStart : length)) - lEnd)
+                readonly property real rCL: cStart < 0 ? 0 : filletFor(cStart - Math.max(0, lEnd))
+                readonly property real rCR: cEnd < 0   ? 0 : filletFor((rStart >= 0 ? rStart : length) - cEnd)
+                readonly property real rR:  rStart < 0 ? 0 : filletFor(rStart - Math.max(0, cEnd >= 0 ? cEnd : lEnd))
+
                 function modulePos(id) {
                     var arr, base;
                     if (flatLeft.indexOf(id) !== -1) { arr = leftArr; base = lPos; }
@@ -574,8 +606,8 @@ Variants {
                 }
 
                 // --- the slab: bar.width clusters the content into the middle N% of the edge ---
-                readonly property real widthFrac: barWindow.isFill ? 1 : barWindow.barWidthPercent / 100
-                readonly property real requestedW: (barWindow.fitWidth && !barWindow.isFill) ? 0 : Math.round(parent.width * widthFrac)
+                readonly property real widthFrac: barWindow.isFlush ? 1 : barWindow.barWidthPercent / 100
+                readonly property real requestedW: (barWindow.fitWidth && !barWindow.isFlush) ? 0 : Math.round(parent.width * widthFrac)
                 readonly property real neededW: sectionSize(leftArr, true) + sectionSize(centerArr, true) + sectionSize(rightArr, true)
                     + lcGap + crGap + inset * 2
                 readonly property bool squeezed: !vertical && !barWindow.fitWidth && requestedW < Math.min(neededW, parent.width)
@@ -602,27 +634,145 @@ Variants {
 
                 Rectangle {
                     id: solidBackground
-                    visible: barWindow.isSolid
+                    visible: barWindow.isSolid && !barWindow.isNotched
                     z: -2
                     anchors.fill: parent
                     radius: barWindow.isFill ? 0 : barWindow.pillRadius
-                    color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, barWindow.barOpacity)
+                    color: barWindow.slabColor
+                }
+
+                // Notched: a lip on the screen edge, one island per section, a concave fillet at each step.
+                Rectangle {
+                    id: lipRect
+                    visible: barWindow.isNotched
+                    z: -2
+                    color: barWindow.slabColor
+                    x: barContent.vertical ? (barWindow.barPosition === "right" ? barContent.width - barWindow.notchLip : 0) : 0
+                    y: barContent.vertical ? 0 : (barWindow.barPosition === "bottom" ? barContent.height - barWindow.notchLip : 0)
+                    width: barContent.vertical ? barWindow.notchLip : barContent.width
+                    height: barContent.vertical ? barContent.height : barWindow.notchLip
+                }
+                Rectangle {
+                    id: islandL
+                    visible: barWindow.isNotched && barContent.lEnd >= 0
+                    z: -2
+                    color: barWindow.slabColor
+                    x: barContent.vertical ? barContent.islandOff : 0
+                    y: barContent.vertical ? 0 : barContent.islandOff
+                    width: barContent.vertical ? barContent.islandThick : Math.max(0, barContent.lEnd)
+                    height: barContent.vertical ? Math.max(0, barContent.lEnd) : barContent.islandThick
+                    bottomRightRadius: (barWindow.barPosition === "top" || barWindow.barPosition === "left") ? barContent.rL : 0
+                    topRightRadius: barWindow.barPosition === "bottom" ? barContent.rL : 0
+                    bottomLeftRadius: barWindow.barPosition === "right" ? barContent.rL : 0
+                    Behavior on width { enabled: barWindow.startupCascadeFinished && !barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                    Behavior on height { enabled: barWindow.startupCascadeFinished && barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                }
+                Rectangle {
+                    id: islandC
+                    visible: barWindow.isNotched && barContent.cStart >= 0
+                    z: -2
+                    color: barWindow.slabColor
+                    x: barContent.vertical ? barContent.islandOff : (barContent.cStart >= 0 ? barContent.cStart : barContent.length / 2)
+                    y: barContent.vertical ? (barContent.cStart >= 0 ? barContent.cStart : barContent.length / 2) : barContent.islandOff
+                    width: barContent.vertical ? barContent.islandThick : Math.max(0, barContent.cEnd - barContent.cStart)
+                    height: barContent.vertical ? Math.max(0, barContent.cEnd - barContent.cStart) : barContent.islandThick
+                    topLeftRadius: (barWindow.barPosition === "bottom" || barWindow.barPosition === "right") ? barContent.rCL : 0
+                    topRightRadius: barWindow.barPosition === "bottom" ? barContent.rCR : (barWindow.barPosition === "left" ? barContent.rCL : 0)
+                    bottomLeftRadius: barWindow.barPosition === "top" ? barContent.rCL : (barWindow.barPosition === "right" ? barContent.rCR : 0)
+                    bottomRightRadius: (barWindow.barPosition === "top" || barWindow.barPosition === "left") ? barContent.rCR : 0
+                    Behavior on x { enabled: barWindow.startupCascadeFinished && !barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                    Behavior on y { enabled: barWindow.startupCascadeFinished && barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                    Behavior on width { enabled: barWindow.startupCascadeFinished && !barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                    Behavior on height { enabled: barWindow.startupCascadeFinished && barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                }
+                Rectangle {
+                    id: islandR
+                    visible: barWindow.isNotched && barContent.rStart >= 0
+                    z: -2
+                    color: barWindow.slabColor
+                    x: barContent.vertical ? barContent.islandOff : (barContent.rStart >= 0 ? barContent.rStart : barContent.length)
+                    y: barContent.vertical ? (barContent.rStart >= 0 ? barContent.rStart : barContent.length) : barContent.islandOff
+                    width: barContent.vertical ? barContent.islandThick : (barContent.rStart >= 0 ? Math.max(0, barContent.length - barContent.rStart) : 0)
+                    height: barContent.vertical ? (barContent.rStart >= 0 ? Math.max(0, barContent.length - barContent.rStart) : 0) : barContent.islandThick
+                    topLeftRadius: (barWindow.barPosition === "bottom" || barWindow.barPosition === "right") ? barContent.rR : 0
+                    topRightRadius: barWindow.barPosition === "left" ? barContent.rR : 0
+                    bottomLeftRadius: barWindow.barPosition === "top" ? barContent.rR : 0
+                    Behavior on x { enabled: barWindow.startupCascadeFinished && !barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                    Behavior on y { enabled: barWindow.startupCascadeFinished && barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                    Behavior on width { enabled: barWindow.startupCascadeFinished && !barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                    Behavior on height { enabled: barWindow.startupCascadeFinished && barContent.vertical; NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                }
+                EdgeCorner {
+                    id: filletL
+                    visible: islandL.visible && barContent.rL > 0.5
+                    barWindow: barWindow
+                    mocha: mocha
+                    z: -2
+                    width: barContent.rL
+                    height: barContent.rL
+                    vertexX: barWindow.barPosition === "right" ? "right" : "left"
+                    vertexY: barWindow.barPosition === "bottom" ? "bottom" : "top"
+                    x: barContent.vertical ? (barWindow.barPosition === "right" ? barContent.width - barWindow.notchLip - width : barWindow.notchLip) : islandL.x + islandL.width
+                    y: barContent.vertical ? islandL.y + islandL.height : (barWindow.barPosition === "bottom" ? barContent.height - barWindow.notchLip - height : barWindow.notchLip)
+                }
+                EdgeCorner {
+                    id: filletCL
+                    visible: islandC.visible && barContent.rCL > 0.5
+                    barWindow: barWindow
+                    mocha: mocha
+                    z: -2
+                    width: barContent.rCL
+                    height: barContent.rCL
+                    vertexX: barWindow.barPosition === "left" ? "left" : "right"
+                    vertexY: barWindow.barPosition === "top" ? "top" : "bottom"
+                    x: barContent.vertical ? (barWindow.barPosition === "right" ? barContent.width - barWindow.notchLip - width : barWindow.notchLip) : islandC.x - width
+                    y: barContent.vertical ? islandC.y - height : (barWindow.barPosition === "bottom" ? barContent.height - barWindow.notchLip - height : barWindow.notchLip)
+                }
+                EdgeCorner {
+                    id: filletCR
+                    visible: islandC.visible && barContent.rCR > 0.5
+                    barWindow: barWindow
+                    mocha: mocha
+                    z: -2
+                    width: barContent.rCR
+                    height: barContent.rCR
+                    vertexX: barWindow.barPosition === "right" ? "right" : "left"
+                    vertexY: barWindow.barPosition === "bottom" ? "bottom" : "top"
+                    x: barContent.vertical ? (barWindow.barPosition === "right" ? barContent.width - barWindow.notchLip - width : barWindow.notchLip) : islandC.x + islandC.width
+                    y: barContent.vertical ? islandC.y + islandC.height : (barWindow.barPosition === "bottom" ? barContent.height - barWindow.notchLip - height : barWindow.notchLip)
+                }
+                EdgeCorner {
+                    id: filletR
+                    visible: islandR.visible && barContent.rR > 0.5
+                    barWindow: barWindow
+                    mocha: mocha
+                    z: -2
+                    width: barContent.rR
+                    height: barContent.rR
+                    vertexX: barWindow.barPosition === "left" ? "left" : "right"
+                    vertexY: barWindow.barPosition === "top" ? "top" : "bottom"
+                    x: barContent.vertical ? (barWindow.barPosition === "right" ? barContent.width - barWindow.notchLip - width : barWindow.notchLip) : islandR.x - width
+                    y: barContent.vertical ? islandR.y - height : (barWindow.barPosition === "bottom" ? barContent.height - barWindow.notchLip - height : barWindow.notchLip)
                 }
 
                 // Concave fillets that let the fill style hug the screen edge.
                 EdgeCorner {
-                    visible: barWindow.isFill
+                    visible: barWindow.isFill || (barWindow.isNotched && barContent.lEnd >= 0)
                     barWindow: barWindow
                     mocha: mocha
+                    width: barWindow.isNotched ? barWindow.notchFillet : barWindow.s(14)
+                    height: barWindow.isNotched ? barWindow.notchFillet : barWindow.s(14)
                     vertexX: barWindow.barPosition === "right" ? "right" : "left"
                     vertexY: barWindow.barPosition === "bottom" ? "bottom" : "top"
                     x: barWindow.isVertical ? (barWindow.barPosition === "left" ? parent.width : -width) : 0
                     y: barWindow.isVertical ? 0 : (barWindow.barPosition === "top" ? parent.height : -height)
                 }
                 EdgeCorner {
-                    visible: barWindow.isFill
+                    visible: barWindow.isFill || (barWindow.isNotched && barContent.rStart >= 0)
                     barWindow: barWindow
                     mocha: mocha
+                    width: barWindow.isNotched ? barWindow.notchFillet : barWindow.s(14)
+                    height: barWindow.isNotched ? barWindow.notchFillet : barWindow.s(14)
                     vertexX: barWindow.isVertical ? (barWindow.barPosition === "right" ? "right" : "left") : "right"
                     vertexY: barWindow.isVertical ? "bottom" : (barWindow.barPosition === "bottom" ? "bottom" : "top")
                     x: barWindow.isVertical ? (barWindow.barPosition === "left" ? parent.width : -width) : parent.width - width
