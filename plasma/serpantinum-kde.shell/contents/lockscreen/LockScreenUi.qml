@@ -124,6 +124,10 @@ Item {
     property real contentReveal: 0.0
     property real panelReveal: 0.0
     readonly property real wallpaperReveal: isPlayingIntro ? 1.0 : panelReveal
+    // The wallpaper plugin's frame, from its own config; absent keys (another plugin) mean no frame.
+    readonly property var wallpaperConfig: wallpaper && wallpaper.configuration ? wallpaper.configuration : null
+    readonly property int wallpaperRadius: wallpaperConfig && wallpaperConfig.CornerRadius !== undefined ? wallpaperConfig.CornerRadius : 0
+    readonly property color wallpaperBackdrop: wallpaperConfig && wallpaperConfig.BackdropColor ? wallpaperConfig.BackdropColor : "black"
     property real mainOpacity: 1.0
     property real foldScaleX: 1.0
     property real foldScaleY: 1.0
@@ -1080,6 +1084,20 @@ Item {
                 bottom: parent.bottom
                 bottomMargin: Kirigami.Units.gridUnit
             }
+        }
+
+        // The wallpaper plugin's frame, drawn over everything: blurring the plugin's own frame
+        // would drag its dark corners inward, so the plugin is told to leave it off here.
+        Rectangle {
+            z: 100
+            anchors.fill: parent
+            anchors.margins: -lockScreenUi.wallpaperRadius
+            radius: lockScreenUi.wallpaperRadius * 2
+            color: "transparent"
+            border.width: lockScreenUi.wallpaperRadius
+            border.color: lockScreenUi.wallpaperBackdrop
+            visible: lockScreenUi.wallpaperRadius > 0
+            Component.onCompleted: if (wallpaper && wallpaper.frameEnabled !== undefined) wallpaper.frameEnabled = false
         }
     }
 

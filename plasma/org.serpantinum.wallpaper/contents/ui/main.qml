@@ -4,6 +4,8 @@ import org.kde.plasma.plasmoid
 WallpaperItem {
     id: root
 
+    // A host that frames the wallpaper itself (the lock screen blurs it first) switches this off.
+    property bool frameEnabled: true
     loading: stage.item ? stage.item.loading : true
 
     onOpenUrlRequested: url => {

@@ -282,7 +282,7 @@ Item {
         brightness: stage.config.Brightness
         contrast: stage.config.Contrast
         saturation: stage.config.Saturation
-        maskEnabled: stage.config.CornerRadius > 0
+        maskEnabled: stage.config.CornerRadius > 0 && stage.wallpaper.frameEnabled !== false
         maskSource: maskSource
         // Default thresholds cut hard at alpha 0.0001; this pair makes the mask smoothstep(0, 1, alpha).
         maskThresholdMin: 0.5
