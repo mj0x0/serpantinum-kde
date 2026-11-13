@@ -85,8 +85,8 @@ Variants {
             readonly property bool isNotched: barStyle === "notched"
             // Flush to the screen edge, full length: fill and notched share this geometry.
             readonly property bool isFlush: isFill || isNotched
-            readonly property real notchLip: { var v = Number(ShellSettings.value("bar.notchLip", 7)); return s(isFinite(v) ? Math.max(0, v) : 7) }
-            readonly property real notchFillet: { var v = Number(ShellSettings.value("bar.notchFillet", 19)); return Math.max(0, Math.min(s(isFinite(v) ? v : 19), (barHeight - notchLip) / 2)) }
+            readonly property real notchLip: { var v = Number(ShellSettings.value("bar.notchLip", 7)); return Math.round(s(isFinite(v) ? Math.max(0, v) : 7)) }
+            readonly property real notchFillet: { var v = Number(ShellSettings.value("bar.notchFillet", 19)); return Math.round(Math.max(0, Math.min(s(isFinite(v) ? v : 19), (barHeight - notchLip) / 2))) }
             readonly property color slabColor: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, barOpacity)
             // Room past the bar for the outer flares to fade out in.
             readonly property real edgeOverhang: isNotched ? notchFillet : (isFill ? s(14) : 0)
@@ -590,10 +590,11 @@ Variants {
                     return best;
                 }
                 // Stretch two fillets past the card: the convex corner plus a flat run over the join wedge.
-                readonly property real lEnd: aIsland === "l" ? Math.min(cStartBase >= 0 ? cStartBase : (rStartBase >= 0 ? rStartBase : length), Math.max(lEndBase, aEnd + 2 * barWindow.notchFillet)) : lEndBase
-                readonly property real cStart: aIsland === "c" ? Math.max(lEndBase >= 0 ? lEndBase : 0, Math.min(cStartBase, aStart - 2 * barWindow.notchFillet)) : cStartBase
-                readonly property real cEnd: aIsland === "c" ? Math.min(rStartBase >= 0 ? rStartBase : length, Math.max(cEndBase, aEnd + 2 * barWindow.notchFillet)) : cEndBase
-                readonly property real rStart: aIsland === "r" ? Math.max(cEndBase >= 0 ? cEndBase : (lEndBase >= 0 ? lEndBase : 0), Math.min(rStartBase, aStart - 2 * barWindow.notchFillet)) : rStartBase
+                // Whole pixels: a fillet edge landing between pixels leaves a seam against its island.
+                readonly property real lEnd: Math.round(aIsland === "l" ? Math.min(cStartBase >= 0 ? cStartBase : (rStartBase >= 0 ? rStartBase : length), Math.max(lEndBase, aEnd + 2 * barWindow.notchFillet)) : lEndBase)
+                readonly property real cStart: Math.round(aIsland === "c" ? Math.max(lEndBase >= 0 ? lEndBase : 0, Math.min(cStartBase, aStart - 2 * barWindow.notchFillet)) : cStartBase)
+                readonly property real cEnd: Math.round(aIsland === "c" ? Math.min(rStartBase >= 0 ? rStartBase : length, Math.max(cEndBase, aEnd + 2 * barWindow.notchFillet)) : cEndBase)
+                readonly property real rStart: Math.round(aIsland === "r" ? Math.max(cEndBase >= 0 ? cEndBase : (lEndBase >= 0 ? lEndBase : 0), Math.min(rStartBase, aStart - 2 * barWindow.notchFillet)) : rStartBase)
                 function filletFor(gap) { return Math.max(0, Math.min(barWindow.notchFillet, gap / 2)) }
                 // Effective radius at each of the four inward island ends; shrinks when a notch gets too narrow for two arcs.
                 readonly property real rL:  lEnd < 0   ? 0 : filletFor((cStart >= 0 ? cStart : (rStart >= 0 ? rStart : length)) - lEnd)
