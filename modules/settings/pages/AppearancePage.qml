@@ -6,6 +6,8 @@ import QtQuick.Layouts
 SettingsPage {
     id: page
 
+    ThemeWallpaperPreview { host: page.host }
+
     SettingsHeading { host: page.host; text: "Themes" }
     ThemeGrid {
         Layout.fillWidth: true
