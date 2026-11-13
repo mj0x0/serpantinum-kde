@@ -205,7 +205,6 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: wpPreviewContainer.host.s(64)
-            radius: wpPreviewContainer.borderRadius
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "transparent" }
                 GradientStop { position: 0.25; color: Qt.rgba(0, 0, 0, 0.35) }
@@ -214,11 +213,14 @@ Item {
         }
     }
 
+    // 0.5/1 is a plain alpha multiply; the defaults keep every edge pixel whole and stair-step the corners.
     MultiEffect {
         anchors.fill: parent
         source: wpCardContent
         maskEnabled: true
         maskSource: wpCardMask
+        maskThresholdMin: 0.5
+        maskSpreadAtMin: 1.0
     }
 
     Rectangle {
