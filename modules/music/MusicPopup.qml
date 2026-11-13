@@ -38,6 +38,8 @@ Item {
     // it. Matches serpantinum's "music" layout (700×650, screen-scaled).
     readonly property real targetMasterWidth: root.s(700)
     readonly property real targetMasterHeight: root.s(650)
+    // Bar edge the card hangs flush off ("" when floating); set by the popup host.
+    property string attachEdge: ""
 
     // Theme Colors
     MatugenColors { id: _theme }
@@ -695,10 +697,14 @@ Item {
                 property real w: width
                 property real h: height
                 property real r: Math.max(0, Radius.outer(root.s(14)) - inset)
+                property real rTL: (root.attachEdge === "top"    || root.attachEdge === "left")  ? 0 : r
+                property real rTR: (root.attachEdge === "top"    || root.attachEdge === "right") ? 0 : r
+                property real rBL: (root.attachEdge === "bottom" || root.attachEdge === "left")  ? 0 : r
+                property real rBR: (root.attachEdge === "bottom" || root.attachEdge === "right") ? 0 : r
                 
                 // Mathematical perimeter
-                property real straightLines: 2 * (w - 2 * inset - 2 * r) + 2 * (h - 2 * inset - 2 * r)
-                property real arcLines: 2 * Math.PI * r
+                property real straightLines: 2 * (w - 2 * inset) + 2 * (h - 2 * inset) - 2 * (rTL + rTR + rBL + rBR)
+                property real arcLines: Math.PI / 2 * (rTL + rTR + rBL + rBR)
                 property real perimeter: straightLines + arcLines
 
                 property real drawProgress: 0
@@ -724,35 +730,35 @@ Item {
 
                     // Start exactly at Bottom-Left corner, going UP clockwise
                     startX: maskRectOuter.inset
-                    startY: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.r
+                    startY: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.rBL
 
                     // 1. Up to top-left corner
-                    PathLine { x: maskRectOuter.inset; y: maskRectOuter.inset + maskRectOuter.r }
+                    PathLine { x: maskRectOuter.inset; y: maskRectOuter.inset + maskRectOuter.rTL }
                     // 2. Arc top-left
                     PathArc { 
-                        x: maskRectOuter.inset + maskRectOuter.r; y: maskRectOuter.inset 
-                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise 
+                        x: maskRectOuter.inset + maskRectOuter.rTL; y: maskRectOuter.inset 
+                        radiusX: maskRectOuter.rTL; radiusY: maskRectOuter.rTL; direction: PathArc.Clockwise 
                     }
                     // 3. Right to top-right corner
-                    PathLine { x: maskRectOuter.w - maskRectOuter.inset - maskRectOuter.r; y: maskRectOuter.inset }
+                    PathLine { x: maskRectOuter.w - maskRectOuter.inset - maskRectOuter.rTR; y: maskRectOuter.inset }
                     // 4. Arc top-right
                     PathArc { 
-                        x: maskRectOuter.w - maskRectOuter.inset; y: maskRectOuter.inset + maskRectOuter.r 
-                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise 
+                        x: maskRectOuter.w - maskRectOuter.inset; y: maskRectOuter.inset + maskRectOuter.rTR 
+                        radiusX: maskRectOuter.rTR; radiusY: maskRectOuter.rTR; direction: PathArc.Clockwise 
                     }
                     // 5. Down to bottom-right corner
-                    PathLine { x: maskRectOuter.w - maskRectOuter.inset; y: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.r }
+                    PathLine { x: maskRectOuter.w - maskRectOuter.inset; y: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.rBR }
                     // 6. Arc bottom-right
                     PathArc { 
-                        x: maskRectOuter.w - maskRectOuter.inset - maskRectOuter.r; y: maskRectOuter.h - maskRectOuter.inset 
-                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise 
+                        x: maskRectOuter.w - maskRectOuter.inset - maskRectOuter.rBR; y: maskRectOuter.h - maskRectOuter.inset 
+                        radiusX: maskRectOuter.rBR; radiusY: maskRectOuter.rBR; direction: PathArc.Clockwise 
                     }
                     // 7. Left to bottom-left corner
-                    PathLine { x: maskRectOuter.inset + maskRectOuter.r; y: maskRectOuter.h - maskRectOuter.inset }
+                    PathLine { x: maskRectOuter.inset + maskRectOuter.rBL; y: maskRectOuter.h - maskRectOuter.inset }
                     // 8. Arc bottom-left to finish
                     PathArc { 
-                        x: maskRectOuter.inset; y: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.r 
-                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise 
+                        x: maskRectOuter.inset; y: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.rBL 
+                        radiusX: maskRectOuter.rBL; radiusY: maskRectOuter.rBL; direction: PathArc.Clockwise 
                     }
                 }
             }
@@ -798,7 +804,10 @@ Item {
             anchors.fill: parent
             anchors.margins: root.s(3)
             color: root.base
-            radius: Radius.inset(root.s(10), root.s(3))
+            topLeftRadius:     (root.attachEdge === "top"    || root.attachEdge === "left")  ? 0 : Radius.inset(root.s(10), root.s(3))
+            topRightRadius:    (root.attachEdge === "top"    || root.attachEdge === "right") ? 0 : Radius.inset(root.s(10), root.s(3))
+            bottomLeftRadius:  (root.attachEdge === "bottom" || root.attachEdge === "left")  ? 0 : Radius.inset(root.s(10), root.s(3))
+            bottomRightRadius: (root.attachEdge === "bottom" || root.attachEdge === "right") ? 0 : Radius.inset(root.s(10), root.s(3))
 
             // FIX: This forces the entire background to render as a single hardware texture,
             // preventing the UI from dragging and causing "shadow boxes" during the StackView transition!
@@ -808,7 +817,10 @@ Item {
             Rectangle {
                 id: innerBgMask
                 anchors.fill: parent
-                radius: Radius.inset(root.s(10), root.s(3))
+                topLeftRadius:     (root.attachEdge === "top"    || root.attachEdge === "left")  ? 0 : Radius.inset(root.s(10), root.s(3))
+                topRightRadius:    (root.attachEdge === "top"    || root.attachEdge === "right") ? 0 : Radius.inset(root.s(10), root.s(3))
+                bottomLeftRadius:  (root.attachEdge === "bottom" || root.attachEdge === "left")  ? 0 : Radius.inset(root.s(10), root.s(3))
+                bottomRightRadius: (root.attachEdge === "bottom" || root.attachEdge === "right") ? 0 : Radius.inset(root.s(10), root.s(3))
                 visible: false
                 
                 // FIX: Masks in MultiEffect strictly require layer.enabled to correctly capture the radius during scaling!

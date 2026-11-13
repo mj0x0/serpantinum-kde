@@ -24,6 +24,14 @@ Singleton {
     // Screen edge -> the bar window's far edge: its whole input strip.
     property real bandThickness: 56
 
+    // Notched bar: the attached cards reuse its fillet radius.
+    property bool notched: false
+    property real fillet: 19
+    // Span along the bar (screen px from the top or left) of whatever hangs flush off it; -1 when nothing does.
+    // The bar stretches the nearest island to cover it.
+    property real attachStart: -1
+    property real attachEnd: -1
+
     // Per-edge clearance: the bar's edge needs edgeGap, the others a sliver.
     readonly property real topGap: position === "top" ? edgeGap : 12
     readonly property real bottomGap: position === "bottom" ? edgeGap : 12

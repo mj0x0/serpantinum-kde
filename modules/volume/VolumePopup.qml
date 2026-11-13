@@ -121,6 +121,7 @@ Item {
 
     // The level tile scales the knob with itself, so ui.radius 46 (half its 92) is a circle.
     readonly property real levelRadius: Radius.active ? window.s(Radius.value) : window.s(14)
+    property string attachEdge: ""
 
     property real globalOrbitAngle: 0
     NumberAnimation on globalOrbitAngle {
@@ -134,7 +135,10 @@ Item {
     Rectangle {
         id: cardMask
         anchors.fill: parent
-        radius: Radius.outer(s(20))
+        topLeftRadius:     (window.attachEdge === "top"    || window.attachEdge === "left")  ? 0 : Radius.outer(s(20))
+        topRightRadius:    (window.attachEdge === "top"    || window.attachEdge === "right") ? 0 : Radius.outer(s(20))
+        bottomLeftRadius:  (window.attachEdge === "bottom" || window.attachEdge === "left")  ? 0 : Radius.outer(s(20))
+        bottomRightRadius: (window.attachEdge === "bottom" || window.attachEdge === "right") ? 0 : Radius.outer(s(20))
         color: "white"
         visible: false
         layer.enabled: true
@@ -147,10 +151,13 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            radius: Radius.outer(s(20))
+            topLeftRadius:     (window.attachEdge === "top"    || window.attachEdge === "left")  ? 0 : Radius.outer(s(20))
+            topRightRadius:    (window.attachEdge === "top"    || window.attachEdge === "right") ? 0 : Radius.outer(s(20))
+            bottomLeftRadius:  (window.attachEdge === "bottom" || window.attachEdge === "left")  ? 0 : Radius.outer(s(20))
+            bottomRightRadius: (window.attachEdge === "bottom" || window.attachEdge === "right") ? 0 : Radius.outer(s(20))
             color: window.base
             border.color: window.surface0
-            border.width: 1
+            border.width: window.attachEdge === "" ? 1 : 0
             layer.enabled: true
             layer.effect: MultiEffect {
                 maskEnabled: true

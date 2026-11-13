@@ -36,6 +36,7 @@ Item {
     // --- Master window scaling --- the host binds width/height to these and centres it.
     readonly property real targetMasterHeight: window.scheduleModuleExists ? Math.round(750 * window.sf) : Math.round(510 * window.sf)
     readonly property real targetMasterWidth: Math.round(1450 * window.sf)
+    property string attachEdge: ""
 
     // --- KEYBOARD SHORTCUTS (Escape is handled by Main.qml now) ---
     Shortcut { 
@@ -645,7 +646,10 @@ Item {
         Rectangle {
             id: cardMask
             anchors.fill: parent
-            radius: Radius.outer(Math.round(20 * window.sf))
+            topLeftRadius: (window.attachEdge === "top" || window.attachEdge === "left") ? 0 : Radius.outer(Math.round(20 * window.sf))
+            topRightRadius: (window.attachEdge === "top" || window.attachEdge === "right") ? 0 : Radius.outer(Math.round(20 * window.sf))
+            bottomLeftRadius: (window.attachEdge === "bottom" || window.attachEdge === "left") ? 0 : Radius.outer(Math.round(20 * window.sf))
+            bottomRightRadius: (window.attachEdge === "bottom" || window.attachEdge === "right") ? 0 : Radius.outer(Math.round(20 * window.sf))
             color: "white"
             visible: false
             layer.enabled: true
@@ -654,10 +658,13 @@ Item {
         Rectangle {
             id: card
             anchors.fill: parent
-            radius: Radius.outer(Math.round(20 * window.sf))
+            topLeftRadius: (window.attachEdge === "top" || window.attachEdge === "left") ? 0 : Radius.outer(Math.round(20 * window.sf))
+            topRightRadius: (window.attachEdge === "top" || window.attachEdge === "right") ? 0 : Radius.outer(Math.round(20 * window.sf))
+            bottomLeftRadius: (window.attachEdge === "bottom" || window.attachEdge === "left") ? 0 : Radius.outer(Math.round(20 * window.sf))
+            bottomRightRadius: (window.attachEdge === "bottom" || window.attachEdge === "right") ? 0 : Radius.outer(Math.round(20 * window.sf))
             color: window.base
             border.color: window.surface0
-            border.width: 1
+            border.width: window.attachEdge === "" ? 1 : 0
             layer.enabled: true
             layer.effect: MultiEffect {
                 maskEnabled: true

@@ -34,6 +34,7 @@ Item {
 
     width: s(860)
     height: s(620)
+    property string attachEdge: ""
 
     // --- Tabs ---------------------------------------------------------------
     // All four tabs always exist. Each tab renders its own "no hardware" plate, so
@@ -123,7 +124,10 @@ Item {
     Rectangle {
         id: cardMask
         anchors.fill: parent
-        radius: Radius.outer(s(20))
+        topLeftRadius:     (window.attachEdge === "top"    || window.attachEdge === "left")  ? 0 : Radius.outer(s(20))
+        topRightRadius:    (window.attachEdge === "top"    || window.attachEdge === "right") ? 0 : Radius.outer(s(20))
+        bottomLeftRadius:  (window.attachEdge === "bottom" || window.attachEdge === "left")  ? 0 : Radius.outer(s(20))
+        bottomRightRadius: (window.attachEdge === "bottom" || window.attachEdge === "right") ? 0 : Radius.outer(s(20))
         color: "white"
         visible: false
         layer.enabled: true
@@ -137,10 +141,13 @@ Item {
         Rectangle {
             id: card
             anchors.fill: parent
-            radius: Radius.outer(s(20))
+            topLeftRadius:     (window.attachEdge === "top"    || window.attachEdge === "left")  ? 0 : Radius.outer(s(20))
+            topRightRadius:    (window.attachEdge === "top"    || window.attachEdge === "right") ? 0 : Radius.outer(s(20))
+            bottomLeftRadius:  (window.attachEdge === "bottom" || window.attachEdge === "left")  ? 0 : Radius.outer(s(20))
+            bottomRightRadius: (window.attachEdge === "bottom" || window.attachEdge === "right") ? 0 : Radius.outer(s(20))
             color: window.base
             border.color: window.surface0
-            border.width: 1
+            border.width: window.attachEdge === "" ? 1 : 0
             layer.enabled: true
             layer.effect: MultiEffect {
                 maskEnabled: true

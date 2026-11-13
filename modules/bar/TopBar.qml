@@ -72,6 +72,8 @@ Variants {
             Binding { target: BarState; property: "thickness"; value: barWindow.barHeight }
             Binding { target: BarState; property: "slabThickness"; value: barWindow.barHeight + (barWindow.isFlush ? 0 : barWindow.s(8)) }
             Binding { target: BarState; property: "bandThickness"; value: barWindow.barHeight + (barWindow.isFlush ? barWindow.edgeOverhang : barWindow.s(8)) }
+            Binding { target: BarState; property: "notched"; value: barWindow.isNotched }
+            Binding { target: BarState; property: "fillet"; value: barWindow.notchFillet }
 
             // --- bar.* settings (v2 schema; old topbar.* keys read as fallback) ---
             property string barStyle: "" + ShellSettings.value("bar.style", "modular")
@@ -568,10 +570,30 @@ Variants {
                 // Islands extend notchPad past their widgets; a notch needs room for two fillets plus a flat run of lip.
                 readonly property real sectionGap: barWindow.isNotched ? barWindow.s(10) + 2 * (notchPad + barWindow.notchFillet) : barWindow.s(10)
                 // Island extents along the bar, -1 when the section is empty.
-                readonly property real lEnd: lSize > 0 ? lPos + lSize + notchPad : -1
-                readonly property real cStart: cSize > 0 ? Math.max(0, cPos - notchPad) : -1
-                readonly property real cEnd: cSize > 0 ? cPos + cSize + notchPad : -1
-                readonly property real rStart: rSize > 0 ? Math.max(0, rPos - notchPad) : -1
+                readonly property real lEndBase: lSize > 0 ? lPos + lSize + notchPad : -1
+                readonly property real cStartBase: cSize > 0 ? Math.max(0, cPos - notchPad) : -1
+                readonly property real cEndBase: cSize > 0 ? cPos + cSize + notchPad : -1
+                readonly property real rStartBase: rSize > 0 ? Math.max(0, rPos - notchPad) : -1
+                // The attached card's span along this bar (barContent starts at the screen edge when flush).
+                readonly property real aStart: barWindow.isNotched && BarState.attachEnd > BarState.attachStart ? BarState.attachStart : -1
+                readonly property real aEnd: aStart < 0 ? -1 : BarState.attachEnd
+                // The island under the card's centre hosts it, else the nearest one.
+                readonly property string aIsland: {
+                    if (aStart < 0) return "";
+                    var m = (aStart + aEnd) / 2, best = "", dist = Infinity;
+                    var isl = [["l", lEndBase >= 0 ? 0 : -1, lEndBase], ["c", cStartBase, cEndBase], ["r", rStartBase, rStartBase >= 0 ? length : -1]];
+                    for (var i = 0; i < isl.length; i++) {
+                        if (isl[i][1] < 0 || isl[i][2] < 0) continue;
+                        var d = m < isl[i][1] ? isl[i][1] - m : (m > isl[i][2] ? m - isl[i][2] : 0);
+                        if (d < dist) { dist = d; best = isl[i][0]; }
+                    }
+                    return best;
+                }
+                // Stretch two fillets past the card: the convex corner plus a flat run over the join wedge.
+                readonly property real lEnd: aIsland === "l" ? Math.min(cStartBase >= 0 ? cStartBase : (rStartBase >= 0 ? rStartBase : length), Math.max(lEndBase, aEnd + 2 * barWindow.notchFillet)) : lEndBase
+                readonly property real cStart: aIsland === "c" ? Math.max(lEndBase >= 0 ? lEndBase : 0, Math.min(cStartBase, aStart - 2 * barWindow.notchFillet)) : cStartBase
+                readonly property real cEnd: aIsland === "c" ? Math.min(rStartBase >= 0 ? rStartBase : length, Math.max(cEndBase, aEnd + 2 * barWindow.notchFillet)) : cEndBase
+                readonly property real rStart: aIsland === "r" ? Math.max(cEndBase >= 0 ? cEndBase : (lEndBase >= 0 ? lEndBase : 0), Math.min(rStartBase, aStart - 2 * barWindow.notchFillet)) : rStartBase
                 function filletFor(gap) { return Math.max(0, Math.min(barWindow.notchFillet, gap / 2)) }
                 // Effective radius at each of the four inward island ends; shrinks when a notch gets too narrow for two arcs.
                 readonly property real rL:  lEnd < 0   ? 0 : filletFor((cStart >= 0 ? cStart : (rStart >= 0 ? rStart : length)) - lEnd)

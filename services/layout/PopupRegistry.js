@@ -2,15 +2,15 @@
 
 // Every popup the shared window can show: base size (px before ui scale, or "fill"),
 // the component to build, and an anchor per bar position. A popup may override the
-// size with targetMasterWidth/Height on its root.
+// size with targetMasterWidth/Height on its root. attach: hangs flush off a notched bar.
 var table = {
-    calendar:    { w: 1450, h: 510, comp: "../calendar/CalendarPopup.qml",
+    calendar:    { w: 1450, h: 510, attach: true, comp: "../calendar/CalendarPopup.qml",
                    pos: { top: "top-center", bottom: "bottom-center", left: "left-center", right: "right-center" } },
-    music:       { w: 700,  h: 650, comp: "../music/MusicPopup.qml",         pos: nearIcon() },
-    network:     { w: 860,  h: 620, comp: "../network/NetworkPopup.qml",     pos: nearIcon() },
-    bluetooth:   { w: 860,  h: 620, comp: "../bluetooth/BluetoothPopup.qml", pos: nearIcon() },
-    power:       { w: 860,  h: 620, comp: "../power/PowerPopup.qml",         pos: nearIcon() },
-    volume:      { w: 450,  h: 700, comp: "../volume/VolumePopup.qml",
+    music:       { w: 700,  h: 650, attach: true, comp: "../music/MusicPopup.qml",         pos: nearIcon() },
+    network:     { w: 860,  h: 620, attach: true, comp: "../network/NetworkPopup.qml",     pos: nearIcon() },
+    bluetooth:   { w: 860,  h: 620, attach: true, comp: "../bluetooth/BluetoothPopup.qml", pos: nearIcon() },
+    power:       { w: 860,  h: 620, attach: true, comp: "../power/PowerPopup.qml",         pos: nearIcon() },
+    volume:      { w: 450,  h: 700, attach: true, comp: "../volume/VolumePopup.qml",
                    pos: { top: "top-end", bottom: "bottom-end", left: "near-icon", right: "near-icon" } },
     // v2's System Panel: a full-height sheet on the right, or the left when the bar is there.
     notifcenter: { w: 500,  h: "fill", comp: "../notifcenter/SystemPanel.qml",
@@ -24,6 +24,7 @@ function nearIcon() { return { top: "near-icon", bottom: "near-icon", left: "nea
 function centered() { return { top: "center", bottom: "center", left: "center", right: "center" }; }
 function get(name) { return table[name] || null; }
 function names() { return Object.keys(table); }
+function attaches(name) { var t = table[name]; return !!(t && t.attach); }
 
 // anchor + bar position -> x/y. g = clearance per screen edge (the bar's edge clears the bar),
 // icon = the bar pill's centre for near-icon, s = the ui scaler.

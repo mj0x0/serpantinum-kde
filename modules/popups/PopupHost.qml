@@ -4,6 +4,7 @@
 
 import "../../services/bar"
 import "../../services/layout"
+import "../../services/theme"
 import "../bluetooth"
 import "../music"
 import "../network"
@@ -19,6 +20,10 @@ PanelWindow {
     id: host
 
     readonly property bool shown: Popups.current !== "hidden"
+    // Notched bar: the attached cards hang flush off it and the bar stretches an island over them.
+    readonly property bool flushNow: BarState.notched && !BarState.hidden && shown && Registry.attaches(Popups.current)
+    // The look outlives the exit fade: wedges and square corners leave with the card, not before it.
+    readonly property bool flushLook: BarState.notched && !BarState.hidden && (shown || stage.opacity > 0.01) && Registry.attaches(stage.item ? stage.item.objectName : "")
     // Stays mapped until the exit fade has run out.
     visible: shown || stage.opacity > 0.01
     anchors { top: true; bottom: true; left: true; right: true }
@@ -37,6 +42,7 @@ PanelWindow {
 
     Scaler { id: scaler; currentWidth: Screen.width; currentHeight: Screen.height }
     function s(v) { return scaler.s(v); }
+    MatugenColors { id: mocha }
 
     Connections {
         target: Popups
@@ -90,6 +96,7 @@ PanelWindow {
             if (typeof item.targetMasterHeight === "number" && item.targetMasterHeight >= 50) h = item.targetMasterHeight;
         }
         var gaps = { top: BarState.topGap, bottom: BarState.bottomGap, left: BarState.leftGap, right: BarState.rightGap };
+        if (BarState.notched && !BarState.hidden && Registry.attaches(name)) gaps[BarState.position] = BarState.thickness;
         var p = Registry.place(t.pos[BarState.position] || t.pos.top, BarState.position,
                                w, h, W, H, gaps, iconCenter(name), s);
         return { x: p.x, y: p.y, w: w, h: h };
@@ -112,6 +119,10 @@ PanelWindow {
         boxX = l.x; boxY = l.y; boxW = l.w; boxH = l.h;
         stageW = l.w; stageH = l.h;
     }
+
+    // Target geometry, not the animated box, so the island and the box animate in lockstep.
+    Binding { target: BarState; property: "attachStart"; value: host.flushNow ? (BarState.isVertical ? host.boxY : host.boxX) : -1 }
+    Binding { target: BarState; property: "attachEnd";   value: host.flushNow ? (BarState.isVertical ? host.boxY + host.boxH : host.boxX + host.boxW) : -1 }
 
     // --- switching ----------------------------------------------------------
     property int generation: 0
@@ -175,6 +186,7 @@ PanelWindow {
         item.objectName = name;
         item.width = Qt.binding(function () { return stage.width; });
         item.height = Qt.binding(function () { return stage.height; });
+        if (item.attachEdge !== undefined) item.attachEdge = Qt.binding(function () { return host.flushLook && stage.item === item ? BarState.position : ""; });
         if (item.closeRequested !== undefined) item.closeRequested.connect(function () { Popups.hideIf(name); });
 
         var old = stage.item;
@@ -201,6 +213,47 @@ PanelWindow {
         }
     }
 
+    // Two concave wedges joining the attached card to the bar; outside the clipped box, riding its live geometry.
+    Canvas {
+        id: joinFillets
+        readonly property real r: BarState.fillet
+        property color fill: mocha.base
+        visible: host.flushLook && r > 0.5
+        opacity: stage.opacity
+        x: BarState.isVertical ? (BarState.position === "left" ? box.x : box.x + box.width - r) : box.x - r
+        y: BarState.isVertical ? box.y - r : (BarState.position === "top" ? box.y : box.y + box.height - r)
+        width: BarState.isVertical ? r : box.width + 2 * r
+        height: BarState.isVertical ? box.height + 2 * r : r
+        onFillChanged: requestPaint()
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
+        onVisibleChanged: requestPaint()
+
+        // EdgeCorner's path: an r x r square at (x0, y0) whose wedge hugs the vertex (vx, vy).
+        function wedge(ctx, x0, y0, vx, vy) {
+            var ox = vx === x0 ? x0 + r : x0, oy = vy === y0 ? y0 + r : y0;
+            ctx.beginPath();
+            ctx.moveTo(vx, vy);
+            ctx.lineTo(ox, vy);
+            ctx.arcTo(vx, vy, vx, oy, r);
+            ctx.lineTo(vx, oy);
+            ctx.closePath();
+            ctx.fill();
+        }
+        onPaint: {
+            var ctx = getContext("2d");
+            ctx.reset();
+            ctx.fillStyle = fill;
+            var p = BarState.position;
+            // Welded under the card's edge too: an inset chassis (the music ring) would show a hairline.
+            if (BarState.isVertical) ctx.fillRect(0, r, width, height - 2 * r); else ctx.fillRect(r, 0, width - 2 * r, height);
+            if (p === "top")         { wedge(ctx, 0, 0, r, 0); wedge(ctx, width - r, 0, width - r, 0); }
+            else if (p === "bottom") { wedge(ctx, 0, 0, r, r); wedge(ctx, width - r, 0, width - r, r); }
+            else if (p === "left")   { wedge(ctx, 0, 0, 0, r); wedge(ctx, 0, height - r, 0, height - r); }
+            else                     { wedge(ctx, 0, 0, r, r); wedge(ctx, 0, height - r, r, height - r); }
+        }
+    }
+
     // --- the box that morphs ------------------------------------------------
     Item {
         id: box
@@ -223,7 +276,8 @@ PanelWindow {
             height: host.stageH
             x: (box.width - width) / 2
             y: (box.height - height) / 2
-            transformOrigin: Item.Center
+            // Attached cards grow out of the bar instead of their centre.
+            transformOrigin: host.flushLook ? (BarState.position === "top" ? Item.Top : BarState.position === "bottom" ? Item.Bottom : BarState.position === "left" ? Item.Left : Item.Right) : Item.Center
             // Set by popups that play their own entrance and exit; the host then only shows and hides them.
             readonly property bool selfAnimates: item !== null && item.selfAnimates === true
 
