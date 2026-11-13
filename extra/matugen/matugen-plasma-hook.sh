@@ -59,8 +59,29 @@ fi
 
 # matugen decodes the still on every call; a 512 px copy is 10x faster and picks the
 # same seed. Every call below must use the same file.
+wallpaper_cfg() {   # wallpaper_cfg <Key> <default>, from the live containment's plugin group
+    local v
+    v="$(awk -v p="$PLUGIN" -v k="$1" '
+        /^\[/ { ing = (index($0, "[Wallpaper][" p "][General]") > 0) }
+        ing && index($0, k "=") == 1 { print substr($0, length(k) + 2); exit }
+    ' "$HOME"/.config/plasma-*-appletsrc 2>/dev/null)"
+    echo "${v:-$2}"
+}
+
+# The copy carries the plugin's grade (Stage.qml's MultiEffect: contrast, brightness, then
+# saturation around Rec. 601 luma) so the palette matches what is on screen.
+grade=()
+mapfile -t grade < <(awk -v c="$(wallpaper_cfg Contrast 0.15)" -v b="$(wallpaper_cfg Brightness 0)" \
+                         -v s="$(wallpaper_cfg Saturation 0.3)" 'BEGIN {
+    if (c == 0 && b == 0 && s == 0) exit
+    printf "-function\nPolynomial\n%.6f,%.6f\n", 1 + c, b - 0.5 * c
+    w[1] = 0.299; w[2] = 0.587; w[3] = 0.114
+    printf "-color-matrix\n3x3:"
+    for (i = 1; i <= 3; i++) for (j = 1; j <= 3; j++) printf " %.6f", (i == j ? 1 + s : 0) - s * w[j]
+    printf "\n"
+}')
 seed="$CACHE/seed.jpg"
-magick "$still" -resize '512x512>' -quality 90 "$seed.tmp" >/dev/null 2>&1 \
+magick "$still" -resize '512x512>' "${grade[@]}" -quality 90 "$seed.tmp" >/dev/null 2>&1 \
     && mv -f "$seed.tmp" "$seed" || seed="$still"
 
 # --- lock screen ------------------------------------------------------------
