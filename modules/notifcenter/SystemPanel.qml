@@ -52,7 +52,7 @@ Item {
     readonly property color boxColor: Qt.darker(ThemeBackend.surface0, 1.04)
 
     readonly property color briColor: Qt.lighter(ThemeBackend.mauve, 1.1)
-    readonly property color volColor: Qt.lighter(ThemeBackend.sapphire, 1.5)
+    readonly property color volColor: ThemeBackend.text
     readonly property color tempColor: ThemeBackend.peach
     readonly property color profileColor: Qt.lighter(ThemeBackend.blue, 1.55)
 
