@@ -37,14 +37,6 @@ var groups = [
         ]
     },
     {
-        name: "Music popup — Lyrics tab",
-        items: [
-            { chords: [","], label: "Lyrics 0.1s earlier", condition: "While the Lyrics tab is showing, unless the Artist or Song search box has focus" },
-            { chords: ["."], label: "Lyrics 0.1s later", condition: "While the Lyrics tab is showing, unless the Artist or Song search box has focus" },
-            { chords: ["R"], label: "Re-fetch the lyrics", condition: "While the Lyrics tab is showing, unless the Artist or Song search box has focus" }
-        ]
-    },
-    {
         name: "Music popup — Audio tab",
         items: [
             { chords: ["Left"], label: "Balance left", condition: "While the Audio tab is showing, unless the Artist or Song search box has focus" },
@@ -54,6 +46,14 @@ var groups = [
             { chords: ["D"], label: "Cycle the dynamics", condition: "While the Audio tab is showing, unless the Artist or Song search box has focus" },
             { chords: ["T"], label: "Test tone", condition: "While the Audio tab is showing, unless the Artist or Song search box has focus" },
             { chords: ["R"], label: "Reset the audio settings", condition: "While the Audio tab is showing, unless the Artist or Song search box has focus" }
+        ]
+    },
+    {
+        name: "Music popup — Lyrics tab",
+        items: [
+            { chords: [","], label: "Lyrics 0.1s earlier", condition: "While the Lyrics tab is showing, unless the Artist or Song search box has focus" },
+            { chords: ["."], label: "Lyrics 0.1s later", condition: "While the Lyrics tab is showing, unless the Artist or Song search box has focus" },
+            { chords: ["R"], label: "Re-fetch the lyrics", condition: "While the Lyrics tab is showing, unless the Artist or Song search box has focus" }
         ]
     },
     {

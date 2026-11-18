@@ -236,19 +236,30 @@ Item {
         return n;
     }
 
-    // Whole groups packed into columns, largest first into whichever column is
-    // currently shortest — so a heading is never stranded away from its rows.
+    // Families packed into columns, largest first into whichever column is currently
+    // shortest — so a heading is never stranded from its rows, and "X" never lands in
+    // a different column from "X — sub tab".
     // Measured: the in-shell tab clears the 90% height cap in four columns from 1440p up, five on 1080p.
     readonly property int columnCount: !window.shellTab ? 2 : (Screen.height >= 1200 ? 4 : 5)
     readonly property var columns: {
         var cols = [], heights = [];
         for (var c = 0; c < window.columnCount; c++) { cols.push([]); heights.push(0); }
-        var gs = window.groupList.slice().sort(function (a, b) { return b.items.length - a.items.length; });
-        for (var i = 0; i < gs.length; i++) {
+
+        var fams = [], byRoot = ({});
+        for (var i = 0; i < window.groupList.length; i++) {
+            var g = window.groupList[i], root = g.name.split(" \u2014 ")[0];
+            var f = byRoot[root];
+            if (!f) { f = { members: [], weight: 0 }; byRoot[root] = f; fams.push(f); }
+            f.members.push(g);
+            f.weight += g.items.length + 2;   // heading costs about two rows
+        }
+
+        fams.sort(function (a, b) { return b.weight - a.weight; });
+        for (var fi = 0; fi < fams.length; fi++) {
             var min = 0;
             for (var k = 1; k < window.columnCount; k++) if (heights[k] < heights[min]) min = k;
-            cols[min].push(gs[i]);
-            heights[min] += gs[i].items.length + 2;   // heading costs about two rows
+            for (var mi = 0; mi < fams[fi].members.length; mi++) cols[min].push(fams[fi].members[mi]);
+            heights[min] += fams[fi].weight;
         }
         return cols;
     }
