@@ -46,8 +46,8 @@ Item {
     property int tabIndex: 0
     readonly property bool shellTab: window.tabIndex === 1
 
-    // The in-shell catalogue is four times the KDE list, so its tab needs a wider sheet.
-    readonly property real sheetWidth: Math.min(Screen.width * 0.95, s(window.shellTab ? 1700 : 1240))
+    // Wide enough for however many columns the content needs, never under the KDE width.
+    readonly property real sheetWidth: Math.min(Screen.width * 0.95, Math.max(s(1240), s(300) * window.columnCount))
     // Self-sizing: the sheet is exactly as tall as its tallest column, so a
     // group can never be clipped and there is never dead space to scroll.
     readonly property real sheetHeight: Math.min(Screen.height * 0.9, sheetBody.implicitHeight + s(48))
@@ -61,12 +61,13 @@ Item {
     readonly property var shellGroups: ShellShortcuts.groups
     property string filter: ""
 
-    readonly property int totalCount: {
-        if (!window.shellTab) return window.rows.length;
+    readonly property int shellTotal: {
         var n = 0;
         for (var i = 0; i < window.shellGroups.length; i++) n += window.shellGroups[i].items.length;
         return n;
     }
+    readonly property int totalCount: window.filter.trim() !== "" ? window.rows.length + window.shellTotal
+                                    : (window.shellTab ? window.shellTotal : window.rows.length)
 
     function clearSearch() { searchField.text = ""; }
     function focusSearch() { searchField.forceActiveFocus(); }
@@ -196,38 +197,37 @@ Item {
     }
 
     // ---- model ------------------------------------------------------------
-    readonly property var groupList: {
-        var q = window.filter.toLowerCase().trim();
-        if (window.shellTab) {
-            if (q === "") return window.shellGroups;
-            var shown = [];
-            for (var gi = 0; gi < window.shellGroups.length; gi++) {
-                var src = window.shellGroups[gi], keep = [];
-                var groupHit = src.name.toLowerCase().indexOf(q) !== -1;
-                for (var si = 0; si < src.items.length; si++) {
-                    var it = src.items[si];
-                    if (groupHit
-                        || it.label.toLowerCase().indexOf(q) !== -1
-                        || ("" + it.chords.join(" ")).toLowerCase().indexOf(q) !== -1)
-                        keep.push(it);
-                }
-                if (keep.length > 0) shown.push({ name: src.name, items: keep });
-            }
-            return shown;
-        }
+    readonly property var kdeGroups: {
         var out = [], byName = ({});
         for (var i = 0; i < window.rows.length; i++) {
-            var r = window.rows[i];
-            if (q !== ""
-                && r.label.toLowerCase().indexOf(q) === -1
-                && ("" + r.chords.join(" ")).toLowerCase().indexOf(q) === -1
-                && r.group.toLowerCase().indexOf(q) === -1)
-                continue;
-            var g = byName[r.group];
+            var r = window.rows[i], g = byName[r.group];
             if (!g) { g = { name: r.group, items: [] }; byName[r.group] = g; out.push(g); }
             g.items.push(r);
         }
         return out;
+    }
+
+    function matching(src, q) {
+        var shown = [];
+        for (var gi = 0; gi < src.length; gi++) {
+            var g = src[gi], keep = [], groupHit = g.name.toLowerCase().indexOf(q) !== -1;
+            for (var si = 0; si < g.items.length; si++) {
+                var it = g.items[si];
+                if (groupHit
+                    || it.label.toLowerCase().indexOf(q) !== -1
+                    || ("" + it.chords.join(" ")).toLowerCase().indexOf(q) !== -1)
+                    keep.push(it);
+            }
+            if (keep.length > 0) shown.push({ name: g.name, items: keep });
+        }
+        return shown;
+    }
+
+    // A search spans both tabs; only the unfiltered view is per-tab.
+    readonly property var groupList: {
+        var q = window.filter.toLowerCase().trim();
+        if (q === "") return window.shellTab ? window.shellGroups : window.kdeGroups;
+        return window.matching(window.kdeGroups, q).concat(window.matching(window.shellGroups, q));
     }
 
     readonly property int shownCount: {
@@ -239,8 +239,15 @@ Item {
     // Families packed into columns, largest first into whichever column is currently
     // shortest — so a heading is never stranded from its rows, and "X" never lands in
     // a different column from "X — sub tab".
-    // Measured: the in-shell tab clears the 90% height cap in four columns from 1440p up, five on 1080p.
-    readonly property int columnCount: !window.shellTab ? 2 : (Screen.height >= 1200 ? 4 : 5)
+    // Nothing scrolls, so anything past the height cap is simply lost off the bottom. One
+    // column holds perColumnWeight; s(32) per weight unit and s(140) of header, footer and
+    // margins, measured off the rendered sheet. 0.9 leaves room for greedy packing imbalance.
+    readonly property real perColumnWeight: Math.max(6, (Screen.height * 0.9 - window.s(140)) / window.s(32))
+    readonly property int columnCount: {
+        var total = 0;
+        for (var i = 0; i < window.groupList.length; i++) total += window.groupList[i].items.length + 2;
+        return Math.max(2, Math.min(8, Math.ceil(total / (window.perColumnWeight * 0.9))));
+    }
     readonly property var columns: {
         var cols = [], heights = [];
         for (var c = 0; c < window.columnCount; c++) { cols.push([]); heights.push(0); }
@@ -254,12 +261,22 @@ Item {
             f.weight += g.items.length + 2;   // heading costs about two rows
         }
 
-        fams.sort(function (a, b) { return b.weight - a.weight; });
+        // A family taller than one column has to break, or its tail runs off the bottom.
+        var units = [];
         for (var fi = 0; fi < fams.length; fi++) {
+            if (fams[fi].weight <= window.perColumnWeight) { units.push(fams[fi]); continue; }
+            for (var mi = 0; mi < fams[fi].members.length; mi++) {
+                var m = fams[fi].members[mi];
+                units.push({ members: [m], weight: m.items.length + 2 });
+            }
+        }
+
+        units.sort(function (a, b) { return b.weight - a.weight; });
+        for (var ui = 0; ui < units.length; ui++) {
             var min = 0;
             for (var k = 1; k < window.columnCount; k++) if (heights[k] < heights[min]) min = k;
-            for (var mi = 0; mi < fams[fi].members.length; mi++) cols[min].push(fams[fi].members[mi]);
-            heights[min] += fams[fi].weight;
+            for (var mj = 0; mj < units[ui].members.length; mj++) cols[min].push(units[ui].members[mj]);
+            heights[min] += units[ui].weight;
         }
         return cols;
     }
