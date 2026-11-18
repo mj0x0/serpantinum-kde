@@ -1,7 +1,8 @@
-// The user's real global shortcuts, grouped into cards. Layout idea from end-4's
-// dots-hyprland; data from helpers/shortcuts.py reading kglobalshortcutsrc.
+// The user's real shortcuts, grouped into cards. Layout idea from end-4's
+// dots-hyprland; KDE data from helpers/shortcuts.py, in-shell data from ShellShortcuts.js.
 
 import "../../services/layout"
+import "../../services/reusables" as V2
 import "../../services/settings"
 import "../../services/theme"
 import QtQuick
@@ -10,6 +11,7 @@ import QtQuick.Controls
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
+import "ShellShortcuts.js" as ShellShortcuts
 
 Item {
     id: window
@@ -41,23 +43,38 @@ Item {
     ]
     readonly property int tintCount: window.groupTints.length
 
-    width: s(1240)
+    property int tabIndex: 0
+    readonly property bool shellTab: window.tabIndex === 1
+
+    // The in-shell catalogue is four times the KDE list, so its tab needs a wider sheet.
+    readonly property real sheetWidth: Math.min(Screen.width * 0.95, s(window.shellTab ? 1700 : 1240))
     // Self-sizing: the sheet is exactly as tall as its tallest column, so a
     // group can never be clipped and there is never dead space to scroll.
-    height: Math.min(Screen.height * 0.9, sheetBody.implicitHeight + s(48))
+    readonly property real sheetHeight: Math.min(Screen.height * 0.9, sheetBody.implicitHeight + s(48))
+
+    width: window.sheetWidth
+    height: window.sheetHeight
 
     readonly property string helpersDir: ("" + Quickshell.shellDir).replace(/^file:\/\//, "") + "/helpers"
 
     property var rows: []
+    readonly property var shellGroups: ShellShortcuts.groups
     property string filter: ""
+
+    readonly property int totalCount: {
+        if (!window.shellTab) return window.rows.length;
+        var n = 0;
+        for (var i = 0; i < window.shellGroups.length; i++) n += window.shellGroups[i].items.length;
+        return n;
+    }
 
     function clearSearch() { searchField.text = ""; }
     function focusSearch() { searchField.forceActiveFocus(); }
     function handleEscape() { if (window.filter !== "") { clearSearch(); return true; } return false; }
 
     // The popup host sizes us from these; height follows the tallest column.
-    readonly property real targetMasterWidth: s(1240)
-    readonly property real targetMasterHeight: Math.min(Screen.height * 0.9, sheetBody.implicitHeight + s(48))
+    readonly property real targetMasterWidth: window.sheetWidth
+    readonly property real targetMasterHeight: window.sheetHeight
 
     Process {
         id: fetcher
@@ -79,6 +96,26 @@ Item {
         "Polonium":          "\u{f0570}",   // md-view_grid
         "Media":             "\u{f075a}",   // md-music
         "Plasma":            "\u{f056e}",   // md-view_dashboard
+
+        "Volume popup":                     "\u{f057e}",   // md-volume_high
+        "Music popup":                      "\u{f075a}",   // md-music
+        "Music popup — Lyrics tab":         "\u{f0370}",   // md-microphone_variant
+        "Music popup — Audio tab":          "\u{f062e}",   // md-tune
+        "Notification centre":              "\u{f009c}",   // md-bell_outline
+        "Network panel":                    "\u{f05a9}",   // md-wifi
+        "Clipboard panel":                  "\u{f0a38}",   // md-clipboard_text_outline
+        "Floating sidebar":                 "\u{f10aa}",   // md-dock_left
+        "Timer tab":                        "\u{f051b}",   // md-timer_outline
+        "Screenshot overlay":               "\u{f0e51}",   // md-monitor_screenshot
+        "Settings":                         "\u{f08bb}",   // md-cog_outline
+        "Wallpaper picker":                 "\u{f0976}",   // md-image_outline
+        "Wallpaper picker — Wallhaven tab": "\u{f0978}",   // md-image_search_outline
+        "Power panel":                      "\u{f0906}",   // md-power_standby
+        "Focus Time":                       "\u{f0150}",   // md-clock_outline
+        "Theme picker":                     "\u{f0e0c}",   // md-palette_outline
+        "Calendar":                         "\u{f0b66}",   // md-calendar_blank_outline
+        "Bar popups":                       "\u{f1513}",   // md-dock_top
+        "Widget redactor":                  "\u{f1355}",   // md-widgets_outline
     })
     readonly property var groupTintIndex: ({
         "Window Management": 0,
@@ -86,6 +123,27 @@ Item {
         "Polonium":          2,
         "Media":             3,
         "Applications":      4,
+
+        // One tint per in-shell family, so the four Music cards read as one thing.
+        "Volume popup":                     3,
+        "Music popup":                      3,
+        "Music popup — Lyrics tab":         3,
+        "Music popup — Audio tab":          3,
+        "Notification centre":              0,
+        "Network panel":                    0,
+        "Clipboard panel":                  0,
+        "Power panel":                      0,
+        "Floating sidebar":                 2,
+        "Timer tab":                        2,
+        "Focus Time":                       2,
+        "Calendar":                         2,
+        "Wallpaper picker":                 1,
+        "Wallpaper picker — Wallhaven tab": 1,
+        "Theme picker":                     1,
+        "Widget redactor":                  1,
+        "Screenshot overlay":               4,
+        "Settings":                         4,
+        "Bar popups":                       4,
     })
 
     function groupIcon(g) { return window.groupIcons[g] || "\u{f030c}"; }   // md-keyboard
@@ -140,6 +198,23 @@ Item {
     // ---- model ------------------------------------------------------------
     readonly property var groupList: {
         var q = window.filter.toLowerCase().trim();
+        if (window.shellTab) {
+            if (q === "") return window.shellGroups;
+            var shown = [];
+            for (var gi = 0; gi < window.shellGroups.length; gi++) {
+                var src = window.shellGroups[gi], keep = [];
+                var groupHit = src.name.toLowerCase().indexOf(q) !== -1;
+                for (var si = 0; si < src.items.length; si++) {
+                    var it = src.items[si];
+                    if (groupHit
+                        || it.label.toLowerCase().indexOf(q) !== -1
+                        || ("" + it.chords.join(" ")).toLowerCase().indexOf(q) !== -1)
+                        keep.push(it);
+                }
+                if (keep.length > 0) shown.push({ name: src.name, items: keep });
+            }
+            return shown;
+        }
         var out = [], byName = ({});
         for (var i = 0; i < window.rows.length; i++) {
             var r = window.rows[i];
@@ -163,7 +238,8 @@ Item {
 
     // Whole groups packed into columns, largest first into whichever column is
     // currently shortest — so a heading is never stranded away from its rows.
-    readonly property int columnCount: 2
+    // Measured: the in-shell tab clears the 90% height cap in four columns from 1440p up, five on 1080p.
+    readonly property int columnCount: !window.shellTab ? 2 : (Screen.height >= 1200 ? 4 : 5)
     readonly property var columns: {
         var cols = [], heights = [];
         for (var c = 0; c < window.columnCount; c++) { cols.push([]); heights.push(0); }
@@ -248,14 +324,30 @@ Item {
                     }
                     Text {
                         Layout.alignment: Qt.AlignVCenter
-                        text: window.filter === "" ? window.rows.length + " bound"
-                                                   : window.shownCount + " of " + window.rows.length
+                        text: window.filter === "" ? window.totalCount + " bound"
+                                                   : window.shownCount + " of " + window.totalCount
                         font.family: Fonts.ui
                         font.pixelSize: window.s(10)
                         color: window.overlay0
                     }
 
                     Item { Layout.fillWidth: true }
+
+                    V2.Switch {
+                        id: tabSwitch
+                        Layout.preferredWidth: window.s(150)
+                        Layout.preferredHeight: window.s(30)
+                        options: ["KDE", "Shell"]
+                        currentIndex: window.tabIndex
+                        cornerRadius: Radius.outer(window.s(9))
+                        fontFamily: Fonts.ui
+                        fontPixelSize: window.s(10)
+                        accentColor: window.accent
+                        baseColor: Qt.alpha(window.surface0, 0.6)
+                        textColor: window.subtext0
+                        activeTextColor: window.base
+                        onToggled: i => window.tabIndex = i
+                    }
 
                     Rectangle {
                         Layout.preferredWidth: window.s(260)
@@ -544,8 +636,8 @@ Item {
                         }
                         Text {
                             Layout.alignment: Qt.AlignHCenter
-                            text: window.rows.length === 0 ? "No shortcuts found"
-                                                           : "Nothing matches \"" + window.filter + "\""
+                            text: window.totalCount === 0 ? "No shortcuts found"
+                                                          : "Nothing matches \"" + window.filter + "\""
                             font.family: Fonts.ui
                             font.pixelSize: window.s(11)
                             color: window.overlay0
@@ -612,7 +704,8 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     Text {
-                        text: "~/.config/kglobalshortcutsrc"
+                        text: window.shellTab ? "modules/cheatsheet/ShellShortcuts.js"
+                                              : "~/.config/kglobalshortcutsrc"
                         font.family: Fonts.ui
                         font.pixelSize: window.s(9)
                         color: Qt.alpha(window.overlay0, 0.6)
