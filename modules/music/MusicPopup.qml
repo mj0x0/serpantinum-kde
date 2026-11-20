@@ -1132,13 +1132,6 @@ Item {
                             Item {
                                 anchors.fill: parent
                                 anchors.margins: root.s(4)
-                                Image {
-                                    id: artImg
-                                    anchors.fill: parent
-                                    source: root.musicData.artUrl ? "file://" + root.musicData.artUrl : ""
-                                    fillMode: Image.PreserveAspectCrop
-                                    visible: false 
-                                }
                                 Rectangle {
                                     id: maskRect
                                     anchors.fill: parent
@@ -1146,22 +1139,87 @@ Item {
                                     visible: false
                                     layer.enabled: true 
                                 }
-                                MultiEffect {
+
+                                Item {
+                                    id: artMaskedContainer
                                     anchors.fill: parent
-                                    source: artImg
-                                    maskEnabled: true
-                                    maskSource: maskRect
-                                    opacity: artImg.status === Image.Ready ? 1.0 : 0.0
-                                    Behavior on opacity { NumberAnimation { duration: 800 } }
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        maskEnabled: true
+                                        maskSource: maskRect
+                                    }
+
+                                    // Two images taking turns, so a new cover fades over the old one
+                                    // instead of popping. Upstream MusicCover.qml.
+                                    Item {
+                                        id: artCrossfader
+                                        anchors.fill: parent
+                                        property string artSource: root.musicData.artUrl ? "file://" + root.musicData.artUrl : ""
+                                        property bool showingA: true
+
+                                        Image {
+                                            id: artImgA
+                                            anchors.fill: parent
+                                            fillMode: Image.PreserveAspectCrop
+                                            opacity: artCrossfader.showingA && status === Image.Ready ? 1.0 : 0.0
+                                            Behavior on opacity { NumberAnimation { duration: 650; easing.type: Easing.InOutQuad } }
+                                        }
+
+                                        Image {
+                                            id: artImgB
+                                            anchors.fill: parent
+                                            fillMode: Image.PreserveAspectCrop
+                                            opacity: !artCrossfader.showingA && status === Image.Ready ? 1.0 : 0.0
+                                            Behavior on opacity { NumberAnimation { duration: 650; easing.type: Easing.InOutQuad } }
+                                        }
+
+                                        onArtSourceChanged: {
+                                            if (!artSource) {
+                                                artImgA.source = "";
+                                                artImgB.source = "";
+                                                return;
+                                            }
+                                            if (showingA) {
+                                                artImgB.source = artSource;
+                                                showingA = false;
+                                            } else {
+                                                artImgA.source = artSource;
+                                                showingA = true;
+                                            }
+                                        }
+
+                                        Component.onCompleted: {
+                                            if (artSource) {
+                                                artImgA.source = artSource;
+                                                showingA = true;
+                                            }
+                                        }
+                                    }
                                 }
-                                
-                                // NEW: Dimmed slightly by tinting with the primary mauve accent, as requested
+
+                                // Dimmed slightly by tinting with the primary mauve accent.
                                 Rectangle {
                                     anchors.fill: parent
                                     radius: width / 2
                                     color: Qt.rgba(root.mauve.r, root.mauve.g, root.mauve.b, 0.2)
-                                    opacity: artImg.status === Image.Ready ? 1.0 : 0.0
+                                    opacity: artCrossfader.artSource ? 1.0 : 0.0
                                     Behavior on opacity { NumberAnimation { duration: 800 } }
+                                }
+
+                                // Groove rings: alternating light and dark hairlines, breathing with the bass.
+                                Repeater {
+                                    model: [0.92, 0.84, 0.76, 0.68, 0.60, 0.52, 0.44]
+                                    delegate: Rectangle {
+                                        anchors.centerIn: parent
+                                        width: parent.width * modelData
+                                        height: width
+                                        radius: width / 2
+                                        color: "transparent"
+                                        border.color: index % 2 === 0 ? "#ffffff" : "#000000"
+                                        border.width: 1
+                                        opacity: (index % 2 === 0 ? 0.035 : 0.06) + (root.bassLevel * 0.02)
+                                        antialiasing: true
+                                    }
                                 }
 
                                 // Record label, ported from upstream MusicCover.qml: crust disc with a
