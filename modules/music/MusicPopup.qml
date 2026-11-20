@@ -46,6 +46,7 @@ Item {
 
     // Theme Colors
     readonly property color base: _theme.base
+    readonly property color crust: _theme.crust
     readonly property color surface0: _theme.surface0
     readonly property color surface1: _theme.surface1
     readonly property color surface2: _theme.surface2
@@ -1163,10 +1164,40 @@ Item {
                                     Behavior on opacity { NumberAnimation { duration: 800 } }
                                 }
 
+                                // Record label, ported from upstream MusicCover.qml: crust disc with a
+                                // kick-reactive mauve rim, the paper ring, then the spindle hole.
                                 Rectangle {
-                                    width: root.s(40); height: root.s(40)
-                                    radius: root.s(20); color: "#000000"
-                                    opacity: 0.8; anchors.centerIn: parent
+                                    anchors.centerIn: parent
+                                    width: parent.width * 0.28
+                                    height: width
+                                    radius: width / 2
+                                    color: root.crust
+                                    opacity: 0.96
+                                    scale: 1.0 + (root.kickLevel * 0.0135)
+                                    border.width: 1.5
+                                    border.color: Qt.rgba(root.mauve.r, root.mauve.g, root.mauve.b, 0.45 + (root.kickLevel * 0.4))
+
+                                    Behavior on scale {
+                                        SpringAnimation { spring: 6.0; damping: 0.32; mass: 0.5 }
+                                    }
+
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: parent.width * 0.68
+                                        height: width
+                                        radius: width / 2
+                                        color: root.surface2
+                                        border.width: 1
+                                        border.color: Qt.rgba(1, 1, 1, 0.18)
+
+                                        Rectangle {
+                                            anchors.centerIn: parent
+                                            width: parent.width * 0.38
+                                            height: width
+                                            radius: width / 2
+                                            color: "#0d0e15"
+                                        }
+                                    }
                                 }
                             }
 
