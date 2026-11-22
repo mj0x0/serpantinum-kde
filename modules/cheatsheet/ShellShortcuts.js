@@ -95,7 +95,7 @@ var groups = [
     {
         name: "Floating sidebar",
         items: [
-            { chords: ["1/2/3"], label: "Jump to that tab and expand", condition: "While the sidebar is showing, unless the open tab has claimed that digit" },
+            { chords: ["1/2/3/4"], label: "Jump to that tab and expand", condition: "While the sidebar is showing, unless the open tab has claimed that digit" },
             { chords: ["Tab"], label: "Next tab", condition: "While the sidebar is showing, unless the open tab has claimed Tab" },
             { chords: ["Shift + Tab"], label: "Previous tab", condition: "While the sidebar is showing, unless the open tab has claimed Shift+Tab" },
             { chords: ["Return", "Enter"], label: "Expand or collapse the panel", condition: "While the sidebar is showing, unless the open tab has claimed it — the Timer tab does, to start and stop" },

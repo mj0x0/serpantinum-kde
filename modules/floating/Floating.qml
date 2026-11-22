@@ -74,12 +74,17 @@ Variants {
             Item {
                 id: focusTracker
                 focus: true
+                // Focus may be on its way to a tab's text field; decide once it has settled.
                 onActiveFocusChanged: {
-                    if (!activeFocus && !floatingWidget.isPinned) {
-                        floatingWidget.isExpanded = false;
-                        hideTimer.restart();
-                    }
+                    if (!activeFocus && !floatingWidget.isPinned)
+                        Qt.callLater(floatingWidget.collapseOnFocusLoss);
                 }
+            }
+
+            function collapseOnFocusLoss() {
+                if (isPinned || hasInputFocus || focusTracker.activeFocus) return;
+                isExpanded = false;
+                hideTimer.restart();
             }
 
             // KWin only refocuses the app when the layer surface unmaps, not when a
@@ -138,7 +143,8 @@ Variants {
             property var tabModules: [
                 "quickactions/ColorPicker.qml",
 		"quickactions/SystemUsage.qml",
-		"quickactions/Timer.qml"
+		"quickactions/Timer.qml",
+		"quickactions/Notes.qml"
             ]
 
             property int tabCount: Math.max(1, tabModules.length)
@@ -148,6 +154,7 @@ Variants {
                 if (mod.indexOf("ColorPicker") !== -1) return { name: "Colour", icon: "󰈊" };
                 if (mod.indexOf("SystemUsage") !== -1) return { name: "System", icon: "󰍛" };
                 if (mod.indexOf("Timer") !== -1) return { name: TimerState.modeName, icon: TimerState.modeIcon };
+                if (mod.indexOf("Notes") !== -1) return { name: "Notes", icon: "󰈙" };
                 return { name: "Tab", icon: "󰍜" };
             }
 
@@ -206,6 +213,39 @@ Variants {
             }
 
             // --- UNIVERSAL SHORTCUT ROUTER ---
+            // A tab with a focused text field keeps the keys and holds the panel open.
+            readonly property bool hasInputFocus: {
+                let loader = (typeof moduleRepeater !== "undefined" && activeIndex >= 0 && activeIndex < moduleRepeater.count)
+                    ? moduleRepeater.itemAt(activeIndex)
+                    : null;
+                let mod = (loader && loader.status === Loader.Ready && loader.item) ? loader.item : null;
+                if (mod && mod.hasInputFocus !== undefined) {
+                    return Boolean(mod.hasInputFocus);
+                }
+                return false;
+            }
+
+            onHasInputFocusChanged: {
+                if (hasInputFocus) {
+                    hideTimer.stop();
+                    useGraceTimer = false;
+                }
+            }
+
+            function unfocusAllInputs() {
+                if (typeof moduleRepeater !== "undefined") {
+                    for (let i = 0; i < moduleRepeater.count; i++) {
+                        let ldr = moduleRepeater.itemAt(i);
+                        if (ldr && ldr.item && typeof ldr.item.unfocusInputs === "function") {
+                            ldr.item.unfocusInputs();
+                        }
+                    }
+                }
+                if (isExpanded) {
+                    focusTracker.forceActiveFocus();
+                }
+            }
+
             function childIntercepts(sequenceStr) {
                 // If not expanded, parent always keeps control
                 if (!isExpanded) return false; 
@@ -225,7 +265,7 @@ Variants {
 
             // --- KEYBOARD SHORTCUTS & ACTIVITY TRACKER ---
             function kickTimer() {
-                if (!isPinned) {
+                if (!isPinned && !floatingWidget.hasInputFocus) {
                     if ((typeof mainHoverTracker !== "undefined" && mainHoverTracker.hovered) ||
                         (typeof sidebarDragArea !== "undefined" && (sidebarDragArea.containsMouse || sidebarDragArea.pressed)) ||
                         (typeof gridMouseArea !== "undefined" && (gridMouseArea.containsMouse || gridMouseArea.pressed)) ||
@@ -239,8 +279,8 @@ Variants {
                 }
             }
 
-            Shortcut { enabled: floatingWidget.isSidebarVisible && !floatingWidget.childIntercepts("Tab"); sequence: "Tab"; onActivated: { floatingWidget.activeIndex = (floatingWidget.activeIndex + 1) % floatingWidget.tabCount; floatingWidget.kickTimer(); } }
-            Shortcut { enabled: floatingWidget.isSidebarVisible && !floatingWidget.childIntercepts("Shift+Tab"); sequence: "Shift+Tab"; onActivated: { floatingWidget.activeIndex = (floatingWidget.activeIndex + (floatingWidget.tabCount - 1)) % floatingWidget.tabCount; floatingWidget.kickTimer(); } }
+            Shortcut { enabled: floatingWidget.isSidebarVisible && !floatingWidget.hasInputFocus && !floatingWidget.childIntercepts("Tab"); sequence: "Tab"; onActivated: { floatingWidget.activeIndex = (floatingWidget.activeIndex + 1) % floatingWidget.tabCount; floatingWidget.kickTimer(); } }
+            Shortcut { enabled: floatingWidget.isSidebarVisible && !floatingWidget.hasInputFocus && !floatingWidget.childIntercepts("Shift+Tab"); sequence: "Shift+Tab"; onActivated: { floatingWidget.activeIndex = (floatingWidget.activeIndex + (floatingWidget.tabCount - 1)) % floatingWidget.tabCount; floatingWidget.kickTimer(); } }
             Shortcut { enabled: floatingWidget.isSidebarVisible && !floatingWidget.childIntercepts("Return"); sequence: "Return"; onActivated: { floatingWidget.isExpanded = !floatingWidget.isExpanded; floatingWidget.kickTimer(); } }
             Shortcut { enabled: floatingWidget.isSidebarVisible && !floatingWidget.childIntercepts("Enter"); sequence: "Enter"; onActivated: { floatingWidget.isExpanded = !floatingWidget.isExpanded; floatingWidget.kickTimer(); } }
 
@@ -250,7 +290,7 @@ Variants {
                 model: floatingWidget.tabCount
                 delegate: Shortcut {
                     required property int index
-                    enabled: floatingWidget.isSidebarVisible && !floatingWidget.childIntercepts("" + (index + 1))
+                    enabled: floatingWidget.isSidebarVisible && !floatingWidget.hasInputFocus && !floatingWidget.childIntercepts("" + (index + 1))
                     sequence: "" + (index + 1)
                     onActivated: {
                         floatingWidget.activeIndex = index;
@@ -320,8 +360,9 @@ Variants {
             MatugenColors { id: mocha }
 
             // --- DYNAMIC LAYOUT LOGIC ---
-            property int activeIndex: 0 
-            property bool isExpanded: false 
+            property int activeIndex: 0
+            onActiveIndexChanged: unfocusAllInputs()
+            property bool isExpanded: false
 
             property var currentLayoutTemplate: [{x: 0, y: 0, w: 1, h: 1}]
 
@@ -704,9 +745,9 @@ Variants {
                 interval: floatingWidget.ipcGrace ? floatingWidget.ipcGraceMs
                         : (floatingWidget.useGraceTimer ? 3000 : 800)
                 onTriggered: {
-                    if (floatingWidget.isPinned) return;
+                    if (floatingWidget.isPinned || floatingWidget.hasInputFocus) return;
 
-                    if ((typeof sidebarDragArea !== "undefined" && sidebarDragArea.pressed) || 
+                    if ((typeof sidebarDragArea !== "undefined" && sidebarDragArea.pressed) ||
                         (typeof peekMouse !== "undefined" && peekMouse.pressed) ||
                         (typeof gridMouseArea !== "undefined" && gridMouseArea.pressed)) {
                         hideTimer.restart();

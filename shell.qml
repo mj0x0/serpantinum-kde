@@ -319,7 +319,7 @@ ShellRoot {
         function hide(): void { MusicState.hide() }
     }
 
-    // Edge-reveal quick actions (SystemUsage / Timer / ColorPicker); IPC target `floating`.
+    // Edge-reveal quick actions (ColorPicker / SystemUsage / Timer / Notes); IPC target `floating`.
     Floating {}
 
     // qs -p <this file> ipc call focustime toggle

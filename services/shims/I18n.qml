@@ -84,7 +84,10 @@ Singleton {
         "syspanel.battery.charging":         "Charging",
         "syspanel.battery.charging_time":    "Charging \u2022 {hours}h {mins}m",
         "syspanel.battery.discharging":      "Discharging",
-        "syspanel.battery.left_time":        "{hours}h {mins}m left"
+        "syspanel.battery.left_time":        "{hours}h {mins}m left",
+        "datetime.just_now":                 "Just now",
+        "datetime.minutes_ago":              "{mins} min ago",
+        "datetime.yesterday":                "Yesterday {time}"
     })
 
     function t(key, args) {
