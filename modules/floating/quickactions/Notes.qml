@@ -59,6 +59,7 @@ Item {
     MatugenColors { id: _theme }
     property color cBase: _theme.base
     property color cCrust: _theme.crust
+    property color cMantle: _theme.mantle
     property color cSurface0: _theme.surface0
     property color cSurface1: _theme.surface1
     property color cSurface2: _theme.surface2
@@ -67,6 +68,7 @@ Item {
     property color cSubtext1: _theme.subtext1
     property color cMauve: _theme.mauve
     property color cRed: _theme.red
+    property color cPeach: _theme.peach
 
     function alpha(color, a) { return Qt.rgba(color.r, color.g, color.b, a); }
 
@@ -315,7 +317,7 @@ Item {
     }
 
     function markdownToHtml(md) {
-        return NotesFormat.markdownToHtml(md);
+        return NotesFormat.markdownToHtml(md, { code: root.cPeach, codeBg: root.cMantle });
     }
 
     Item {
@@ -876,6 +878,7 @@ Item {
                                 anchors.fill: parent
                                 baseColor: root.cSurface0
                                 textColor: root.cText
+                                subTextColor: root.cSubtext0
                                 placeholderText: "Note title..."
                                 cornerRadius: root.s(8)
                                 fontPixelSize: root.s(12)
@@ -928,6 +931,7 @@ Item {
                                 anchors.fill: parent
                                 baseColor: root.cSurface0
                                 textColor: root.cText
+                                subTextColor: root.cSubtext0
                                 placeholderText: "Write your note here in markdown..."
                                 cornerRadius: root.s(8)
                                 fontPixelSize: root.s(12)

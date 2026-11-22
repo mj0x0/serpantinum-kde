@@ -1,9 +1,11 @@
 .pragma library
 
-function formatInlineMarkdown(text) {
+function formatInlineMarkdown(text, codeColor) {
     if (!text) return "";
+    // no colour -> omit the attribute so the run inherits the Text item's colour
+    var codeAttr = codeColor ? " color=\"" + codeColor + "\"" : "";
     var s = text;
-    s = s.replace(/`([^`]+)`/g, "<font color=\"#fab387\" face=\"monospace\"><b>$1</b></font>");
+    s = s.replace(/`([^`]+)`/g, "<font" + codeAttr + " face=\"monospace\"><b>$1</b></font>");
     s = s.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
     s = s.replace(/__([^_]+)__/g, "<b>$1</b>");
     s = s.replace(/\*([^*]+)\*/g, "<i>$1</i>");
@@ -12,8 +14,10 @@ function formatInlineMarkdown(text) {
     return s;
 }
 
-function markdownToHtml(md) {
+function markdownToHtml(md, colors) {
     if (!md) return "";
+    var c = colors || {};
+    var preStyle = c.codeBg ? " style=\"background-color:" + c.codeBg + ";\"" : "";
     var lines = md.split("\n");
     var out = [];
     var inCode = false;
@@ -22,7 +26,7 @@ function markdownToHtml(md) {
         var line = lines[i];
         if (line.trim().indexOf("```") === 0) {
             if (inCode) {
-                out.push("<pre style=\"background-color:#181825;color:#cdd6f4;\"><code>" + codeLines.join("<br/>") + "</code></pre>");
+                out.push("<pre" + preStyle + "><code>" + codeLines.join("<br/>") + "</code></pre>");
                 codeLines = [];
                 inCode = false;
             } else {
@@ -37,25 +41,25 @@ function markdownToHtml(md) {
             continue;
         }
         if (esc.indexOf("### ") === 0) {
-            out.push("<b><font size=\"+1\">" + formatInlineMarkdown(esc.substring(4)) + "</font></b>");
+            out.push("<b><font size=\"+1\">" + formatInlineMarkdown(esc.substring(4), c.code) + "</font></b>");
         } else if (esc.indexOf("## ") === 0) {
-            out.push("<b><font size=\"+2\">" + formatInlineMarkdown(esc.substring(3)) + "</font></b>");
+            out.push("<b><font size=\"+2\">" + formatInlineMarkdown(esc.substring(3), c.code) + "</font></b>");
         } else if (esc.indexOf("# ") === 0) {
-            out.push("<b><font size=\"+3\">" + formatInlineMarkdown(esc.substring(2)) + "</font></b>");
+            out.push("<b><font size=\"+3\">" + formatInlineMarkdown(esc.substring(2), c.code) + "</font></b>");
         } else if (/^\s*[-*+]\s+/.test(esc)) {
             var item = esc.replace(/^\s*[-*+]\s+/, "");
-            out.push("&nbsp;&nbsp;• " + formatInlineMarkdown(item));
+            out.push("&nbsp;&nbsp;• " + formatInlineMarkdown(item, c.code));
         } else if (/^\s*\d+\.\s+/.test(esc)) {
             var m = esc.match(/^(\s*\d+\.)\s+(.*)$/);
-            out.push("&nbsp;&nbsp;" + (m ? m[1] + " " + formatInlineMarkdown(m[2]) : esc));
+            out.push("&nbsp;&nbsp;" + (m ? m[1] + " " + formatInlineMarkdown(m[2], c.code) : esc));
         } else if (esc.indexOf("> ") === 0) {
-            out.push("<i><font color=\"#a6adc8\">│ " + formatInlineMarkdown(esc.substring(2)) + "</font></i>");
+            out.push("<i>│ " + formatInlineMarkdown(esc.substring(2), c.code) + "</i>");
         } else {
-            out.push(formatInlineMarkdown(esc));
+            out.push(formatInlineMarkdown(esc, c.code));
         }
     }
     if (inCode && codeLines.length > 0) {
-        out.push("<pre style=\"background-color:#181825;color:#cdd6f4;\"><code>" + codeLines.join("<br/>") + "</code></pre>");
+        out.push("<pre" + preStyle + "><code>" + codeLines.join("<br/>") + "</code></pre>");
     }
     return out.join("<br/>");
 }
