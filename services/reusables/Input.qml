@@ -8,7 +8,10 @@ import "../shims"
 Item {
     id: root
     implicitWidth: 180
-    implicitHeight: 32
+    implicitHeight: root.multiLine ? 120 : 32
+
+    property bool multiLine: false
+    property alias multiline: root.multiLine
 
     property color baseColor: "#313244"
     property color accentColor: "#89b4fa"
@@ -56,7 +59,7 @@ Item {
     property bool enabled: true
     property bool hasError: false
     property bool isBusy: false
-    readonly property bool hasFocus: innerInput.activeFocus
+    readonly property bool hasFocus: root.multiLine ? innerTextEdit.activeFocus : innerInput.activeFocus
     readonly property alias field: innerInput
     property bool action_highlight: false
     property bool isHoveredOrHighlighted: mainHover.hovered || root.action_highlight
@@ -86,18 +89,34 @@ Item {
     }
 
     function clear() {
-        if (innerInput.text !== "" && typeof Sounds !== "undefined") {
+        if ((root.multiLine ? innerTextEdit.text !== "" : innerInput.text !== "") && typeof Sounds !== "undefined") {
             Sounds.playSfx(root.keySound);
         }
-        innerInput.text = "";
+        if (root.multiLine) {
+            innerTextEdit.text = "";
+        } else {
+            innerInput.text = "";
+            charModel.clear();
+            root.scrollOffset = 0;
+        }
         root.text = "";
-        charModel.clear();
-        root.scrollOffset = 0;
         root.cleared();
     }
 
     function forceInputFocus() {
-        innerInput.forceActiveFocus();
+        if (root.multiLine) {
+            innerTextEdit.forceActiveFocus();
+        } else {
+            innerInput.forceActiveFocus();
+        }
+    }
+
+    function releaseFocus() {
+        if (root.multiLine) {
+            innerTextEdit.focus = false;
+        } else {
+            innerInput.focus = false;
+        }
     }
 
     function triggerShake() {
@@ -163,9 +182,15 @@ Item {
     onHorizontalAlignmentChanged: updateScroll()
 
     onTextChanged: {
-        if (innerInput.text !== root.text) {
-            innerInput.text = root.text;
-            syncModel();
+        if (root.multiLine) {
+            if (innerTextEdit.text !== root.text) {
+                innerTextEdit.text = root.text;
+            }
+        } else {
+            if (innerInput.text !== root.text) {
+                innerInput.text = root.text;
+                syncModel();
+            }
         }
     }
 
@@ -298,6 +323,7 @@ Item {
 
             Text {
                 id: placeholderLabel
+                visible: !root.multiLine
                 text: root.placeholderText
                 font.family: root.fontFamily
                 font.pixelSize: root.fontPixelSize
@@ -310,6 +336,7 @@ Item {
 
             Rectangle {
                 id: selectionHighlight
+                visible: !root.multiLine
                 readonly property int selMin: Math.min(innerInput.selectionStart, innerInput.selectionEnd)
                 readonly property int selMax: Math.max(innerInput.selectionStart, innerInput.selectionEnd)
                 readonly property bool hasSelection: selMax > selMin
@@ -330,6 +357,7 @@ Item {
 
             ListView {
                 id: charRow
+                visible: !root.multiLine
                 height: parent.height
                 anchors.verticalCenter: parent.verticalCenter
                 orientation: ListView.Horizontal
@@ -409,14 +437,14 @@ Item {
                 width: 2
                 height: root.fontPixelSize * 1.2
                 color: root.caretColor
-                visible: root.showCaret && (root.hasFocus || root.action_highlight)
+                visible: !root.multiLine && root.showCaret && (root.hasFocus || root.action_highlight)
                 anchors.verticalCenter: parent.verticalCenter
                 x: root.scrollOffset + (innerInput.cursorPosition * root.charSlotStep)
 
                 Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
 
                 SequentialAnimation on opacity {
-                    running: root.showCaret && (root.hasFocus || root.action_highlight) && root.isWidgetVisible
+                    running: !root.multiLine && root.showCaret && (root.hasFocus || root.action_highlight) && root.isWidgetVisible
                     loops: Animation.Infinite
                     NumberAnimation { to: 0; duration: 100; easing.type: Easing.InQuad }
                     PauseAnimation { duration: 400 }
@@ -428,6 +456,7 @@ Item {
             TextInput {
                 id: innerInput
                 Keys.forwardTo: [root]
+                visible: !root.multiLine
                 anchors.fill: parent
                 opacity: 0
                 color: "transparent"
@@ -438,7 +467,7 @@ Item {
                 horizontalAlignment: root.horizontalAlignment
                 font.family: root.fontFamily
                 font.pixelSize: root.fontPixelSize
-                enabled: root.enabled && !root.isBusy
+                enabled: !root.multiLine && root.enabled && !root.isBusy
                 maximumLength: root.maximumLength > 0 ? root.maximumLength : 32767
                 validator: root.validator
 
@@ -469,11 +498,160 @@ Item {
                     root.triggered();
                 }
             }
+
+            Flickable {
+                id: multiFlickable
+                visible: root.multiLine
+                anchors.fill: parent
+                anchors.topMargin: root.verticalPadding
+                anchors.bottomMargin: root.verticalPadding
+                contentWidth: width
+                contentHeight: Math.max(height, innerTextEdit.height)
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
+
+                TapHandler {
+                    onPressedChanged: {
+                        if (pressed) {
+                            root.forceInputFocus();
+                            root.clicked();
+                        }
+                    }
+                    onTapped: {
+                        root.forceInputFocus();
+                        root.clicked();
+                    }
+                }
+
+                ScrollBar.vertical: ScrollBar {
+                    active: multiFlickable.moving || multiFlickable.movingVertically
+                    width: 4
+                    policy: ScrollBar.AsNeeded
+                    contentItem: Rectangle {
+                        implicitWidth: 4
+                        radius: 2
+                        color: ThemeBackend.surface2
+                    }
+                }
+
+                Text {
+                    id: multiPlaceholder
+                    anchors.fill: parent
+                    horizontalAlignment: Text.AlignLeft
+                    text: root.placeholderText
+                    font.family: root.fontFamily
+                    font.pixelSize: root.fontPixelSize
+                    color: root.subTextColor
+                    opacity: (innerTextEdit.text.length === 0) ? 0.45 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                }
+
+                TextEdit {
+                    id: innerTextEdit
+                    width: multiFlickable.width
+                    height: Math.max(multiFlickable.height, contentHeight)
+                    color: root.textColor
+                    font.family: root.fontFamily
+                    font.pixelSize: root.fontPixelSize
+                    horizontalAlignment: TextEdit.AlignLeft
+                    wrapMode: TextEdit.Wrap
+                    selectByMouse: true
+                    cursorVisible: false
+                    selectionColor: Qt.rgba(root.activeSignalColor.r, root.activeSignalColor.g, root.activeSignalColor.b, 0.28)
+                    selectedTextColor: root.textColor
+                    enabled: root.multiLine && root.enabled && !root.isBusy
+
+                    onCursorPositionChanged: {
+                        let cr = innerTextEdit.cursorRectangle;
+                        if (cr.y < multiFlickable.contentY) {
+                            multiFlickable.contentY = cr.y;
+                        } else if (cr.y + cr.height > multiFlickable.contentY + multiFlickable.height) {
+                            multiFlickable.contentY = cr.y + cr.height - multiFlickable.height;
+                        }
+                    }
+
+                    onTextChanged: {
+                        if (root.multiLine) {
+                            if (text.length === root.text.length + 1 && cursorPosition > 0) {
+                                let ch = text.charAt(cursorPosition - 1);
+                                if (ch !== "\n" && ch !== "\r") {
+                                    let r = positionToRectangle(cursorPosition - 1);
+                                    typingPop.popChar = ch;
+                                    typingPop.popX = r.x;
+                                    typingPop.popY = r.y;
+                                    popAnim.restart();
+                                }
+                            } else {
+                                popAnim.stop();
+                                typingPop.popOpacity = 0.0;
+                            }
+                            root.text = text;
+                            if (typeof Sounds !== "undefined") {
+                                Sounds.playSfx(root.keySound);
+                            }
+                            root.textEdited(text);
+                        }
+                    }
+                }
+
+                Item {
+                    id: typingPop
+                    property string popChar: ""
+                    property real popX: 0
+                    property real popY: 0
+                    property real popScale: 1.0
+                    property real popOffsetY: 0
+                    property real popOpacity: 0.0
+
+                    x: popX
+                    y: popY + popOffsetY
+                    scale: popScale
+                    opacity: popOpacity
+                    visible: popOpacity > 0.01
+
+                    Text {
+                        text: typingPop.popChar
+                        color: root.textColor
+                        font.family: root.fontFamily
+                        font.pixelSize: root.fontPixelSize
+                    }
+
+                    ParallelAnimation {
+                        id: popAnim
+                        onFinished: typingPop.popOpacity = 0.0
+                        NumberAnimation { target: typingPop; property: "popScale"; from: 0.3; to: 1.0; duration: 400; easing.type: Easing.OutBack; easing.overshoot: 3.2 }
+                        NumberAnimation { target: typingPop; property: "popOffsetY"; from: 10; to: 0; duration: 400; easing.type: Easing.OutBack; easing.overshoot: 2.5 }
+                        NumberAnimation { target: typingPop; property: "popOpacity"; from: 0.0; to: 1.0; duration: 150; easing.type: Easing.OutCubic }
+                    }
+                }
+
+                Rectangle {
+                    id: multiCaretRect
+                    width: 2
+                    height: root.fontPixelSize * 1.2
+                    color: root.caretColor
+                    visible: root.multiLine && root.showCaret && root.hasFocus && root.isWidgetVisible
+                    x: innerTextEdit.cursorRectangle.x
+                    y: innerTextEdit.cursorRectangle.y + (innerTextEdit.cursorRectangle.height - height) / 2
+
+                    Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+                    Behavior on y { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+
+                    SequentialAnimation on opacity {
+                        running: multiCaretRect.visible
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0; duration: 100; easing.type: Easing.InQuad }
+                        PauseAnimation { duration: 400 }
+                        NumberAnimation { to: 1; duration: 100; easing.type: Easing.OutQuad }
+                        PauseAnimation { duration: 400 }
+                    }
+                }
+            }
         }
 
         Item {
             id: trailingWrapper
-            visible: root.trailingIcon !== "" || (root.showClearButton && innerInput.text.length > 0)
+            visible: (root.trailingIcon !== "" || (root.showClearButton && innerInput.text.length > 0)) && !root.multiLine
             Layout.preferredWidth: trailingTxt.implicitWidth + 16
             Layout.fillHeight: true
 
