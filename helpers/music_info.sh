@@ -110,12 +110,13 @@ if [ -z "$selected_player" ]; then
             timeStr: $time_str,
             source: "Offline",
             playerName: "",
-            blur: $placeholder,
             grad: "linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)",
             textColor: "#cdd6f4",
             deviceIcon: "󰓃",
             deviceName: "Speaker",
-            artUrl: $placeholder
+            artUrl: $placeholder,
+            artWidth: 0,
+            rawUrl: ""
         }'
     exit 0
 fi
@@ -146,19 +147,16 @@ else
 fi
 
 finalArt="$TMP_DIR/${trackHash}_art.jpg"
-blurPath="$TMP_DIR/${trackHash}_blur.png"
 colorPath="$TMP_DIR/${trackHash}_grad.txt"
 textPath="$TMP_DIR/${trackHash}_text.txt"
 lockFile="$TMP_DIR/${trackHash}.lock"
 
 displayArt="$PLACEHOLDER"
-displayBlur="$PLACEHOLDER"
 displayGrad="linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)"
 displayText="#cdd6f4"
 
 if [ -f "$finalArt" ] && [ -s "$finalArt" ]; then
     displayArt="$finalArt"
-    [ -f "$blurPath" ] && displayBlur="$blurPath"
     [ -f "$colorPath" ] && displayGrad=$(cat "$colorPath")
     [ -f "$textPath" ] && displayText=$(cat "$textPath")
 else
@@ -167,7 +165,6 @@ else
 
         (
             tempArt="$TMP_DIR/${trackHash}_temp_art.jpg"
-            tempBlur="$TMP_DIR/${trackHash}_temp_blur.png"
 
             if [[ "$rawUrl" == http* ]]; then
                 curl -s -L --max-time 10 -o "$tempArt" "$rawUrl"
@@ -184,11 +181,7 @@ else
 
             isPlaceholder=$(convert "$tempArt" -format "%[hex:u.p{0,0}]" info: 2>/dev/null | cut -c1-6)
 
-            if [[ "$isPlaceholder" == "313244" ]] || [[ -z "$isPlaceholder" ]]; then
-                cp "$tempArt" "$tempBlur"
-            else
-                convert "$tempArt" -blur 0x20 -brightness-contrast -30x-10 "$tempBlur" 2>/dev/null
-
+            if [[ "$isPlaceholder" != "313244" ]] && [[ -n "$isPlaceholder" ]]; then
                 colors=$(convert "$tempArt" -resize 50x50 -alpha off +dither -quantize RGB -colors 3 -depth 8 -format "%c" histogram:info: 2>/dev/null |
                     grep -E -o '#[0-9A-Fa-f]{6}' | head -n 3 | tr '\n' ' ')
                 read -r -a color_array <<< "$colors"
@@ -208,7 +201,6 @@ else
                 fi
             fi
 
-            mv "$tempBlur" "$blurPath"
             mv "$tempArt" "$finalArt"
 
             rm -f "$lockFile"
@@ -281,6 +273,17 @@ elif [ -n "$node_desc" ]; then
 fi
 
 # --- 7. JSON OUTPUT ---
+# Width lets the QML keep the largest cover a player offers for one track.
+# The placeholder is a real 500x500 PNG, so it must not count as art.
+# A failed fetch caches the placeholder AS the art, so the path test is not enough;
+# the gradient file is written only for real art. [0] or a multi-frame file
+# concatenates one width per frame.
+ART_WIDTH=0
+if [ -n "$displayArt" ] && [ "$displayArt" != "$PLACEHOLDER" ] && [ -s "$colorPath" ]; then
+    ART_WIDTH=$(identify -format "%w" "$displayArt[0]" 2>/dev/null)
+    [[ "$ART_WIDTH" =~ ^[0-9]+$ ]] || ART_WIDTH=0
+fi
+
 jq -n -c \
     --arg title "$title" \
     --arg artist "$artist" \
@@ -294,12 +297,13 @@ jq -n -c \
     --arg percent "$percent" \
     --arg source "$player_nice" \
     --arg pname "$player_raw" \
-    --arg blur "$displayBlur" \
     --arg grad "$displayGrad" \
     --arg txtColor "$displayText" \
     --arg devIcon "$dev_icon" \
     --arg devName "$dev_name" \
     --arg finalArt "$displayArt" \
+    --argjson artWidth "$ART_WIDTH" \
+    --arg rawUrl "$rawUrl" \
     '{
         title: $title,
         artist: $artist,
@@ -313,10 +317,11 @@ jq -n -c \
         percent: $percent,
         source: $source,
         playerName: $pname,
-        blur: $blur,
         grad: $grad,
         textColor: $txtColor,
         deviceIcon: $devIcon,
         deviceName: $devName,
-        artUrl: $finalArt
+        artUrl: $finalArt,
+        artWidth: $artWidth,
+        rawUrl: $rawUrl
     }'

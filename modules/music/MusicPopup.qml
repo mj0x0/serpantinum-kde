@@ -68,10 +68,15 @@ Item {
     property var musicData: {
         "title": "Loading...", "artist": "", "status": "Stopped", "percent": 0,
         "lengthStr": "00:00", "positionStr": "00:00", "timeStr": "--:-- / --:--",
-        "source": "Offline", "playerName": "", "blur": "", "grad": "",
+        "source": "Offline", "playerName": "", "grad": "",
         "textColor": "#cdd6f4", "deviceIcon": "󰓃", "deviceName": "Speaker",
-        "artUrl": ""
+        "artUrl": "", "artWidth": 0, "rawUrl": ""
     }
+
+    // Players refine art mid-track and the later url is often smaller; these keep the widest one.
+    property int artWidth: 0
+    property string artTrack: ""
+    property string artRawUrl: ""
 
     property var eqData: {
         "b1": 0, "b2": 0, "b3": 0, "b4": 0, "b5": 0,
@@ -444,9 +449,9 @@ Item {
     // PROPER EXCEPTION-FREE FIX: Explicit bindings so GradientStop actually repaints
     // Upstream's scrim: the art supplies the colour, this just grades it down so the
     // controls and lyrics stay legible. Explicit properties for the same repaint reason as bc1-4.
-    readonly property color scrimTop: Qt.alpha(root.base, 0.55)
-    readonly property color scrimMid: Qt.alpha(root.base, 0.72)
-    readonly property color scrimBottom: Qt.alpha(root.base, 0.90)
+    readonly property color scrimTop: Qt.alpha(root.base, 0.62)
+    readonly property color scrimMid: Qt.alpha(root.base, 0.77)
+    readonly property color scrimBottom: Qt.alpha(root.base, 0.92)
 
     property color bc1: borderColors[0] || root.mauve
     property color bc2: borderColors[1] || root.blue
@@ -640,12 +645,26 @@ Item {
                 if (this.text) {
                     var outStr = this.text.trim();
                     if (outStr.length > 0) {
-                        try { 
-                            var newData = JSON.parse(outStr); 
+                        try {
+                            var newData = JSON.parse(outStr);
                             if (root.userToggledPlay) {
-                                newData.status = root.musicData.status; 
+                                newData.status = root.musicData.status;
                             }
-                            root.musicData = newData; 
+                            // Upstream MusicPlayerState: a narrower art url for the same track loses.
+                            let track = (newData.playerName || "") + "\n" + (newData.title || "") + "\n" + (newData.artist || "");
+                            let sameTrack = !!(newData.title || newData.artist) && track === root.artTrack && root.musicData.artUrl !== "";
+                            let keepCurrent = sameTrack && (newData.artUrl ? newData.artUrl !== root.musicData.artUrl && newData.artWidth < root.artWidth : root.artWidth > 0);
+                            if (keepCurrent) {
+                                newData.artUrl = root.musicData.artUrl;
+                                newData.grad = root.musicData.grad;
+                                newData.textColor = root.musicData.textColor;
+                            } else {
+                                let carriedOver = track !== root.artTrack && !!newData.artUrl && newData.rawUrl === root.artRawUrl;
+                                root.artTrack = track;
+                                root.artRawUrl = newData.rawUrl || "";
+                                root.artWidth = carriedOver ? 0 : (newData.artWidth || 0);
+                            }
+                            root.musicData = newData;
                         } catch(e) {}
                     }
                 }
@@ -848,34 +867,121 @@ Item {
                 id: bgEffectsLayer
                 anchors.fill: parent
                 
-                // This correctly clamps the blur and orbit circles to the 10px radius corners
+                // Clamps the blur to the 10px radius corners, and crops the oversized blur Images
                 layer.enabled: true
                 layer.effect: MultiEffect {
                     maskEnabled: true
                     maskSource: innerBgMask
                 }
 
-                // LAYER 1: Background Blur (Smooth fade-in)
-                Image {
+                // LAYER 1: Background Blur. Two oversized copies of the raw art blurred in QML,
+                // taking turns so a new cover fades over the old one. Upstream MusicBlurCrossfader.qml.
+                property string blurUrl: root.musicData.artUrl ? "file://" + root.musicData.artUrl : ""
+                property bool showingA: true
+                property bool swapping: false
+
+                Timer {
+                    id: swapEndTimer
+                    interval: 800
+                    onTriggered: bgEffectsLayer.swapping = false
+                }
+
+                Timer {
+                    id: swapTimer
+                    interval: 150
+                    onTriggered: {
+                        let incoming = bgEffectsLayer.showingA ? blurB : blurA;
+                        if (incoming.status === Image.Loading) swapTimer.restart();
+                        else if (incoming.status === Image.Ready) {
+                            bgEffectsLayer.swapping = true;
+                            bgEffectsLayer.showingA = !bgEffectsLayer.showingA;
+                            swapEndTimer.restart();
+                        }
+                    }
+                }
+
+                Item {
                     anchors.fill: parent
-                    source: root.musicData.blur ? "file://" + root.musicData.blur : ""
-                    fillMode: Image.PreserveAspectCrop
-                    
-                    // Fixed: Ensures blur is completely hidden when stopped so the pure base color matches the calendar
-                    opacity: (status === Image.Ready && root.musicData.status !== "Stopped" && root.musicData.status !== "Offline") ? 0.9 : 0.0
+                    // Exactly 0 when stopped, so the pure base colour matches the calendar.
+                    opacity: (root.musicData.status !== "Stopped" && root.musicData.status !== "Offline") ? 0.9 : 0.0
+                    layer.enabled: true
                     Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.InOutQuad } }
+
+                    Image {
+                        id: blurA
+                        anchors.fill: parent
+                        anchors.margins: -96
+                        fillMode: Image.PreserveAspectCrop
+                        visible: false
+                    }
+
+                    MultiEffect {
+                        anchors.fill: blurA
+                        source: blurA
+                        z: bgEffectsLayer.showingA ? 2 : 1
+                        autoPaddingEnabled: false
+                        blurEnabled: true
+                        blurMax: 64
+                        blur: 0.7
+                        // Stands in for the `-brightness-contrast -30x-10` the shell used to bake in.
+                        brightness: -0.2426
+                        contrast: -0.2358
+                        opacity: blurA.status === Image.Ready && (bgEffectsLayer.showingA || bgEffectsLayer.swapping) ? 1.0 : 0.01
+                        Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.InOutQuad } }
+                    }
+
+                    Image {
+                        id: blurB
+                        anchors.fill: parent
+                        anchors.margins: -96
+                        fillMode: Image.PreserveAspectCrop
+                        visible: false
+                    }
+
+                    MultiEffect {
+                        anchors.fill: blurB
+                        source: blurB
+                        z: !bgEffectsLayer.showingA ? 2 : 1
+                        autoPaddingEnabled: false
+                        blurEnabled: true
+                        blurMax: 64
+                        blur: 0.7
+                        brightness: -0.2426
+                        contrast: -0.2358
+                        opacity: blurB.status === Image.Ready && (!bgEffectsLayer.showingA || bgEffectsLayer.swapping) ? 1.0 : 0.01
+                        Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.InOutQuad } }
+                    }
                 }
 
                 // LAYER 1.5: Scrim over the art, heaviest at the bottom where the controls sit.
                 Rectangle {
                     anchors.fill: parent
-                    opacity: (root.musicData.blur && root.musicData.status !== "Stopped" && root.musicData.status !== "Offline") ? 1.0 : 0.0
+                    opacity: (root.musicData.artUrl && root.musicData.status !== "Stopped" && root.musicData.status !== "Offline") ? 1.0 : 0.0
                     gradient: Gradient {
                         GradientStop { position: 0.0; color: root.scrimTop; Behavior on color { ColorAnimation { duration: 600 } } }
                         GradientStop { position: 0.5; color: root.scrimMid; Behavior on color { ColorAnimation { duration: 600 } } }
                         GradientStop { position: 1.0; color: root.scrimBottom; Behavior on color { ColorAnimation { duration: 600 } } }
                     }
                     Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.InOutQuad } }
+                }
+
+                onBlurUrlChanged: {
+                    if (!blurUrl) {
+                        swapTimer.stop();
+                        blurA.source = "";
+                        blurB.source = "";
+                        return;
+                    }
+                    if (showingA) blurB.source = blurUrl;
+                    else blurA.source = blurUrl;
+                    swapTimer.restart();
+                }
+
+                Component.onCompleted: {
+                    if (blurUrl) {
+                        blurA.source = blurUrl;
+                        showingA = true;
+                    }
                 }
             }
 

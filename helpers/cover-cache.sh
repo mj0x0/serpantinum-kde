@@ -15,7 +15,6 @@ else
 fi
 
 finalArt="$TMP_DIR/${trackHash}_art.jpg"
-blurPath="$TMP_DIR/${trackHash}_blur.png"
 colorPath="$TMP_DIR/${trackHash}_grad.txt"
 textPath="$TMP_DIR/${trackHash}_text.txt"
 lockFile="$TMP_DIR/${trackHash}.lock"
@@ -26,7 +25,6 @@ touch "$lockFile"
 trap 'rm -f "$lockFile"' EXIT
 
 tempArt="$TMP_DIR/${trackHash}_temp_art.jpg"
-tempBlur="$TMP_DIR/${trackHash}_temp_blur.png"
 if [[ "$rawUrl" == http* ]]; then
     curl -s -L --max-time 10 -o "$tempArt" "$rawUrl"
 else
@@ -36,10 +34,7 @@ fi
 [ -s "$tempArt" ] || cp "$PLACEHOLDER" "$tempArt"
 
 isPlaceholder=$(convert "$tempArt" -format "%[hex:u.p{0,0}]" info: 2>/dev/null | cut -c1-6)
-if [[ "$isPlaceholder" == "313244" ]] || [[ -z "$isPlaceholder" ]]; then
-    cp "$tempArt" "$tempBlur"
-else
-    convert "$tempArt" -blur 0x20 -brightness-contrast -30x-10 "$tempBlur" 2>/dev/null
+if [[ "$isPlaceholder" != "313244" ]] && [[ -n "$isPlaceholder" ]]; then
     colors=$(convert "$tempArt" -resize 50x50 -alpha off +dither -quantize RGB -colors 3 -depth 8 -format "%c" histogram:info: 2>/dev/null |
         grep -E -o '#[0-9A-Fa-f]{6}' | head -n 3 | tr '\n' ' ')
     read -r -a color_array <<< "$colors"
@@ -48,7 +43,6 @@ else
     opp_raw=$(convert xc:"$c1" -alpha off -negate -depth 8 -format "%[hex:u]" info: 2>/dev/null | grep -E -o '[0-9A-Fa-f]{6}' | head -n 1)
     if [ -n "$opp_raw" ]; then echo "#$opp_raw" > "$textPath"; else echo "#cdd6f4" > "$textPath"; fi
 fi
-mv "$tempBlur" "$blurPath"
 mv "$tempArt" "$finalArt"
 (cd "$TMP_DIR" && ls -1t | tail -n +21 | xargs -r rm 2>/dev/null)
 printf '%s' "$finalArt"
