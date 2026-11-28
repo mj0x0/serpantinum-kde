@@ -1,7 +1,7 @@
 .pragma library
 
 // Tripwire: repo-wide `grep -rn 'Shortcut {' --include='*.qml' .` when this was written.
-var declarationCount = 129;
+var declarationCount = 138;
 
 // "a/b" inside a chord is one key family, rendered as a single chip: "Up/Down", "Shift + 1/2/3".
 var groups = [
@@ -114,6 +114,19 @@ var groups = [
             { chords: ["R"], label: "Reset the current mode" },
             { chords: ["Left/Right"], label: "Pick hours, minutes or seconds", condition: "Only in Timer mode, while the countdown is stopped and still showing its preset" },
             { chords: ["Up/Down"], label: "Adjust the selected digits", condition: "Only in Timer mode, while the countdown is stopped and still showing its preset" }
+        ]
+    },
+    {
+        name: "Notes tab",
+        items: [
+            { chords: ["Ctrl + N"], label: "New note", condition: "Saves the open note first" },
+            { chords: ["Ctrl + S"], label: "Save, keep editing", condition: "While editing a note" },
+            { chords: ["Ctrl + Return", "Ctrl + Enter"], label: "Save and close", condition: "While editing a note" },
+            { chords: ["Escape"], label: "Save and close", condition: "While editing a note" },
+            { chords: ["Ctrl + E"], label: "Toggle markdown preview", condition: "While editing a note" },
+            { chords: ["Ctrl + P"], label: "Pin or unpin", condition: "The open note while editing, otherwise every selected note" },
+            { chords: ["Ctrl + Shift + D"], label: "Delete", condition: "The open note while editing, otherwise every selected note" },
+            { chords: ["Escape"], label: "Clear the selection", condition: "While notes are selected and no note is open" }
         ]
     },
     {
