@@ -23,13 +23,25 @@ function formatInlineMarkdown(text, colors) {
     return s;
 }
 
+// Direction of the first strong character, so an RTL note can be marked as such.
+function isRtlText(s) {
+    var strong = /[A-Za-z\u00C0-\u024F\u0370-\u04FF\u0590-\u05FF\u0600-\u07BF\u0860-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+    var rtl = /[\u0590-\u05FF\u0600-\u07BF\u0860-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+    var m = (s || "").match(strong);
+    return !!m && rtl.test(m[0]);
+}
+
 function markdownToHtml(md, colors) {
     if (!md) return "";
     var c = colors || {};
     var preStyle = c.codeBg ? " style=\"background-color:" + c.codeBg + ";\"" : "";
-    // The box needs an explicit face: the UI font may have no U+2610/U+2611.
-    var boxAttr = (c.text ? " color=\"" + c.text + "\"" : "")
-                + (c.iconFont ? " face=\"" + c.iconFont + "\"" : "");
+    // The glyphs need an explicit face: the UI font has none of the nf-md range.
+    var faceAttr = c.iconFont ? " face=\"" + c.iconFont + "\"" : "";
+    var undoneColor = c.checkUndone || c.text;
+    var doneBoxAttr = (c.checkDone ? " color=\"" + c.checkDone + "\"" : "") + faceAttr;
+    var undoneBoxAttr = (undoneColor ? " color=\"" + undoneColor + "\"" : "") + faceAttr;
+    // The nf-md glyphs are bidi class L; without this the whole block flips to LTR.
+    var dir = isRtlText(md) ? "&#x200F;" : "";
     var lines = md.split("\n");
     var out = [];
     var inCode = false;
@@ -65,10 +77,18 @@ function markdownToHtml(md, colors) {
             // original line because fenced blocks `continue` rather than shifting the index.
             var box = esc.match(/^\s*[-*+]\s+\[([ xX])\]\s?/);
             var rest = esc.replace(/^\s*[-*+]\s+\[[ xX]\]\s?/, "");
-            var glyph = box[1] === " " ? "☐" : "☑";
+            var isDone = box[1] !== " ";
+            var body = formatInlineMarkdown(rest, c);
+            if (isDone) {
+                // <s> outside the colour so inner runs keep their own; outside the anchor so
+                // the rule does not cross the check glyph.
+                body = c.doneText ? "<s><font color=\"" + c.doneText + "\">" + body + "</font></s>"
+                                  : "<s>" + body + "</s>";
+            }
             // The box is a link only so it can be clicked; style it back into plain text.
-            out.push("&nbsp;&nbsp;<a href=\"chk:" + i + "\" style=\"text-decoration:none;\"><font"
-                     + boxAttr + ">" + glyph + "</font></a>&nbsp;" + formatInlineMarkdown(rest, c));
+            out.push(dir + "&nbsp;&nbsp;<a href=\"chk:" + i + "\" style=\"text-decoration:none;\"><font"
+                     + (isDone ? doneBoxAttr : undoneBoxAttr) + ">"
+                     + (isDone ? "&#xF0133;" : "&#xF0130;") + "</font></a>&nbsp;&nbsp;" + body);
         } else if (/^\s*[-*+]\s+/.test(esc)) {
             var item = esc.replace(/^\s*[-*+]\s+/, "");
             out.push("&nbsp;&nbsp;• " + formatInlineMarkdown(item, c));

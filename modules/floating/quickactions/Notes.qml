@@ -21,8 +21,14 @@ Item {
     property string safeActiveEdge: typeof activeEdge !== "undefined" ? activeEdge : "left"
 
     property bool stateLoaded: false
-    property var interceptedShortcuts: isEditing ? ["Return", "Enter", "Left", "Right", "Up", "Down", "Escape"] : []
+    property var interceptedShortcuts: isEditing
+        ? ["Return", "Enter", "Left", "Right", "Up", "Down", "Escape"]
+        : (selectedCount > 0 ? ["Escape"] : [])
     readonly property bool hasInputFocus: (typeof nameInput !== "undefined" && nameInput.hasFocus) || (typeof contentInput !== "undefined" && contentInput.hasFocus)
+
+    // Off-screen tabs must not answer keys: the host keeps Escape while collapsed, and two
+    // enabled Shortcuts on one sequence is an ambiguous overload.
+    readonly property bool shortcutsLive: root.isActiveTab && root.visible
 
     function unfocusInputs() {
         if (typeof nameInput !== "undefined" && typeof nameInput.releaseFocus === "function") {
@@ -34,9 +40,70 @@ Item {
     }
 
     Shortcut {
-        enabled: root.isActiveTab && root.isEditing
+        enabled: root.shortcutsLive && root.isEditing
         sequence: "Escape"
         onActivated: root.saveCurrentNote()
+    }
+
+    Shortcut {
+        enabled: root.shortcutsLive && !root.isEditing && root.selectedCount > 0
+        sequence: "Escape"
+        onActivated: root.clearSelection()
+    }
+
+    Shortcut {
+        enabled: root.shortcutsLive
+        sequence: "Ctrl+N"
+        onActivated: {
+            root.persistCurrentNote();
+            root.createNewNote();
+        }
+    }
+
+    Shortcut {
+        enabled: root.shortcutsLive && root.isEditing
+        sequence: "Ctrl+S"
+        onActivated: root.persistCurrentNote()
+    }
+
+    Shortcut {
+        enabled: root.shortcutsLive && root.isEditing
+        sequence: "Ctrl+Return"
+        onActivated: root.saveCurrentNote()
+    }
+
+    Shortcut {
+        enabled: root.shortcutsLive && root.isEditing
+        sequence: "Ctrl+Enter"
+        onActivated: root.saveCurrentNote()
+    }
+
+    Shortcut {
+        enabled: root.shortcutsLive && root.isEditing
+        sequence: "Ctrl+E"
+        onActivated: root.isMarkdownPreview = !root.isMarkdownPreview
+    }
+
+    Shortcut {
+        enabled: root.shortcutsLive && (root.isEditing || root.selectedCount > 0)
+        sequence: "Ctrl+P"
+        onActivated: {
+            if (root.isEditing)
+                root.editingNotePinned = !root.editingNotePinned;
+            else
+                root.togglePinSelectedNotes();
+        }
+    }
+
+    Shortcut {
+        enabled: root.shortcutsLive && (root.isEditing || root.selectedCount > 0)
+        sequence: "Ctrl+Shift+D"
+        onActivated: {
+            if (root.isEditing)
+                root.deleteEditingNote();
+            else
+                root.deleteSelectedNotes();
+        }
     }
 
     function s(val) {
@@ -69,6 +136,8 @@ Item {
     property color cMauve: _theme.mauve
     property color cRed: _theme.red
     property color cPeach: _theme.peach
+    property color cGreen: _theme.green
+    property color cOverlay1: _theme.overlay1
 
     function alpha(color, a) { return Qt.rgba(color.r, color.g, color.b, a); }
 
@@ -264,6 +333,30 @@ Item {
 
     function saveCurrentNote() {
         root.persistCurrentNote();
+        root.unfocusInputs();
+        root.collapseEditor();
+    }
+
+    // Dragged past full travel leaves it already 0, so assigning it emits no change
+    // signal and onExpandProgressChanged never clears the editing state.
+    function collapseEditor() {
+        if (root.expandProgress <= 0.001) {
+            root.isEditing = false;
+            root.editingNoteId = "";
+        } else {
+            root.expandProgress = 0.0;
+        }
+    }
+
+    function deleteEditingNote() {
+        if (!root.isEditing) return;
+        let id = root.editingNoteId;
+        // Clear isEditing first, or the collapse would persist the note straight back.
+        root.isEditing = false;
+        root.editingNoteId = "";
+        root.unfocusInputs();
+        root.notesList = root.notesList.filter(n => n.id !== id);
+        root.saveNotes();
         root.expandProgress = 0.0;
     }
 
@@ -333,6 +426,9 @@ Item {
             codeBg: root.cMantle,
             link: root.cMauve,
             text: root.cText,
+            checkDone: root.cGreen,
+            checkUndone: root.cSubtext0,
+            doneText: root.cOverlay1,
             iconFont: Fonts.icons
         });
     }
@@ -648,7 +744,7 @@ Item {
                                         if (root.expandProgress > 0.35) {
                                             root.expandProgress = 1.0;
                                         } else {
-                                            root.expandProgress = 0.0;
+                                            root.collapseEditor();
                                         }
                                     } else {
                                         if (mouse.button === Qt.RightButton) {
@@ -667,7 +763,7 @@ Item {
                                         if (root.expandProgress > 0.35) {
                                             root.expandProgress = 1.0;
                                         } else {
-                                            root.expandProgress = 0.0;
+                                            root.collapseEditor();
                                         }
                                     }
                                 }
@@ -902,6 +998,9 @@ Item {
                                 leadingIcon: ""
                                 showClearButton: true
                                 visible: !root.isMarkdownPreview
+                                // Effective visibility: this also fires when an ancestor hides,
+                                // so every editor-close path releases the keyboard.
+                                onVisibleChanged: if (!visible) releaseFocus()
                             }
 
                             Rectangle {
@@ -955,6 +1054,7 @@ Item {
                                 multiLine: true
                                 leadingIcon: ""
                                 visible: !root.isMarkdownPreview
+                                onVisibleChanged: if (!visible) releaseFocus()
                             }
 
                             Rectangle {
