@@ -263,6 +263,12 @@ Item {
     }
 
     function saveCurrentNote() {
+        root.persistCurrentNote();
+        root.expandProgress = 0.0;
+    }
+
+    // Save without closing the editor, so ticking a checkbox is not a lossy edit.
+    function persistCurrentNote() {
         if (!root.isEditing) return;
         let t = nameInput.text.trim();
         let c = contentInput.text;
@@ -271,7 +277,6 @@ Item {
         if (t === "" && c.trim() === "") {
             root.notesList = root.notesList.filter(n => n.id !== id);
             root.saveNotes();
-            root.expandProgress = 0.0;
             return;
         }
 
@@ -313,11 +318,23 @@ Item {
 
         root.notesList = list;
         root.saveNotes();
-        root.expandProgress = 0.0;
+    }
+
+    function toggleCheckbox(index) {
+        let next = NotesFormat.toggleCheckboxLine(contentInput.text, index);
+        if (next === null) return;
+        contentInput.text = next;
+        root.persistCurrentNote();
     }
 
     function markdownToHtml(md) {
-        return NotesFormat.markdownToHtml(md, { code: root.cPeach, codeBg: root.cMantle });
+        return NotesFormat.markdownToHtml(md, {
+            code: root.cPeach,
+            codeBg: root.cMantle,
+            link: root.cMauve,
+            text: root.cText,
+            iconFont: Fonts.icons
+        });
     }
 
     Item {
@@ -974,9 +991,22 @@ Item {
                                         textFormat: Text.RichText
                                         text: root.markdownToHtml(contentInput.text)
                                         color: root.cText
+                                        linkColor: root.cMauve
                                         font.family: Fonts.ui
                                         font.pixelSize: root.s(12)
                                         wrapMode: Text.WordWrap
+
+                                        onLinkActivated: function (link) {
+                                            if (link.indexOf("chk:") === 0)
+                                                root.toggleCheckbox(parseInt(link.substring(4)));
+                                            else
+                                                Qt.openUrlExternally(link);
+                                        }
+
+                                        HoverHandler {
+                                            enabled: previewText.hoveredLink !== ""
+                                            cursorShape: Qt.PointingHandCursor
+                                        }
                                     }
                                 }
                             }
